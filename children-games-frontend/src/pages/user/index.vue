@@ -63,6 +63,47 @@
       </div>
     </div>
 
+    <!-- 我的资料 + 角色口令 -->
+    <div class="profile-edit card">
+      <div class="section-title">👤 我的资料</div>
+      <div class="edit-row">
+        <span class="edit-label">昵称</span>
+        <input v-model="editNickname" class="edit-input" maxlength="12" />
+      </div>
+      <div class="edit-row">
+        <span class="edit-label">形象</span>
+        <div class="edit-emojis">
+          <span
+            v-for="e in AVATARS"
+            :key="e"
+            class="edit-emoji"
+            :class="{ picked: editAvatar === e }"
+            @click="editAvatar = e"
+          >{{ e }}</span>
+        </div>
+      </div>
+      <button class="save-profile-btn" :disabled="savingProfile" @click="saveProfile">
+        {{ savingProfile ? '保存中…' : '保存资料' }}
+      </button>
+
+      <div class="section-title pin-title">🔑 角色口令</div>
+      <div class="pin-desc">设置 4 位数字口令后，切换这个角色需要先输口令，别人就不能随便玩你的档案啦。</div>
+      <div class="pin-status">
+        <span :class="['pin-state', hasPin ? 'on' : '']">{{ hasPin ? '🔒 已设置口令' : '🔓 未设置' }}</span>
+      </div>
+      <template v-if="hasPin">
+        <input v-model="pinOld" class="pin-input" type="password" inputmode="numeric" maxlength="4" placeholder="当前口令" />
+        <input v-model="pinNew" class="pin-input" type="password" inputmode="numeric" maxlength="4" placeholder="新口令（4 位数字，留空=清除）" />
+      </template>
+      <template v-else>
+        <input v-model="pinNew" class="pin-input" type="password" inputmode="numeric" maxlength="4" placeholder="设置 4 位数字口令" />
+      </template>
+      <button class="save-profile-btn pin-btn" :disabled="savingPin" @click="savePin">
+        {{ savingPin ? '处理中…' : hasPin ? '修改 / 清除口令' : '设置口令' }}
+      </button>
+      <div v-if="pinMsg" class="pin-msg" :class="{ err: pinIsErr }">{{ pinMsg }}</div>
+    </div>
+
     <!-- 设置 -->
     <div class="settings-section card">
       <div class="setting-item" @click="openParentGate">
@@ -130,6 +171,7 @@ import { useRouter } from 'vue-router';
 import { useUserStore } from '@/store/user';
 import { useGameStore } from '@/store/game';
 import { getAchievements, type AchievementInfo } from '@/api/game';
+import { updateUserInfo, updateMyPin } from '@/api/user';
 import { getRestIntervalMinutes, getTodayPlaySeconds, resetTodayPlayTime } from '@/composables/usePlayTimeGuard';
 import PlayerAvatar from '@/components/PlayerAvatar.vue';
 
@@ -176,8 +218,70 @@ const getGameLevel = (gameId: string): number => {
 const handleLogout = () => {
   if (confirm('确定要退出登录吗？')) {
     userStore.logout();
-    alert('已退出登录');
-    router.push('/');
+    router.push('/profiles');
+  }
+};
+
+// ─── 我的资料 + 角色口令 ────────────────────────────────
+const AVATARS = ['🐰', '🐻', '🐼', '🦊', '🐸', '🐵', '🐯', '🦁', '🐷', '🐨', '👑', '🦄', '🌟', '🌸'];
+const editNickname = ref(userInfo.value?.nickname || '');
+const editAvatar = ref(userInfo.value?.avatar || '😊');
+const savingProfile = ref(false);
+
+const saveProfile = async () => {
+  if (!editNickname.value.trim() || savingProfile.value) return;
+  savingProfile.value = true;
+  try {
+    await updateUserInfo({ nickname: editNickname.value.trim(), avatar: editAvatar.value });
+    if (userInfo.value) {
+      userStore.setUserInfo({ ...userInfo.value, nickname: editNickname.value.trim(), avatar: editAvatar.value });
+    }
+  } catch {
+    // 保存失败静默（下次进入重取）
+  } finally {
+    savingProfile.value = false;
+  }
+};
+
+const hasPin = ref(false);
+const pinOld = ref('');
+const pinNew = ref('');
+const savingPin = ref(false);
+const pinMsg = ref('');
+const pinIsErr = ref(false);
+
+const flashPin = (text: string, isErr = false) => {
+  pinMsg.value = text;
+  pinIsErr.value = isErr;
+  setTimeout(() => {
+    pinMsg.value = '';
+  }, 3000);
+};
+
+const savePin = async () => {
+  if (savingPin.value) return;
+  if (hasPin.value && !/^\d{4}$/.test(pinOld.value)) {
+    flashPin('请先输入当前口令（4 位数字）', true);
+    return;
+  }
+  if (pinNew.value && !/^\d{4}$/.test(pinNew.value)) {
+    flashPin('新口令需为 4 位数字', true);
+    return;
+  }
+  savingPin.value = true;
+  try {
+    const result = await updateMyPin({
+      oldPin: pinOld.value || undefined,
+      newPin: pinNew.value,
+    });
+    hasPin.value = result.hasPin;
+    pinOld.value = '';
+    pinNew.value = '';
+    flashPin(result.hasPin ? '口令已设置 🔒' : '口令已清除 🔓');
+  } catch (e: any) {
+    flashPin(e?.message || '操作失败，请重试', true);
+  } finally {
+    savingPin.value = false;
   }
 };
 
@@ -240,6 +344,15 @@ onMounted(async () => {
     achievements.value = await getAchievements();
   } catch (e) {
     console.log('获取成就失败', e);
+  }
+  // 初始口令状态：探测一次（输错也算错，用设置接口无法探测——改由成员列表接口无此信息，
+  // 这里用 profiles 公开列表查询自己是否带锁）
+  try {
+    const profiles = await fetch('/api/user/profiles').then((r) => r.json());
+    const me = ((profiles.data || []) as { id: number; hasPin?: boolean }[]).find((p) => p.id === userStore.userInfo?.id);
+    hasPin.value = !!me?.hasPin;
+  } catch {
+    // ignore
   }
 });
 </script>
@@ -521,6 +634,135 @@ onMounted(async () => {
 .setting-arrow {
   font-size: 24px;
   color: #ccc;
+}
+
+/* 我的资料 + 口令 */
+.profile-edit {
+  /* 卡片基础样式沿用 .card */
+}
+
+.edit-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.edit-label {
+  width: 40px;
+  font-size: 14px;
+  color: #666;
+  flex-shrink: 0;
+}
+
+.edit-input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 2px solid #e5e5e5;
+  border-radius: 12px;
+  font-size: 15px;
+  outline: none;
+}
+
+.edit-input:focus {
+  border-color: #667eea;
+}
+
+.edit-emojis {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.edit-emoji {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  border-radius: 10px;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+
+.edit-emoji.picked {
+  border-color: #667eea;
+  background: rgba(102, 126, 234, 0.08);
+}
+
+.save-profile-btn {
+  width: 100%;
+  margin-top: 4px;
+  padding: 12px;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.save-profile-btn:disabled {
+  opacity: 0.5;
+}
+
+.pin-title {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.pin-desc {
+  font-size: 12px;
+  color: #999;
+  line-height: 1.7;
+  margin-bottom: 8px;
+}
+
+.pin-status {
+  margin-bottom: 8px;
+}
+
+.pin-state {
+  font-size: 13px;
+  color: #999;
+}
+
+.pin-state.on {
+  color: #27ae60;
+  font-weight: 600;
+}
+
+.pin-input {
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 11px 12px;
+  border: 2px solid #e5e5e5;
+  border-radius: 12px;
+  font-size: 16px;
+  letter-spacing: 6px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.pin-input:focus {
+  border-color: #667eea;
+}
+
+.pin-btn {
+  background: linear-gradient(135deg, #43a047 0%, #66bb6a 100%);
+}
+
+.pin-msg {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #27ae60;
+}
+
+.pin-msg.err {
+  color: #e74c3c;
 }
 
 /* 家长验证 / 家长中心弹层 */

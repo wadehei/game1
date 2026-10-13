@@ -10,6 +10,7 @@
         <PlayerAvatar :avatar="p.avatar" :size="64" />
         <div class="profile-name">{{ p.nickname }}</div>
         <div class="profile-stats">Lv.{{ p.level }} · ⭐{{ p.totalStars }}</div>
+        <span v-if="p.hasPin" class="lock-badge">🔒</span>
       </div>
 
       <div class="profile-card create-card" @click="openCreate">
@@ -17,6 +18,15 @@
         <div class="profile-name">新角色</div>
       </div>
     </div>
+
+    <!-- 口令键盘（锁定角色验证） -->
+    <PinPad
+      v-if="pinTarget"
+      :title="`${pinTarget.nickname} 的口令`"
+      :error="pinError"
+      @complete="submitPin"
+      @cancel="pinTarget = null"
+    />
 
     <!-- 创建角色弹层 -->
     <div v-if="creating" class="create-overlay" @click.self="creating = false">
@@ -48,6 +58,7 @@ import { useRouter } from 'vue-router';
 import { familyLogin, getProfiles, type FamilyProfile } from '@/api/user';
 import { useUserStore } from '@/store/user';
 import PlayerAvatar from '@/components/PlayerAvatar.vue';
+import PinPad from '@/components/PinPad.vue';
 
 const EMOJIS = ['🐰', '🐻', '🐼', '🦊', '🐸', '🐵', '🐯', '🦁', '🐷', '🐨', '👑', '🦄', '🌟', '🌸'];
 
@@ -73,12 +84,33 @@ const enter = () => {
   router.replace('/');
 };
 
+// ─── 口令保护的角色 ────────────────────────────────
+const pinTarget = ref<FamilyProfile | null>(null);
+const pinError = ref('');
+
 const selectProfile = async (p: FamilyProfile) => {
+  if (p.hasPin) {
+    // 有口令：先弹键盘验证（登录调用时携带 pin）
+    pinError.value = '';
+    pinTarget.value = p;
+    return;
+  }
   try {
     await familyLogin({ uid: p.id });
     enter();
   } catch (e) {
     console.log('角色登录失败', e);
+  }
+};
+
+const submitPin = async (pin: string) => {
+  if (!pinTarget.value) return;
+  try {
+    await familyLogin({ uid: pinTarget.value.id, pin });
+    pinTarget.value = null;
+    enter();
+  } catch (e: any) {
+    pinError.value = e?.response?.data?.message || '口令不正确，再试试';
   }
 };
 
@@ -160,6 +192,13 @@ onMounted(loadProfiles);
   font-size: 13px;
   font-weight: bold;
   color: #FFB347;
+}
+
+.lock-badge {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 14px;
 }
 
 .profile-name {

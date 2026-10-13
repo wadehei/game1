@@ -24,15 +24,22 @@ let pageErrors = [];
 page.on('pageerror', (err) => pageErrors.push(err.message));
 
 // 角色路由守卫会拦截无 token 访问：在线则真登录，离线用占位 token 通过守卫（页面走离线兜底）
+// 在线时复用已有"冒烟测试"角色，避免每次运行都新建账号污染成员列表
 await page.goto(`${BASE}/#/profiles`, { waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {});
 await new Promise((resolve) => setTimeout(resolve, 800));
 await page.evaluate(async () => {
   if (localStorage.getItem('token')) return;
   try {
+    let uid;
+    const profiles = await (await fetch('/api/user/profiles')).json();
+    const existing = (profiles.data || []).find((p) => p.nickname === '冒烟测试');
+    if (existing) {
+      uid = existing.id;
+    }
     const res = await fetch('/api/user/login/family', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nickname: '冒烟测试', avatar: '🤖' }),
+      body: JSON.stringify(uid ? { uid } : { nickname: '冒烟测试', avatar: '🤖' }),
     });
     const data = await res.json();
     localStorage.setItem('token', data?.data?.token || 'offline-smoke');

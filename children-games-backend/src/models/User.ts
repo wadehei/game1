@@ -9,11 +9,13 @@ interface UserAttributes {
   totalStars: number;
   level: number;
   achievements: string;
+  /** 4 位数字口令的哈希（sha256(pin:secret)），空=无口令 */
+  pinHash: string | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
-interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'totalStars' | 'level' | 'achievements'> {}
+interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'totalStars' | 'level' | 'achievements' | 'pinHash'> {}
 
 export class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
   public id!: number;
@@ -23,6 +25,7 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
   public totalStars!: number;
   public level!: number;
   public achievements!: string;
+  public pinHash!: string | null;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -69,6 +72,12 @@ User.init(
       allowNull: true,
       defaultValue: '[]',
       comment: '已解锁成就ID JSON数组',
+    },
+    pinHash: {
+      type: DataTypes.STRING(128),
+      allowNull: true,
+      defaultValue: null,
+      comment: '4位数字口令哈希，NULL=未设置',
     },
   },
   {

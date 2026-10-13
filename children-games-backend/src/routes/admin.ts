@@ -6,6 +6,7 @@ import {
   updateUser,
   resetUserProgress,
   deleteUser,
+  clearUserPin,
   getSettings,
   updateSettings,
   getLevelOverrides,
@@ -28,6 +29,7 @@ router.get('/overview', getOverview);
 router.get('/users', getUsers);
 router.put('/users/:id', updateUser);
 router.post('/users/:id/reset', resetUserProgress);
+router.post('/users/:id/clear-pin', clearUserPin);
 router.delete('/users/:id', deleteUser);
 router.get('/settings', getSettings);
 router.put('/settings', updateSettings);

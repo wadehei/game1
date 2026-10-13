@@ -117,6 +117,7 @@ export const getUsers = asyncHandler(async (req: AdminRequest, res: Response) =>
     level: u.level,
     totalStars: u.totalStars,
     isFamily: u.openid.startsWith('family_'),
+    hasPin: !!(u as any).pinHash,
     gamesPlayed: progressCountByUser.get(u.id) || 0,
     todaySeconds: playtimeByUser.get(u.id) || 0,
     lastActiveAt: lastActiveByUser.get(u.id) || null,
@@ -210,6 +211,18 @@ export const updateSettings = asyncHandler(async (req: AdminRequest, res: Respon
   }
   await AppSetting.upsert({ key: REST_INTERVAL_KEY, value: String(value) });
   success(res, { restIntervalMinutes: value });
+});
+
+/** 清除成员的角色口令（忘记口令时家长处理） */
+export const clearUserPin = asyncHandler(async (req: AdminRequest, res: Response) => {
+  const user = await User.findByPk(parseInt(String(req.params.id), 10));
+  if (!user) {
+    fail(res, '用户不存在', 404);
+    return;
+  }
+  user.pinHash = null;
+  await user.save();
+  success(res, { id: user.id, hasPin: false });
 });
 
 // ─── 关卡难度覆盖 ────────────────────────────────

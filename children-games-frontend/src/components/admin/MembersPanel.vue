@@ -23,6 +23,7 @@
           <template v-else>
             <div class="member-name">
               {{ u.nickname }}
+              <span v-if="u.hasPin" class="lock-tag">🔒</span>
               <span v-if="!u.isFamily" class="guest-tag">游客</span>
             </div>
             <div class="member-meta">
@@ -38,6 +39,7 @@
           </template>
           <template v-else>
             <button class="act-btn" @click="startEdit(u)">编辑</button>
+            <button v-if="u.hasPin" class="act-btn pin" @click="clearPin(u)">清除口令</button>
             <button class="act-btn warn" @click="resetProgress(u)">重置进度</button>
             <button class="act-btn danger" @click="removeUser(u)">删除</button>
           </template>
@@ -49,7 +51,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { getUsers, updateUser, resetUserProgress, deleteUser, type AdminUser } from '@/api/admin';
+import { getUsers, updateUser, resetUserProgress, deleteUser, clearUserPin, type AdminUser } from '@/api/admin';
 import PlayerAvatar from '@/components/PlayerAvatar.vue';
 
 const EMOJIS = ['🐰', '🐻', '🐼', '🦊', '🐸', '🐵', '🐯', '🦁', '🐷', '🐨', '👑', '🦄', '🌟', '🌸', '🤖', '😊'];
@@ -75,6 +77,12 @@ const startEdit = (u: AdminUser) => {
 const saveEdit = async (id: number) => {
   await updateUser(id, { nickname: editNickname.value, avatar: editAvatar.value }).catch(() => {});
   editingId.value = null;
+  await load();
+};
+
+const clearPin = async (u: AdminUser) => {
+  if (!confirm(`清除「${u.nickname}」的角色口令？清除后任何人都能直接进入该角色。`)) return;
+  await clearUserPin(u.id).catch(() => {});
   await load();
 };
 
@@ -218,6 +226,16 @@ onMounted(load);
 .act-btn.warn {
   background: #fef3e2;
   color: #e67e22;
+}
+
+.act-btn.pin {
+  background: #e8f5e9;
+  color: #27ae60;
+}
+
+.lock-tag {
+  font-size: 13px;
+  margin-left: 4px;
 }
 
 .act-btn.danger {

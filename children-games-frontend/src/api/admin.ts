@@ -79,6 +79,7 @@ export interface AdminUser {
   level: number;
   totalStars: number;
   isFamily: boolean;
+  hasPin?: boolean;
   gamesPlayed: number;
   todaySeconds: number;
   lastActiveAt: string | null;
@@ -89,6 +90,8 @@ export const getUsers = (): Promise<AdminUser[]> => client.get('/users');
 
 export const updateUser = (id: number, data: { nickname?: string; avatar?: string }): Promise<void> =>
   client.put(`/users/${id}`, data);
+
+export const clearUserPin = (id: number): Promise<void> => client.post(`/users/${id}/clear-pin`);
 
 export const resetUserProgress = (id: number): Promise<void> => client.post(`/users/${id}/reset`);
 
