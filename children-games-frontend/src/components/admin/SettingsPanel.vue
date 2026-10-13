@@ -20,6 +20,13 @@
         {{ saving ? '保存中…' : '保存设置' }}
       </button>
       <div v-if="saved" class="saved-tip">✅ 已保存，孩子下次进游戏生效</div>
+
+      <div class="voice-section">
+        <div class="field-label">语音引导试听</div>
+        <div class="voice-desc">当前音色：{{ voiceName }}</div>
+        <div class="voice-tip">游戏内的引导/读题/鼓励语音使用同一音色。若音色较机械，建议用 Edge 浏览器打开本应用（自带"晓晓"等自然语音，效果明显更好）。</div>
+        <button class="voice-btn" @click="testVoice">🔊 试听一段</button>
+      </div>
     </div>
   </div>
 </template>
@@ -27,6 +34,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { getSettings, updateSettings } from '@/api/admin';
+import { speak, currentVoiceName } from '@/utils/voice';
 
 const OPTIONS = [
   { value: 15, label: '15 分钟' },
@@ -39,12 +47,22 @@ const OPTIONS = [
 const interval = ref(20);
 const saving = ref(false);
 const saved = ref(false);
+const voiceName = ref('检测中…');
+
+const testVoice = () => {
+  voiceName.value = currentVoiceName();
+  speak('小朋友你好！答对啦，你真棒！要不要再玩一局呀？');
+};
 
 onMounted(async () => {
   const s = await getSettings().catch(() => null);
   if (s) {
     interval.value = s.restIntervalMinutes;
   }
+  // 音色列表异步加载，稍后读取
+  setTimeout(() => {
+    voiceName.value = currentVoiceName();
+  }, 600);
 });
 
 const save = async () => {
@@ -133,5 +151,40 @@ const save = async () => {
   margin-top: 12px;
   font-size: 13px;
   color: #27ae60;
+}
+
+.voice-section {
+  margin-top: 26px;
+  padding-top: 18px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.voice-desc {
+  font-size: 13px;
+  color: #3498db;
+  margin: 8px 0 6px;
+  font-weight: 600;
+}
+
+.voice-tip {
+  font-size: 12px;
+  color: #999;
+  line-height: 1.7;
+  margin-bottom: 12px;
+}
+
+.voice-btn {
+  padding: 10px 22px;
+  border: none;
+  border-radius: 12px;
+  background: #f0f4f8;
+  color: #2c3e50;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.voice-btn:hover {
+  background: #e4ebf2;
 }
 </style>
