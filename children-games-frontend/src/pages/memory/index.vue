@@ -79,6 +79,7 @@ import { GAME_PAUSE_EVENT, GAME_RESUME_EVENT } from '@/utils/gameEvents';
 import { getLevelOverride } from '@/api/game';
 import { speak } from '@/utils/voice';
 import { useAdaptiveAssist } from '@/composables/useAdaptiveAssist';
+import { defaultLevelConfig } from '@/utils/levelDefaults';
 import GameHeader from '@/components/GameHeader.vue';
 import ResultModal from '@/components/ResultModal.vue';
 import LevelSelectModal from '@/components/LevelSelectModal.vue';
@@ -150,7 +151,7 @@ let gameEnded = false;
 let autoPausedByHidden = false;
 let autoPausedByRest = false;
 
-const levelConfig = ref({
+const levelConfig = ref<Record<string, any>>({
   pairs: 2,
   timeLimit: 90,
 });
@@ -381,9 +382,10 @@ const restartGame = () => {
 
 const applyLevelConfig = async (level: number) => {
   const a = assist.level();
+  const base = defaultLevelConfig('memory', level);
   levelConfig.value = {
-    pairs: Math.min(2 + Math.floor((level - 1) / 2), 8),
-    timeLimit: Math.round(Math.max(90 - (level - 1) * 3, 30) * (1 + 0.3 * a)),
+    ...base,
+    timeLimit: Math.round(base.timeLimit * (1 + 0.3 * a)),
   };
   // 后台难度覆盖优先（离线/未配置时用内置公式）
   const override = await getLevelOverride('memory', level);

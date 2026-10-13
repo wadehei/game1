@@ -53,6 +53,7 @@ import { GAME_PAUSE_EVENT, GAME_RESUME_EVENT } from '@/utils/gameEvents';
 import { getLevelOverride } from '@/api/game';
 import { speak } from '@/utils/voice';
 import { useAdaptiveAssist } from '@/composables/useAdaptiveAssist';
+import { defaultLevelConfig } from '@/utils/levelDefaults';
 import GameHeader from '@/components/GameHeader.vue';
 import ResultModal from '@/components/ResultModal.vue';
 import LevelSelectModal from '@/components/LevelSelectModal.vue';
@@ -124,11 +125,12 @@ let basketY = 0;
 let fruits: Fruit[] = [];
 let particles: Particle[] = [];
 
-const levelConfig = ref({
+const levelConfig = ref<Record<string, any>>({
   spawnRate: 1000,
   fallSpeed: 2,
   bombChance: 0.15,
   targetScore: 100,
+  lives: 3,
 });
 
 const headerItems = computed(() => [
@@ -139,7 +141,7 @@ const headerItems = computed(() => [
 
 const initGame = async () => {
   score.value = 0;
-  lives.value = 3;
+  lives.value = levelConfig.value.lives ?? 3;
   targetScore.value = levelConfig.value.targetScore;
   fruits = [];
   showResult.value = false;
@@ -476,11 +478,11 @@ const chooseLevel = async (level: number) => {
 
 const applyLevelConfig = async (level: number) => {
   const a = assist.level();
+  const base = defaultLevelConfig('fruit', level);
   levelConfig.value = {
-    spawnRate: Math.round(Math.max(1000 - level * 30, 400) * (1 + 0.15 * a)),
-    fallSpeed: 2 + level * 0.2,
-    bombChance: Math.min(0.15 + level * 0.02, 0.35),
-    targetScore: Math.round((100 + level * 30) * (1 - 0.2 * a)),
+    ...base,
+    spawnRate: Math.round(base.spawnRate * (1 + 0.15 * a)),
+    targetScore: Math.round(base.targetScore * (1 - 0.2 * a)),
   };
   // 后台难度覆盖优先（离线/未配置时用内置公式）
   const override = await getLevelOverride('fruit', level);

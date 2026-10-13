@@ -52,6 +52,7 @@ import { GAME_PAUSE_EVENT, GAME_RESUME_EVENT } from '@/utils/gameEvents';
 import { getLevelOverride } from '@/api/game';
 import { speak } from '@/utils/voice';
 import { useAdaptiveAssist } from '@/composables/useAdaptiveAssist';
+import { defaultLevelConfig } from '@/utils/levelDefaults';
 import GameHeader from '@/components/GameHeader.vue';
 import ResultModal from '@/components/ResultModal.vue';
 import LevelSelectModal from '@/components/LevelSelectModal.vue';
@@ -132,11 +133,13 @@ let bgGradient: CanvasGradient | null = null;
 let floatTexts: { x: number; y: number; text: string; life: number; color: string }[] = [];
 let gameEnded = false;
 
-const levelConfig = ref({
+const levelConfig = ref<Record<string, any>>({
   spawnRate: 1200,
   moveSpeed: 1,
   targetScore: 100,
   bullets: 30,
+  rainbowChance: 0.05,
+  goldenChance: 0.1,
 });
 
 const headerItems = computed(() => [
@@ -218,11 +221,14 @@ const spawnBalloon = () => {
   let points = 10;
   let color = balloonColors[Math.floor(Math.random() * balloonColors.length)];
 
-  if (random < 0.05) {
+  // 特殊气球概率可由后台配置
+  const rainbowChance = levelConfig.value.rainbowChance;
+  const goldenChance = levelConfig.value.goldenChance;
+  if (random < rainbowChance) {
     type = 'rainbow';
     points = 50;
     color = '#FF00FF';
-  } else if (random < 0.15) {
+  } else if (random < rainbowChance + goldenChance) {
     type = 'golden';
     points = 25;
     color = '#FFD700';
@@ -502,11 +508,11 @@ const chooseLevel = async (level: number) => {
 
 const applyLevelConfig = async (level: number) => {
   const a = assist.level();
+  const base = defaultLevelConfig('balloon', level);
   levelConfig.value = {
-    spawnRate: Math.max(1200 - level * 25, 400),
-    moveSpeed: 1 + level * 0.08,
-    targetScore: Math.round((100 + level * 25) * (1 - 0.15 * a)),
-    bullets: 30 + (level - 1) * 5 + 5 * a,
+    ...base,
+    targetScore: Math.round(base.targetScore * (1 - 0.15 * a)),
+    bullets: base.bullets + 5 * a,
   };
   // 后台难度覆盖优先（离线/未配置时用内置公式）
   const override = await getLevelOverride('balloon', level);

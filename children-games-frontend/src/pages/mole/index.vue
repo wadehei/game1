@@ -74,6 +74,7 @@ import { GAME_PAUSE_EVENT, GAME_RESUME_EVENT } from '@/utils/gameEvents';
 import { getLevelOverride } from '@/api/game';
 import { speak } from '@/utils/voice';
 import { useAdaptiveAssist } from '@/composables/useAdaptiveAssist';
+import { defaultLevelConfig } from '@/utils/levelDefaults';
 import GameHeader from '@/components/GameHeader.vue';
 import ResultModal from '@/components/ResultModal.vue';
 import LevelSelectModal from '@/components/LevelSelectModal.vue';
@@ -106,7 +107,7 @@ const holes = ref<Hole[]>(
   Array.from({ length: 9 }, () => ({ state: 'empty' as HoleState, kind: 'mole' as const }))
 );
 
-const levelConfig = ref({
+const levelConfig = ref<Record<string, any>>({
   spawnInterval: 900,
   upDuration: 1300,
   bunnyChance: 0,
@@ -130,13 +131,11 @@ const headerItems = computed(() => [
 
 const applyLevelConfig = async (level: number) => {
   const a = assist.level();
+  const base = defaultLevelConfig('mole', level);
   levelConfig.value = {
-    spawnInterval: Math.max(900 - level * 35, 350),
-    upDuration: Math.max(1300 - level * 50, 600) + 120 * a,
-    // 第4关起出现小兔子：练"忍住不打"，是这游戏的核心认知训练
-    bunnyChance: level >= 4 ? Math.min(0.12 + (level - 4) * 0.03, 0.35) : 0,
-    timeLimit: 60,
-    targetHits: Math.max(5, 12 + level * 3 - 2 * a),
+    ...base,
+    upDuration: base.upDuration + 120 * a,
+    targetHits: Math.max(5, base.targetHits - 2 * a),
   };
   // 后台难度覆盖优先（离线/未配置时用内置公式）
   const override = await getLevelOverride('mole', level);

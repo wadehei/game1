@@ -63,6 +63,7 @@ import { soundManager } from '@/utils/sound';
 import { GAME_PAUSE_EVENT, GAME_RESUME_EVENT } from '@/utils/gameEvents';
 import { getLevelOverride } from '@/api/game';
 import { speak } from '@/utils/voice';
+import { defaultLevelConfig } from '@/utils/levelDefaults';
 import GameHeader from '@/components/GameHeader.vue';
 import ResultModal from '@/components/ResultModal.vue';
 import LevelSelectModal from '@/components/LevelSelectModal.vue';
@@ -92,7 +93,7 @@ const gameWon = ref(false);
 const stars = ref(0);
 const showLevelSelect = ref(false);
 
-const levelConfig = ref({ seqLength: 3 });
+const levelConfig = ref<Record<string, any>>({ seqLength: 3, playbackMs: 595 });
 
 let sequence: number[] = [];
 let gameEnded = false;
@@ -117,7 +118,7 @@ const statusText = computed(() => {
 
 const applyLevelConfig = async (level: number) => {
   levelConfig.value = {
-    seqLength: Math.min(2 + level, 12),
+    ...defaultLevelConfig('simon', level),
   };
   // 后台难度覆盖优先（离线/未配置时用内置公式）
   const override = await getLevelOverride('simon', level);
@@ -164,7 +165,7 @@ const playSequence = () => {
   inputIndex.value = 0;
   litPad.value = null;
 
-  const stepMs = Math.max(620 - currentLevel.value * 25, 380);
+  const stepMs = Math.max(levelConfig.value.playbackMs, 150);
   sequence.forEach((padId, i) => {
     addTimeout(() => lightPad(padId, stepMs * 0.55), i * stepMs);
   });

@@ -2,16 +2,16 @@ import { Request, Response } from 'express';
 import { LevelConfig } from '../models';
 import { success, fail, asyncHandler } from '../utils/response';
 
-/** 各游戏允许覆盖的配置字段（与前端 levelConfig 字段一一对应） */
+/** 各游戏允许覆盖的配置字段（与前端 levelDefaults.ts 的字段一一对应） */
 export const LEVEL_FIELDS: Record<string, string[]> = {
   memory: ['pairs', 'timeLimit'],
-  fruit: ['spawnRate', 'fallSpeed', 'bombChance', 'targetScore'],
+  fruit: ['spawnRate', 'fallSpeed', 'bombChance', 'targetScore', 'lives'],
   puzzle: ['gridSize', 'timeLimit'],
-  balloon: ['spawnRate', 'moveSpeed', 'targetScore', 'bullets'],
-  tank: ['enemyCount', 'enemySpeed', 'enemyFireRate', 'bossLevel'],
+  balloon: ['spawnRate', 'moveSpeed', 'targetScore', 'bullets', 'rainbowChance', 'goldenChance'],
+  tank: ['enemyCount', 'enemySpeed', 'enemyFireRate', 'bossLevel', 'bossHP', 'playerSpeed', 'autoFireInterval', 'enemyBulletSpeed', 'playerBulletSpeed'],
   mole: ['spawnInterval', 'upDuration', 'bunnyChance', 'timeLimit', 'targetHits'],
-  simon: ['seqLength'],
-  math: ['targetCorrect'],
+  simon: ['seqLength', 'playbackMs'],
+  math: ['targetCorrect', 'forceMode', 'countMax', 'addMax'],
 };
 
 /** 读取某关卡的云端覆盖配置：没有则 override 为 null（默认难度以前端内置公式为准） */

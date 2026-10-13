@@ -87,6 +87,7 @@ import { GAME_PAUSE_EVENT, GAME_RESUME_EVENT } from '@/utils/gameEvents';
 import { getLevelOverride } from '@/api/game';
 import { speak } from '@/utils/voice';
 import { useAdaptiveAssist } from '@/composables/useAdaptiveAssist';
+import { defaultLevelConfig } from '@/utils/levelDefaults';
 import GameHeader from '@/components/GameHeader.vue';
 import ResultModal from '@/components/ResultModal.vue';
 import LevelSelectModal from '@/components/LevelSelectModal.vue';
@@ -166,11 +167,16 @@ let autoFireInterval: ReturnType<typeof setInterval> | null = null;
 const tankImages = new ImageLoader();
 const imagesLoaded = ref(false);
 
-const levelConfig = ref({
+const levelConfig = ref<Record<string, any>>({
   enemyCount: 4,
   enemySpeed: 1,
   enemyFireRate: 0.3,
   bossLevel: false,
+  bossHP: 11,
+  playerSpeed: 3,
+  autoFireInterval: 500,
+  enemyBulletSpeed: 5,
+  playerBulletSpeed: 8,
 });
 
 const headerItems = computed(() => [
@@ -224,7 +230,7 @@ const createEnemies = () => {
       y: 60 + Math.random() * 100,
       width: isBoss ? 70 : 50,
       height: isBoss ? 80 : 60,
-      hp: isBoss ? 10 + currentLevel.value : 1,
+      hp: isBoss ? levelConfig.value.bossHP : 1,
       speed: levelConfig.value.enemySpeed,
       direction: Math.random() > 0.5 ? 1 : -1,
       lastFire: Date.now(),
@@ -249,7 +255,7 @@ const resumeLoop = () => {
   gameLoop();
   autoFireInterval = setInterval(() => {
     fire();
-  }, 500);
+  }, levelConfig.value.autoFireInterval);
 };
 
 const startGame = () => resumeLoop();
@@ -399,7 +405,7 @@ const render = () => {
       c.fillStyle = '#333';
       c.fillRect(enemy.x, enemy.y - 10, enemy.width, 6);
       c.fillStyle = '#FF0000';
-      c.fillRect(enemy.x, enemy.y - 10, (enemy.width * enemy.hp) / (10 + currentLevel.value), 6);
+      c.fillRect(enemy.x, enemy.y - 10, (enemy.width * enemy.hp) / levelConfig.value.bossHP, 6);
     }
   });
 
@@ -510,7 +516,7 @@ const enemyShoot = (enemy: Tank) => {
   bullets.push({
     x: enemy.x + enemy.width / 2,
     y: enemy.y + enemy.height,
-    speed: 5,
+    speed: levelConfig.value.enemyBulletSpeed,
     isPlayer: false,
   });
 
@@ -525,7 +531,7 @@ const fire = () => {
   bullets.push({
     x: player.x + player.width / 2,
     y: player.y,
-    speed: 8,
+    speed: levelConfig.value.playerBulletSpeed,
     isPlayer: true,
   });
 
@@ -627,17 +633,19 @@ const chooseLevel = async (level: number) => {
 
 const applyLevelConfig = async (level: number) => {
   const a = assist.level();
+  const base = defaultLevelConfig('tank', level);
   levelConfig.value = {
-    enemyCount: Math.max(2, 3 + Math.floor(level * 0.8) - a),
-    enemySpeed: 1 + level * 0.1,
-    enemyFireRate: Math.min(0.3 + level * 0.02, 0.8) * (1 - 0.2 * a),
-    bossLevel: level % 5 === 0,
+    ...base,
+    enemyCount: Math.max(2, base.enemyCount - a),
+    enemyFireRate: base.enemyFireRate * (1 - 0.2 * a),
   };
   // 后台难度覆盖优先（离线/未配置时用内置公式）
   const override = await getLevelOverride('tank', level);
   if (override && currentLevel.value === level) {
     levelConfig.value = { ...levelConfig.value, ...override };
   }
+  // 玩家坦克速度随配置
+  player.speed = levelConfig.value.playerSpeed;
 };
 
 const nextLevel = async () => {

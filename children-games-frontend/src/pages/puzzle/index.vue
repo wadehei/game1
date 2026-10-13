@@ -85,6 +85,7 @@ import { GAME_PAUSE_EVENT, GAME_RESUME_EVENT } from '@/utils/gameEvents';
 import { getLevelOverride } from '@/api/game';
 import { speak } from '@/utils/voice';
 import { useAdaptiveAssist } from '@/composables/useAdaptiveAssist';
+import { defaultLevelConfig } from '@/utils/levelDefaults';
 import GameHeader from '@/components/GameHeader.vue';
 import ResultModal from '@/components/ResultModal.vue';
 import LevelSelectModal from '@/components/LevelSelectModal.vue';
@@ -133,7 +134,7 @@ const gridSize = computed(() => {
   if (typeof fromOverride === 'number') {
     return Math.min(Math.max(Math.round(fromOverride), 2), 6);
   }
-  return Math.min(3 + Math.floor(currentLevel.value / 5), 5);
+  return defaultLevelConfig('puzzle', currentLevel.value).gridSize;
 });
 
 // 本关时限（不低于 60 秒，避免高关卡出现 0 秒）
@@ -142,7 +143,7 @@ const levelTimeLimit = computed(() => {
   if (typeof fromOverride === 'number') {
     return Math.max(Math.round(fromOverride), 10);
   }
-  return Math.round(Math.max(180 - currentLevel.value * 2, 60) * (1 + 0.3 * assist.level()));
+  return Math.round(defaultLevelConfig('puzzle', currentLevel.value).timeLimit * (1 + 0.3 * assist.level()));
 });
 
 const applyLevelConfig = async (level: number) => {

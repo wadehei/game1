@@ -71,8 +71,13 @@ await page.evaluate(() => {
 });
 await sleep(800);
 {
-  const rows = await page.evaluate(() => [...document.querySelectorAll('.override-row')].map((r) => r.textContent.trim().replace(/\s+/g, ' ')));
-  check(`面板显示覆盖列表：${rows[0] || ''}`, rows.length === 1 && rows[0].includes('第 1 关'));
+  const rows = await page.evaluate(() => [...document.querySelectorAll('.level-row')].map((r) => r.textContent.trim().replace(/\s+/g, ' ')));
+  // 新面板列出全部关卡（1~totalLevels），自定义的第 1 关应带「自定义」标记和覆盖值
+  const customRow = rows.find((r) => r.includes('第 1 关'));
+  check(
+    `面板列出 ${rows.length} 关，第 1 关带覆盖值和自定义标记`,
+    rows.length >= 20 && !!customRow && customRow.includes('时限 130') && customRow.includes('自定义')
+  );
   await page.screenshot({ path: 'test-results/admin-levels-panel.png' });
 }
 

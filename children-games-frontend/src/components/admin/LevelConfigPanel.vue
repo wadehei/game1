@@ -3,8 +3,7 @@
     <h2 class="panel-title">🎚️ 关卡难度配置</h2>
 
     <div class="hint">
-      只需配置想调整的关卡和字段：孩子端进入该关时会<b>优先使用这里的数值</b>，没填的字段和未配置的关卡仍走内置默认难度。
-      保存后，孩子重新进入该关卡立即生效。
+      列出每个关卡的<b>当前生效配置</b>（内置公式 + 此处自定义合并后的结果）。点击任意关卡进入编辑：<b>改过的字段会保存为该关的自定义配置</b>，改回原值或用「恢复默认」即回到内置难度。保存后，孩子重新进入该关卡立即生效。
     </div>
 
     <!-- 游戏选择 -->
@@ -18,30 +17,45 @@
       >{{ g.name }}</button>
     </div>
 
-    <!-- 已有覆盖列表 -->
-    <div v-if="overrides.length" class="override-list">
-      <div v-for="row in overrides" :key="row.level" class="override-row">
-        <span class="ov-level">第 {{ row.level }} 关</span>
-        <span class="ov-config">{{ formatConfig(row.config) }}</span>
-        <div class="ov-actions">
-          <button class="act-btn" @click="editRow(row)">编辑</button>
-          <button class="act-btn danger" @click="removeRow(row.level)">恢复默认</button>
+    <!-- 关卡列表 -->
+    <div class="level-list">
+      <div
+        v-for="lv in visibleLevels"
+        :key="lv"
+        class="level-row"
+        :class="{ custom: !!overrideMap.get(lv), editing: editingLevel === lv }"
+        @click="editRow(lv)"
+      >
+        <span class="lv-num">第 {{ lv }} 关</span>
+        <span class="lv-config">{{ formatLevelConfig(gameId, effectiveOf(lv)) }}</span>
+        <span v-if="overrideMap.get(lv)" class="lv-badge">自定义</span>
+        <div class="row-actions" @click.stop>
+          <button v-if="overrideMap.get(lv)" class="act-btn danger" @click="removeRow(lv)">恢复默认</button>
         </div>
       </div>
     </div>
-    <div v-else class="empty">该游戏暂无自定义配置，全部使用内置默认难度</div>
+
+    <button class="extend-btn" @click="listExtent += 10">
+      ＋ 显示更多关卡（当前列出 1 ~ 第 {{ visibleLevels.length }} 关）
+    </button>
 
     <!-- 编辑表单 -->
-    <div class="form-card">
-      <div class="form-title">{{ editingLevel ? `编辑第 ${editingLevel} 关` : '新增关卡配置' }}</div>
-      <div class="form-row">
-        <label class="form-label">关卡编号</label>
-        <input v-model.number="formLevel" class="form-input level-input" type="number" min="1" max="999" />
+    <div class="form-card" :class="{ visible: editingLevel !== null }">
+      <div class="form-title">
+        编辑第 {{ editingLevel ?? formLevel }} 关
+        <span v-if="editingLevel !== null" class="form-tip">改动过的字段会保存为自定义配置</span>
       </div>
       <div v-for="f in fields" :key="f.key" class="form-row">
-        <label class="form-label">{{ f.label }}</label>
+        <label class="form-label">
+          {{ f.label }}
+          <span v-if="customKeys.has(f.key)" class="custom-mark">已自定义</span>
+        </label>
         <label v-if="f.isBool" class="bool-label">
-          <input v-model="formValues[f.key]" type="checkbox" />
+          <input
+            v-model="formValues[f.key]"
+            type="checkbox"
+            @change="markCustom(f.key)"
+          />
           {{ formValues[f.key] ? '开启' : '关闭' }}
         </label>
         <input
@@ -50,13 +64,13 @@
           class="form-input"
           type="number"
           :step="f.step || 'any'"
-          placeholder="留空 = 使用默认"
+          @input="markCustom(f.key)"
         />
       </div>
       <div class="form-btns">
-        <button class="act-btn" @click="resetForm">清空</button>
-        <button class="act-btn save" :disabled="!formLevel || formLevel < 1" @click="save">
-          {{ saving ? '保存中…' : '保存配置' }}
+        <button class="act-btn" @click="resetForm">取消编辑</button>
+        <button class="act-btn save" :disabled="!formLevel || formLevel < 1 || saving" @click="save">
+          {{ saving ? '保存中…' : '保存修改' }}
         </button>
       </div>
       <div v-if="message" class="msg" :class="{ err: msgIsError }">{{ message }}</div>
@@ -73,68 +87,43 @@ import {
   type LevelOverrideRow,
 } from '@/api/admin';
 import { GAMES } from '@/utils/gameMeta';
-
-interface FieldDef {
-  key: string;
-  label: string;
-  isBool?: boolean;
-  step?: string;
-}
-
-const FIELD_SCHEMAS: Record<string, FieldDef[]> = {
-  memory: [
-    { key: 'pairs', label: '卡片对数（2~8）' },
-    { key: 'timeLimit', label: '时限（秒）' },
-  ],
-  fruit: [
-    { key: 'spawnRate', label: '掉落间隔（毫秒，越小越难）' },
-    { key: 'fallSpeed', label: '下落速度' },
-    { key: 'bombChance', label: '炸弹概率 0~1', step: '0.01' },
-    { key: 'targetScore', label: '目标分数' },
-  ],
-  puzzle: [
-    { key: 'gridSize', label: '拼图边长（2~6 格）' },
-    { key: 'timeLimit', label: '时限（秒）' },
-  ],
-  balloon: [
-    { key: 'spawnRate', label: '上浮间隔（毫秒，越小越难）' },
-    { key: 'moveSpeed', label: '上浮速度' },
-    { key: 'targetScore', label: '目标分数' },
-    { key: 'bullets', label: '子弹数' },
-  ],
-  tank: [
-    { key: 'enemyCount', label: '敌人数量' },
-    { key: 'enemySpeed', label: '敌人速度' },
-    { key: 'enemyFireRate', label: '敌人开火率 0~1', step: '0.01' },
-    { key: 'bossLevel', label: 'Boss 关', isBool: true },
-  ],
-  mole: [
-    { key: 'spawnInterval', label: '出洞间隔（毫秒，越小越难）' },
-    { key: 'upDuration', label: '露头时长（毫秒，越小越难）' },
-    { key: 'bunnyChance', label: '兔子概率 0~1', step: '0.01' },
-    { key: 'timeLimit', label: '时限（秒）' },
-    { key: 'targetHits', label: '目标击中数' },
-  ],
-  simon: [{ key: 'seqLength', label: '记忆序列步数' }],
-  math: [{ key: 'targetCorrect', label: '答对题数' }],
-};
+import {
+  defaultLevelConfig,
+  formatLevelConfig,
+  LEVEL_FIELD_DEFS,
+  type LevelConfigValue,
+  type LevelConfigMap,
+} from '@/utils/levelDefaults';
 
 const gameId = ref('memory');
 const overrides = ref<LevelOverrideRow[]>([]);
+const listExtent = ref(0);
 const editingLevel = ref<number | null>(null);
 const formLevel = ref<number | null>(null);
 const formValues = reactive<Record<string, string | boolean>>({});
+const customKeys = ref<Set<string>>(new Set());
+const snapshot = ref<Record<string, LevelConfigValue>>({});
 const saving = ref(false);
 const message = ref('');
 const msgIsError = ref(false);
 
-const fields = computed(() => FIELD_SCHEMAS[gameId.value] || []);
+const fields = computed(() => LEVEL_FIELD_DEFS[gameId.value] || []);
+const totalLevels = computed(() => GAMES.find((g) => g.id === gameId.value)?.totalLevels || 20);
+const visibleLevels = computed(() => {
+  const max = totalLevels.value + listExtent.value;
+  return Array.from({ length: max }, (_, i) => i + 1);
+});
 
-const resetForm = () => {
-  editingLevel.value = null;
-  formLevel.value = null;
-  Object.keys(formValues).forEach((k) => delete formValues[k]);
-};
+const overrideMap = computed(() => {
+  const map = new Map<number, Record<string, LevelConfigValue>>();
+  overrides.value.forEach((row) => map.set(row.level, row.config));
+  return map;
+});
+
+const effectiveOf = (level: number): LevelConfigMap => ({
+  ...defaultLevelConfig(gameId.value, level),
+  ...(overrideMap.value.get(level) || {}),
+});
 
 const showMessage = (text: string, isError = false) => {
   message.value = text;
@@ -151,48 +140,72 @@ const loadList = async () => {
 const selectGame = (id: string) => {
   gameId.value = id;
   resetForm();
+  listExtent.value = 0;
   loadList();
 };
 
-const editRow = (row: LevelOverrideRow) => {
-  editingLevel.value = row.level;
-  formLevel.value = row.level;
+// ─── 编辑 ────────────────────────────────
+const editRow = (level: number) => {
+  editingLevel.value = level;
+  formLevel.value = level;
+  const eff = effectiveOf(level);
+  snapshot.value = { ...eff };
+  customKeys.value = new Set(Object.keys(overrideMap.value.get(level) || {}));
   Object.keys(formValues).forEach((k) => delete formValues[k]);
   fields.value.forEach((f) => {
-    const v = row.config[f.key];
-    if (f.isBool) {
-      formValues[f.key] = Boolean(v);
-    } else if (v !== undefined) {
-      formValues[f.key] = String(v);
-    }
+    const v = eff[f.key];
+    formValues[f.key] = typeof v === 'boolean' ? v : String(v ?? '');
   });
 };
 
-const removeRow = async (level: number) => {
-  if (!confirm(`删除第 ${level} 关的自定义配置，恢复内置默认难度？`)) return;
-  await deleteLevelOverride(gameId.value, level).catch(() => {});
-  showMessage(`第 ${level} 关已恢复默认难度`);
-  await loadList();
+const resetForm = () => {
+  editingLevel.value = null;
+  formLevel.value = null;
+  customKeys.value = new Set();
+  Object.keys(formValues).forEach((k) => delete formValues[k]);
+};
+
+/** 输入与基准不同 → 记为自定义；改回原值 → 取消自定义 */
+const markCustom = (key: string) => {
+  const def = fields.value.find((f) => f.key === key);
+  if (!def) return;
+  const cur = formValues[key];
+  const base = snapshot.value[key];
+  if (def.isBool) {
+    if (Boolean(cur) !== Boolean(base)) {
+      customKeys.value.add(key);
+    } else {
+      customKeys.value.delete(key);
+    }
+  } else {
+    const n = Number(cur);
+    if (cur !== '' && Number.isFinite(n) && n !== Number(base)) {
+      customKeys.value.add(key);
+    } else {
+      customKeys.value.delete(key);
+    }
+  }
 };
 
 const save = async () => {
   if (!formLevel.value || formLevel.value < 1 || saving.value) return;
-  const config: Record<string, number | boolean> = {};
-  for (const f of fields.value) {
-    const raw = formValues[f.key];
-    if (f.isBool) {
-      config[f.key] = Boolean(raw);
-    } else if (raw !== undefined && raw !== '' && raw !== null) {
-      const num = Number(raw);
-      if (!Number.isFinite(num)) {
-        showMessage(`「${f.label}」请填写数字`, true);
+  const config: Record<string, LevelConfigValue> = {};
+  for (const key of customKeys.value) {
+    const def = fields.value.find((f) => f.key === key);
+    if (!def) continue;
+    if (def.isBool) {
+      config[key] = Boolean(formValues[key]);
+    } else {
+      const n = Number(formValues[key]);
+      if (!Number.isFinite(n)) {
+        showMessage(`「${def.label}」请填写数字`, true);
         return;
       }
-      config[f.key] = num;
+      config[key] = n;
     }
   }
   if (Object.keys(config).length === 0) {
-    showMessage('至少填写一个配置项', true);
+    showMessage('没有改动过的字段——修改任意字段后再保存', true);
     return;
   }
   saving.value = true;
@@ -208,14 +221,14 @@ const save = async () => {
   }
 };
 
-const formatConfig = (config: Record<string, number | boolean>): string => {
-  const defs = FIELD_SCHEMAS[gameId.value] || [];
-  return Object.entries(config)
-    .map(([k, v]) => {
-      const label = defs.find((d) => d.key === k)?.label || k;
-      return `${label.split('（')[0]} ${v}`;
-    })
-    .join(' · ');
+const removeRow = async (level: number) => {
+  if (!confirm(`删除第 ${level} 关的自定义配置，恢复内置默认难度？`)) return;
+  await deleteLevelOverride(gameId.value, level).catch(() => {});
+  showMessage(`第 ${level} 关已恢复默认难度`);
+  if (editingLevel.value === level) {
+    resetForm();
+  }
+  await loadList();
 };
 
 onMounted(() => loadList());
@@ -241,7 +254,7 @@ onMounted(() => loadList());
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
 .chip {
@@ -261,40 +274,67 @@ onMounted(() => loadList());
   font-weight: bold;
 }
 
-.override-list {
+.level-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: 6px;
+  margin-bottom: 12px;
+  max-height: 46vh;
+  overflow-y: auto;
+  padding-right: 2px;
 }
 
-.override-row {
+.level-row {
   display: flex;
   align-items: center;
   gap: 10px;
   background: #fff;
+  border: 1px solid #eef1f4;
   border-radius: 12px;
-  padding: 10px 14px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  padding: 9px 12px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
   flex-wrap: wrap;
 }
 
-.ov-level {
-  font-size: 14px;
+.level-row:hover {
+  border-color: #3498db;
+}
+
+.level-row.custom {
+  border-left: 4px solid #3498db;
+}
+
+.level-row.editing {
+  background: rgba(52, 152, 219, 0.06);
+  border-color: #3498db;
+}
+
+.lv-num {
+  font-size: 13px;
   font-weight: bold;
   color: #2c3e50;
-  width: 66px;
+  width: 60px;
   flex-shrink: 0;
 }
 
-.ov-config {
+.lv-config {
   flex: 1;
-  font-size: 13px;
+  font-size: 12px;
   color: #666;
   min-width: 200px;
 }
 
-.ov-actions {
+.lv-badge {
+  font-size: 10px;
+  color: #3498db;
+  background: rgba(52, 152, 219, 0.12);
+  padding: 2px 8px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.row-actions {
   display: flex;
   gap: 6px;
 }
@@ -319,10 +359,21 @@ onMounted(() => loadList());
   color: #fff;
 }
 
-.empty {
-  color: #bbb;
+.extend-btn {
+  width: 100%;
+  padding: 10px;
+  border: 2px dashed #d5dbe0;
+  border-radius: 12px;
+  background: none;
+  color: #888;
   font-size: 13px;
-  padding: 8px 0 16px;
+  cursor: pointer;
+  margin-bottom: 16px;
+}
+
+.extend-btn:hover {
+  color: #3498db;
+  border-color: #3498db;
 }
 
 .form-card {
@@ -330,13 +381,29 @@ onMounted(() => loadList());
   border-radius: 14px;
   padding: 18px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  max-width: 520px;
+  max-width: 560px;
+  opacity: 0.55;
+  transition: opacity 0.2s ease;
+}
+
+.form-card.visible {
+  opacity: 1;
 }
 
 .form-title {
   font-size: 15px;
   font-weight: bold;
   margin-bottom: 14px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.form-tip {
+  font-size: 12px;
+  color: #999;
+  font-weight: normal;
 }
 
 .form-row {
@@ -347,10 +414,16 @@ onMounted(() => loadList());
 }
 
 .form-label {
-  width: 190px;
+  width: 200px;
   font-size: 13px;
   color: #555;
   flex-shrink: 0;
+}
+
+.custom-mark {
+  color: #3498db;
+  font-size: 11px;
+  margin-left: 4px;
 }
 
 .form-input {
@@ -365,10 +438,6 @@ onMounted(() => loadList());
 
 .form-input:focus {
   border-color: #3498db;
-}
-
-.level-input {
-  max-width: 120px;
 }
 
 .bool-label {
@@ -405,6 +474,10 @@ onMounted(() => loadList());
 
   .form-label {
     width: auto;
+  }
+
+  .level-list {
+    max-height: 38vh;
   }
 }
 </style>

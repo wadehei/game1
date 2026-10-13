@@ -80,6 +80,7 @@ import { useGameSounds } from '@/composables/useGameSounds';
 import { useGameProgress } from '@/composables/useGameProgress';
 import { getLevelOverride } from '@/api/game';
 import { speak } from '@/utils/voice';
+import { defaultLevelConfig } from '@/utils/levelDefaults';
 import GameHeader from '@/components/GameHeader.vue';
 import ResultModal from '@/components/ResultModal.vue';
 import LevelSelectModal from '@/components/LevelSelectModal.vue';
@@ -109,7 +110,7 @@ const finalSeconds = ref(0);
 let levelStartTs = 0;
 let timeTicker: ReturnType<typeof setInterval> | null = null;
 
-const levelConfig = ref({ targetCorrect: 8 });
+const levelConfig = ref<Record<string, any>>({ targetCorrect: 8, forceMode: 0, countMax: 0, addMax: 0 });
 const question = ref<MathQuestion>({ mode: 'count', countA: 1, countB: 0, answer: 1, options: [1, 2, 3] });
 
 let gameEnded = false;
@@ -132,7 +133,7 @@ const hintText = computed(() => {
 
 const applyLevelConfig = async (level: number) => {
   levelConfig.value = {
-    targetCorrect: 8,
+    ...defaultLevelConfig('math', level),
   };
   // 后台难度覆盖优先（离线/未配置时用内置公式）
   const override = await getLevelOverride('math', level);
@@ -142,13 +143,24 @@ const applyLevelConfig = async (level: number) => {
 };
 
 // 按关卡出题：数数(1-5) → 数数(4-10) → 5以内加法 → 10以内加法
+// 后台可强制题目模式（forceMode）并指定数数/加法上限
 const generateQuestion = (): MathQuestion => {
   const level = currentLevel.value;
+  const { forceMode = 0, countMax = 0, addMax = 0 } = levelConfig.value;
   let mode: 'count' | 'add';
   let countA: number;
   let countB = 0;
 
-  if (level <= 3) {
+  if (forceMode === 1) {
+    mode = 'count';
+    const max = countMax > 0 ? countMax : 5;
+    countA = Math.max(1, max - 4) + Math.floor(Math.random() * (max - Math.max(1, max - 4) + 1));
+  } else if (forceMode === 2) {
+    mode = 'add';
+    const max = addMax > 0 ? addMax : 10;
+    countA = 1 + Math.floor(Math.random() * (max - 1));
+    countB = 1 + Math.floor(Math.random() * (max - countA));
+  } else if (level <= 3) {
     mode = 'count';
     countA = 1 + Math.floor(Math.random() * 5);
   } else if (level <= 6) {
