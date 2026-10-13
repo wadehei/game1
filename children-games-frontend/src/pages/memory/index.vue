@@ -65,7 +65,7 @@ import { useGameSounds } from '@/composables/useGameSounds';
 import { useGameProgress } from '@/composables/useGameProgress';
 import { GAME_PAUSE_EVENT, GAME_RESUME_EVENT } from '@/utils/gameEvents';
 import { getLevelOverride } from '@/api/game';
-import { speak } from '@/utils/voice';
+import { speak, playVoice } from '@/utils/voice';
 import { useAdaptiveAssist } from '@/composables/useAdaptiveAssist';
 import { defaultLevelConfig } from '@/utils/levelDefaults';
 import GameHeader from '@/components/GameHeader.vue';
@@ -398,7 +398,7 @@ onMounted(async () => {
   document.addEventListener(GAME_PAUSE_EVENT, handleRestPause);
   document.addEventListener(GAME_RESUME_EVENT, handleRestResume);
   initGame();
-  speak('翻一翻卡片，找出两个一样的图案');
+  playVoice('memory_intro', '翻一翻卡片，找出两个一样的图案');
 });
 
 onUnmounted(() => {

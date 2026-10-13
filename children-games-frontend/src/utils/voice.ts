@@ -59,6 +59,38 @@ export const initVoice = (): void => {
   const warm = () => ensureVoice();
   document.addEventListener('pointerdown', warm, { once: true });
   document.addEventListener('touchstart', warm, { once: true });
+  fetchCustomVoices();
+};
+
+// ─── 家长原声配音优先 ────────────────────────────────
+// key → updatedAt（用作缓存版本号）；列表启动时拉取一次
+let customVoices = new Map<string, number>();
+
+const fetchCustomVoices = (): void => {
+  fetch('/api/voice')
+    .then((r) => r.json())
+    .then((d) => {
+      customVoices = new Map((d?.data || []).map((v: { key: string; updatedAt: number }) => [v.key, v.updatedAt]));
+    })
+    .catch(() => {
+      // 离线时无录音可用，全部走 TTS
+    });
+};
+
+/** 播放台词：有家长录音用录音，否则 TTS 朗读兜底文案 */
+export const playVoice = (key: string, fallbackText: string): void => {
+  if (isMuted()) return;
+  const version = customVoices.get(key);
+  if (version !== undefined) {
+    stopSpeaking();
+    const audio = new Audio(`/api/voice/${key}?v=${version}`);
+    audio.play().catch(() => {
+      // 播放失败（如自动播放限制）时退回 TTS
+      speak(fallbackText);
+    });
+    return;
+  }
+  speak(fallbackText);
 };
 
 const isMuted = (): boolean => {

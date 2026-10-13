@@ -18,7 +18,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
+import { playVoice } from '@/utils/voice';
 
 const props = defineProps<{
   show: boolean;
@@ -26,6 +27,16 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{ skip: [] }>();
+
+// 休息开始时播报（有家长录音用原声）
+watch(
+  () => props.show,
+  (visible) => {
+    if (visible) {
+      playVoice('rest_start', '让眼睛休息一下，抬头看看窗外最远的地方');
+    }
+  }
+);
 
 const skipHolding = ref(false);
 let skipTimer: ReturnType<typeof setTimeout> | null = null;

@@ -42,6 +42,7 @@
         <DashboardPanel v-show="activeTab === 'dashboard'" />
         <MembersPanel v-show="activeTab === 'members'" />
         <LevelConfigPanel v-show="activeTab === 'levels'" />
+        <VoicePanel v-show="activeTab === 'voice'" />
         <SettingsPanel v-show="activeTab === 'settings'" />
         <LogsPanel v-show="activeTab === 'logs'" />
         <BackupPanel v-show="activeTab === 'backup'" />
@@ -60,6 +61,7 @@ import SettingsPanel from '@/components/admin/SettingsPanel.vue';
 import BackupPanel from '@/components/admin/BackupPanel.vue';
 import LevelConfigPanel from '@/components/admin/LevelConfigPanel.vue';
 import LogsPanel from '@/components/admin/LogsPanel.vue';
+import VoicePanel from '@/components/admin/VoicePanel.vue';
 
 const router = useRouter();
 const activeTab = ref('dashboard');
@@ -68,6 +70,7 @@ const TABS = [
   { key: 'dashboard', label: '数据看板', icon: '📊' },
   { key: 'members', label: '角色管理', icon: '👪' },
   { key: 'levels', label: '难度配置', icon: '🎚️' },
+  { key: 'voice', label: '语音配音', icon: '🎙️' },
   { key: 'settings', label: '护眼策略', icon: '⏰' },
   { key: 'logs', label: '错误日志', icon: '🐞' },
   { key: 'backup', label: '数据备份', icon: '💾' },

@@ -53,7 +53,7 @@ import { useGameCanvas } from '@/composables/useGameCanvas';
 import { useGameProgress } from '@/composables/useGameProgress';
 import { GAME_PAUSE_EVENT, GAME_RESUME_EVENT } from '@/utils/gameEvents';
 import { getLevelOverride } from '@/api/game';
-import { speak } from '@/utils/voice';
+import { speak, playVoice } from '@/utils/voice';
 import { useAdaptiveAssist } from '@/composables/useAdaptiveAssist';
 import { defaultLevelConfig } from '@/utils/levelDefaults';
 import GameHeader from '@/components/GameHeader.vue';
@@ -566,7 +566,7 @@ onMounted(async () => {
   currentLevel.value = await loadStartLevel();
   await applyLevelConfig(currentLevel.value);
   initGame();
-  speak('点一点屏幕，把气球打爆吧');
+  playVoice('balloon_intro', '点一点屏幕，把气球打爆吧');
 });
 
 onUnmounted(() => {

@@ -54,7 +54,7 @@ import { useGameCanvas } from '@/composables/useGameCanvas';
 import { useGameProgress } from '@/composables/useGameProgress';
 import { GAME_PAUSE_EVENT, GAME_RESUME_EVENT } from '@/utils/gameEvents';
 import { getLevelOverride } from '@/api/game';
-import { speak } from '@/utils/voice';
+import { speak, playVoice } from '@/utils/voice';
 import { useAdaptiveAssist } from '@/composables/useAdaptiveAssist';
 import { defaultLevelConfig } from '@/utils/levelDefaults';
 import GameHeader from '@/components/GameHeader.vue';
@@ -540,7 +540,7 @@ onMounted(async () => {
   currentLevel.value = await loadStartLevel();
   await applyLevelConfig(currentLevel.value);
   initGame();
-  speak('移动篮子，接住水果，小心炸弹哦');
+  playVoice('fruit_intro', '移动篮子，接住水果，小心炸弹哦');
 });
 
 onUnmounted(() => {

@@ -65,7 +65,7 @@ import { useGameProgress } from '@/composables/useGameProgress';
 import { soundManager } from '@/utils/sound';
 import { GAME_PAUSE_EVENT, GAME_RESUME_EVENT } from '@/utils/gameEvents';
 import { getLevelOverride } from '@/api/game';
-import { speak } from '@/utils/voice';
+import { speak, playVoice } from '@/utils/voice';
 import { defaultLevelConfig } from '@/utils/levelDefaults';
 import GameHeader from '@/components/GameHeader.vue';
 import ResultModal from '@/components/ResultModal.vue';
@@ -335,7 +335,7 @@ onMounted(async () => {
   document.addEventListener(GAME_PAUSE_EVENT, handleRestPause);
   document.addEventListener(GAME_RESUME_EVENT, handleRestResume);
   initGame();
-  speak('记住闪光的顺序，然后跟着点');
+  playVoice('simon_intro', '记住闪光的顺序，然后跟着点');
 });
 
 onUnmounted(() => {

@@ -17,7 +17,7 @@
 
 <script setup lang="ts">
 import { nextTick, ref, watch } from 'vue';
-import { speak, stopSpeaking } from '@/utils/voice';
+import { playVoice, stopSpeaking } from '@/utils/voice';
 import { createStarRain } from '@/utils/animations';
 
 const props = defineProps<{
@@ -44,12 +44,12 @@ watch(() => props.show, (visible) => {
   }
   nextTick(() => {
     if (props.won) {
-      speak('恭喜你，通关啦！你真棒！');
+      playVoice('result_win', '恭喜你，通关啦！你真棒！');
       if (contentRef.value) {
         createStarRain(contentRef.value);
       }
     } else {
-      speak('没关系，再试一次，你可以的！');
+      playVoice('result_lose', '没关系，再试一次，你可以的！');
     }
   });
 });

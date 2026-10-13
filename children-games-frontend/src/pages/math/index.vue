@@ -82,7 +82,7 @@ import { useRouter } from 'vue-router';
 import { useGameSounds } from '@/composables/useGameSounds';
 import { useGameProgress } from '@/composables/useGameProgress';
 import { getLevelOverride } from '@/api/game';
-import { speak, stopSpeaking } from '@/utils/voice';
+import { speak, stopSpeaking, playVoice } from '@/utils/voice';
 import { defaultLevelConfig } from '@/utils/levelDefaults';
 import GameHeader from '@/components/GameHeader.vue';
 import ResultModal from '@/components/ResultModal.vue';
@@ -232,7 +232,7 @@ const answerQuestion = (value: number) => {
     correctCount.value++;
     monsterState.value = 'happy';
     sounds.play('collect');
-    speak('答对啦！');
+    playVoice('math_correct', '答对啦！');
 
     transitionTimer = setTimeout(() => {
       monsterState.value = 'idle';
@@ -247,7 +247,7 @@ const answerQuestion = (value: number) => {
     wrongCount.value++;
     monsterState.value = 'shake';
     sounds.play('bounce');
-    speak('再想一想哦');
+    playVoice('math_wrong', '再想一想哦');
 
     hintTimer = setTimeout(() => {
       monsterState.value = 'idle';

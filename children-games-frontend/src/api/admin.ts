@@ -124,6 +124,31 @@ export const saveLevelOverride = (
 export const deleteLevelOverride = (gameId: string, level: number): Promise<void> =>
   client.delete(`/levels/${gameId}/${level}`);
 
+// ─── 家长原声配音 ────────────────────────────────
+
+export interface VoiceLineStatus {
+  key: string;
+  size: number;
+  updatedAt: number;
+}
+
+export const listVoiceLines = (): Promise<VoiceLineStatus[]> =>
+  fetch('/api/voice').then((r) => r.json()).then((d) => d.data || []);
+
+// 配音接口在 /api/voice（不在 /api/admin 下），用独立请求携带管理员凭证
+export const uploadVoice = (key: string, blob: Blob): Promise<void> =>
+  axios.post(`/api/voice/${key}`, blob, {
+    headers: {
+      'Content-Type': blob.type || 'audio/webm',
+      Authorization: `Bearer ${localStorage.getItem(TOKEN_KEY)}`,
+    },
+  }) as unknown as Promise<void>;
+
+export const deleteVoice = (key: string): Promise<void> =>
+  axios.delete(`/api/voice/${key}`, {
+    headers: { Authorization: `Bearer ${localStorage.getItem(TOKEN_KEY)}` },
+  }) as unknown as Promise<void>;
+
 // ─── 错误日志 ────────────────────────────────
 
 export interface AdminErrorLog {

@@ -39,3 +39,6 @@ schema-snapshot*
 users-check*
 db-test*
 pw-check*
+
+# 家长录音
+uploads/

@@ -60,7 +60,7 @@ import { useGameSounds } from '@/composables/useGameSounds';
 import { useGameProgress } from '@/composables/useGameProgress';
 import { GAME_PAUSE_EVENT, GAME_RESUME_EVENT } from '@/utils/gameEvents';
 import { getLevelOverride } from '@/api/game';
-import { speak } from '@/utils/voice';
+import { speak, playVoice } from '@/utils/voice';
 import { useAdaptiveAssist } from '@/composables/useAdaptiveAssist';
 import { defaultLevelConfig } from '@/utils/levelDefaults';
 import GameHeader from '@/components/GameHeader.vue';
@@ -372,7 +372,7 @@ onMounted(async () => {
   document.addEventListener(GAME_PAUSE_EVENT, handleRestPause);
   document.addEventListener(GAME_RESUME_EVENT, handleRestResume);
   initGame();
-  speak('打地鼠咯！小兔子是好朋友，不能打哦');
+  playVoice('mole_intro', '打地鼠咯！小兔子是好朋友，不能打哦');
 });
 
 onUnmounted(() => {
