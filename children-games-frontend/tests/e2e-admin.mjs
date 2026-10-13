@@ -42,7 +42,9 @@ await sleep(1500);
 }
 
 // ═══ 4. 角色管理：编辑后还原 ═══
-await page.click('.nav-item:nth-child(2)');
+await page.evaluate(() => {
+  [...document.querySelectorAll('.nav-item')].find((t) => t.textContent.includes('角色管理'))?.click();
+});
 await sleep(1000);
 const before = await page.evaluate(() => document.querySelector('.member-name')?.childNodes[0]?.textContent?.trim());
 check(`角色列表加载（首个：${before}）`, !!before);
@@ -72,7 +74,9 @@ check(`名字已还原（${restored}）`, restored === before);
 await page.screenshot({ path: 'test-results/admin-pc-members.png' });
 
 // ═══ 5. 护眼策略：改 15 分钟 → 验证公开接口 → 改回 20 ═══
-await page.click('.nav-item:nth-child(3)');
+await page.evaluate(() => {
+  [...document.querySelectorAll('.nav-item')].find((t) => t.textContent.includes('护眼策略'))?.click();
+});
 await sleep(800);
 await page.evaluate(() => {
   [...document.querySelectorAll('.chip')].find((c) => c.textContent.includes('15 分钟'))?.click();

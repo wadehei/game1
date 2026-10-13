@@ -1,62 +1,33 @@
 import { Request, Response } from 'express';
 import { LevelConfig } from '../models';
-import { success, asyncHandler } from '../utils/response';
+import { success, fail, asyncHandler } from '../utils/response';
 
-// 获取关卡配置
-export const getLevelConfig = asyncHandler(async (req: Request, res: Response) => {
-  const { gameId } = req.params;
-  const level = parseInt(req.query.level as string) || 1;
-  const gameIdStr = gameId as string;
+/** 各游戏允许覆盖的配置字段（与前端 levelConfig 字段一一对应） */
+export const LEVEL_FIELDS: Record<string, string[]> = {
+  memory: ['pairs', 'timeLimit'],
+  fruit: ['spawnRate', 'fallSpeed', 'bombChance', 'targetScore'],
+  puzzle: ['gridSize', 'timeLimit'],
+  balloon: ['spawnRate', 'moveSpeed', 'targetScore', 'bullets'],
+  tank: ['enemyCount', 'enemySpeed', 'enemyFireRate', 'bossLevel'],
+  mole: ['spawnInterval', 'upDuration', 'bunnyChance', 'timeLimit', 'targetHits'],
+  simon: ['seqLength'],
+  math: ['targetCorrect'],
+};
 
-  const config = await LevelConfig.findOne({
-    where: { gameId: gameIdStr, level },
-  });
+/** 读取某关卡的云端覆盖配置：没有则 override 为 null（默认难度以前端内置公式为准） */
+export const getLevelOverride = asyncHandler(async (req: Request, res: Response) => {
+  const gameId = String(req.params.gameId || '');
+  const level = parseInt(String(req.params.level), 10);
 
-  if (!config) {
-    // 返回默认配置
-    const defaultConfig = getDefaultLevelConfig(gameIdStr, level);
-    success(res, defaultConfig);
+  if (!LEVEL_FIELDS[gameId] || !Number.isFinite(level) || level < 1) {
+    fail(res, '参数无效');
     return;
   }
 
+  const row = await LevelConfig.findOne({ where: { gameId, level } });
   success(res, {
-    gameId: config.gameId,
-    level: config.level,
-    config: JSON.parse(config.config),
-  });
-});
-
-// 默认关卡配置
-function getDefaultLevelConfig(gameId: string, level: number) {
-  const configs: Record<string, any> = {
-    memory: {
-      pairs: Math.min(2 + Math.floor(level / 3), 8),
-      timeLimit: 60,
-    },
-    fruit: {
-      speed: 2 + level * 0.2,
-      bombRate: Math.min(0.05 + level * 0.01, 0.2),
-      targetScore: 50 + level * 20,
-    },
-    puzzle: {
-      gridSize: Math.min(3 + Math.floor(level / 5), 5),
-      timeLimit: 120,
-    },
-    balloon: {
-      spawnRate: Math.max(1000 - level * 20, 400),
-      moveSpeed: 1 + level * 0.1,
-      targetScore: 100 + level * 30,
-    },
-    tank: {
-      enemyCount: 3 + level,
-      enemySpeed: 1 + level * 0.15,
-      bossLevel: level % 5 === 0,
-    },
-  };
-
-  return {
     gameId,
     level,
-    config: configs[gameId] || {},
-  };
-}
+    override: row ? JSON.parse(row.config) : null,
+  });
+});

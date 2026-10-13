@@ -61,6 +61,7 @@ import { useGameSounds } from '@/composables/useGameSounds';
 import { useGameProgress } from '@/composables/useGameProgress';
 import { soundManager } from '@/utils/sound';
 import { GAME_PAUSE_EVENT, GAME_RESUME_EVENT } from '@/utils/gameEvents';
+import { getLevelOverride } from '@/api/game';
 import GameHeader from '@/components/GameHeader.vue';
 import ResultModal from '@/components/ResultModal.vue';
 import LevelSelectModal from '@/components/LevelSelectModal.vue';
@@ -113,10 +114,15 @@ const statusText = computed(() => {
   return '';
 });
 
-const applyLevelConfig = (level: number) => {
+const applyLevelConfig = async (level: number) => {
   levelConfig.value = {
     seqLength: Math.min(2 + level, 12),
   };
+  // 后台难度覆盖优先（离线/未配置时用内置公式）
+  const override = await getLevelOverride('simon', level);
+  if (override && currentLevel.value === level) {
+    levelConfig.value = { ...levelConfig.value, ...override };
+  }
 };
 
 const clearPlayback = () => {
@@ -250,17 +256,17 @@ const openLevelSelect = () => {
   showLevelSelect.value = true;
 };
 
-const chooseLevel = (level: number) => {
+const chooseLevel = async (level: number) => {
   showLevelSelect.value = false;
   currentLevel.value = level;
-  applyLevelConfig(level);
+  await applyLevelConfig(level);
   initGame();
 };
 
-const nextLevel = () => {
+const nextLevel = async () => {
   currentLevel.value++;
   sounds.play('levelUp');
-  applyLevelConfig(currentLevel.value);
+  await applyLevelConfig(currentLevel.value);
   initGame();
 };
 
@@ -295,7 +301,7 @@ onMounted(async () => {
 
   // 续关：从上次通关的关卡继续
   currentLevel.value = await loadStartLevel();
-  applyLevelConfig(currentLevel.value);
+  await applyLevelConfig(currentLevel.value);
   document.addEventListener('visibilitychange', handleVisibilityChange);
   document.addEventListener(GAME_PAUSE_EVENT, handleRestPause);
   document.addEventListener(GAME_RESUME_EVENT, handleRestResume);

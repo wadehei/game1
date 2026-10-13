@@ -57,6 +57,21 @@ export const getDailyTask = async (): Promise<DailyTaskInfo> => {
   return api.get<DailyTaskInfo>('/game/daily-task');
 };
 
+// ─── 关卡难度覆盖（后台可调） ────────────────────────────────
+
+type LevelOverride = Record<string, number | boolean>;
+
+/** 读取某关卡的云端难度覆盖；失败/无覆盖返回 null（前端回退内置公式）。
+ *  每次进关卡实时拉取（请求极小），保证后台改动重进即生效 */
+export const getLevelOverride = async (gameId: string, level: number): Promise<LevelOverride | null> => {
+  try {
+    const result = await api.get<{ override: LevelOverride | null }>(`/level/${gameId}/${level}`);
+    return result?.override || null;
+  } catch {
+    return null;
+  }
+};
+
 // 获取成就列表
 export interface AchievementInfo extends AchievementMeta {
   desc: string;

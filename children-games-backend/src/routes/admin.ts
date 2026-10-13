@@ -8,6 +8,9 @@ import {
   deleteUser,
   getSettings,
   updateSettings,
+  getLevelOverrides,
+  saveLevelOverride,
+  deleteLevelOverride,
   downloadBackup,
 } from '../controllers/adminController';
 import { adminMiddleware } from '../middleware/adminAuth';
@@ -26,6 +29,9 @@ router.post('/users/:id/reset', resetUserProgress);
 router.delete('/users/:id', deleteUser);
 router.get('/settings', getSettings);
 router.put('/settings', updateSettings);
+router.get('/levels/:gameId', getLevelOverrides);
+router.put('/levels/:gameId/:level', saveLevelOverride);
+router.delete('/levels/:gameId/:level', deleteLevelOverride);
 router.get('/backup', downloadBackup);
 
 export default router;

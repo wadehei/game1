@@ -82,6 +82,7 @@ import { useRouter } from 'vue-router';
 import { useGameSounds } from '@/composables/useGameSounds';
 import { useGameProgress } from '@/composables/useGameProgress';
 import { GAME_PAUSE_EVENT, GAME_RESUME_EVENT } from '@/utils/gameEvents';
+import { getLevelOverride } from '@/api/game';
 import GameHeader from '@/components/GameHeader.vue';
 import ResultModal from '@/components/ResultModal.vue';
 import LevelSelectModal from '@/components/LevelSelectModal.vue';
@@ -121,10 +122,30 @@ let gameEnded = false;
 let autoPausedByHidden = false;
 let autoPausedByRest = false;
 
-const gridSize = computed(() => Math.min(3 + Math.floor(currentLevel.value / 5), 5));
+// 后台难度覆盖（gridSize / timeLimit）
+const levelOverride = ref<{ gridSize?: number; timeLimit?: number } | null>(null);
+
+const gridSize = computed(() => {
+  const fromOverride = levelOverride.value?.gridSize;
+  if (typeof fromOverride === 'number') {
+    return Math.min(Math.max(Math.round(fromOverride), 2), 6);
+  }
+  return Math.min(3 + Math.floor(currentLevel.value / 5), 5);
+});
 
 // 本关时限（不低于 60 秒，避免高关卡出现 0 秒）
-const levelTimeLimit = computed(() => Math.max(180 - currentLevel.value * 2, 60));
+const levelTimeLimit = computed(() => {
+  const fromOverride = levelOverride.value?.timeLimit;
+  if (typeof fromOverride === 'number') {
+    return Math.max(Math.round(fromOverride), 10);
+  }
+  return Math.max(180 - currentLevel.value * 2, 60);
+});
+
+const applyLevelConfig = async (level: number) => {
+  // 后台难度覆盖优先（离线/未配置时用内置公式）
+  levelOverride.value = await getLevelOverride('puzzle', level);
+};
 const pieceWidth = computed(() => 300 / gridSize.value);
 const pieceHeight = computed(() => 300 / gridSize.value);
 const currentImage = computed(() => images[(currentLevel.value - 1) % images.length]);
@@ -274,10 +295,11 @@ const closeLevelSelect = () => {
   }
 };
 
-const chooseLevel = (level: number) => {
+const chooseLevel = async (level: number) => {
   levelSelectPaused = false;
   showLevelSelect.value = false;
   currentLevel.value = level;
+  await applyLevelConfig(level);
   initGame();
 };
 
@@ -393,9 +415,10 @@ const restartGame = () => {
   initGame();
 };
 
-const nextLevel = () => {
+const nextLevel = async () => {
   currentLevel.value++;
   sounds.play('levelUp');
+  await applyLevelConfig(currentLevel.value);
   initGame();
 };
 
@@ -404,6 +427,7 @@ onMounted(async () => {
 
   // 续关：从上次通关的关卡继续
   currentLevel.value = await loadStartLevel();
+  await applyLevelConfig(currentLevel.value);
   document.addEventListener('visibilitychange', handleVisibilityChange);
   document.addEventListener(GAME_PAUSE_EVENT, handleRestPause);
   document.addEventListener(GAME_RESUME_EVENT, handleRestResume);

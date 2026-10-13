@@ -78,6 +78,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useGameSounds } from '@/composables/useGameSounds';
 import { useGameProgress } from '@/composables/useGameProgress';
+import { getLevelOverride } from '@/api/game';
 import GameHeader from '@/components/GameHeader.vue';
 import ResultModal from '@/components/ResultModal.vue';
 import LevelSelectModal from '@/components/LevelSelectModal.vue';
@@ -128,10 +129,15 @@ const hintText = computed(() => {
   return '两盘合起来是多少呀？';
 });
 
-const applyLevelConfig = (level: number) => {
+const applyLevelConfig = async (level: number) => {
   levelConfig.value = {
     targetCorrect: 8,
   };
+  // 后台难度覆盖优先（离线/未配置时用内置公式）
+  const override = await getLevelOverride('math', level);
+  if (override && currentLevel.value === level) {
+    levelConfig.value = { ...levelConfig.value, ...override };
+  }
 };
 
 // 按关卡出题：数数(1-5) → 数数(4-10) → 5以内加法 → 10以内加法
@@ -271,17 +277,17 @@ const openLevelSelect = () => {
   showLevelSelect.value = true;
 };
 
-const chooseLevel = (level: number) => {
+const chooseLevel = async (level: number) => {
   showLevelSelect.value = false;
   currentLevel.value = level;
-  applyLevelConfig(level);
+  await applyLevelConfig(level);
   initGame();
 };
 
-const nextLevel = () => {
+const nextLevel = async () => {
   currentLevel.value++;
   sounds.play('levelUp');
-  applyLevelConfig(currentLevel.value);
+  await applyLevelConfig(currentLevel.value);
   initGame();
 };
 
@@ -290,7 +296,7 @@ onMounted(async () => {
 
   // 续关：从上次通关的关卡继续
   currentLevel.value = await loadStartLevel();
-  applyLevelConfig(currentLevel.value);
+  await applyLevelConfig(currentLevel.value);
   initGame();
 });
 

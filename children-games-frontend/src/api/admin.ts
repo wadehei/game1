@@ -104,6 +104,26 @@ export const getSettings = (): Promise<AdminSettings> => client.get('/settings')
 
 export const updateSettings = (data: AdminSettings): Promise<AdminSettings> => client.put('/settings', data);
 
+// ─── 关卡难度覆盖 ────────────────────────────────
+
+export interface LevelOverrideRow {
+  level: number;
+  config: Record<string, number | boolean>;
+  updatedAt: string;
+}
+
+export const getLevelOverrides = (gameId: string): Promise<LevelOverrideRow[]> =>
+  client.get(`/levels/${gameId}`);
+
+export const saveLevelOverride = (
+  gameId: string,
+  level: number,
+  config: Record<string, number | boolean>
+): Promise<void> => client.put(`/levels/${gameId}/${level}`, { config });
+
+export const deleteLevelOverride = (gameId: string, level: number): Promise<void> =>
+  client.delete(`/levels/${gameId}/${level}`);
+
 // ─── 备份（下载 .sql） ────────────────────────────────
 
 export const downloadBackup = async (): Promise<void> => {

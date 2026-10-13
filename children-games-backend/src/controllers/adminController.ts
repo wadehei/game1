@@ -2,9 +2,10 @@ import { Request, Response } from 'express';
 import { Op } from 'sequelize';
 import jwt from 'jsonwebtoken';
 import { config } from '../config';
-import { User, GameProgress, DailyTask, AppSetting, UserPlaytime } from '../models';
+import { User, GameProgress, DailyTask, AppSetting, UserPlaytime, LevelConfig } from '../models';
 import { AdminRequest } from '../middleware/adminAuth';
 import { success, fail, asyncHandler } from '../utils/response';
+import { LEVEL_FIELDS } from './levelController';
 
 const localDateString = (): string => {
   const now = new Date();
@@ -208,6 +209,73 @@ export const updateSettings = asyncHandler(async (req: AdminRequest, res: Respon
   }
   await AppSetting.upsert({ key: REST_INTERVAL_KEY, value: String(value) });
   success(res, { restIntervalMinutes: value });
+});
+
+// ─── 关卡难度覆盖 ────────────────────────────────
+
+/** 列出某游戏已保存的关卡覆盖 */
+export const getLevelOverrides = asyncHandler(async (req: AdminRequest, res: Response) => {
+  const gameId = String(req.params.gameId || '');
+  if (!LEVEL_FIELDS[gameId]) {
+    fail(res, '未知的 gameId');
+    return;
+  }
+  const rows = await LevelConfig.findAll({
+    where: { gameId },
+    order: [['level', 'ASC']],
+  });
+  success(res, rows.map((r) => ({
+    level: r.level,
+    config: JSON.parse(r.config),
+    updatedAt: r.updatedAt,
+  })));
+});
+
+/** 保存某关卡的难度覆盖（只允许各游戏白名单内的字段） */
+export const saveLevelOverride = asyncHandler(async (req: AdminRequest, res: Response) => {
+  const gameId = String(req.params.gameId || '');
+  const level = parseInt(String(req.params.level), 10);
+  const allowed = LEVEL_FIELDS[gameId];
+
+  if (!allowed) {
+    fail(res, '未知的 gameId');
+    return;
+  }
+  if (!Number.isFinite(level) || level < 1 || level > 999) {
+    fail(res, '关卡编号需在 1~999 之间');
+    return;
+  }
+
+  const config = req.body?.config;
+  if (!config || typeof config !== 'object' || Array.isArray(config)) {
+    fail(res, 'config 需为对象');
+    return;
+  }
+  const unknownKeys = Object.keys(config).filter((k) => !allowed.includes(k));
+  if (unknownKeys.length > 0) {
+    fail(res, `不支持的字段: ${unknownKeys.join(', ')}（允许: ${allowed.join(', ')}）`);
+    return;
+  }
+  if (Object.keys(config).length === 0) {
+    fail(res, '至少填写一个配置项');
+    return;
+  }
+
+  await LevelConfig.upsert({ gameId, level, config: JSON.stringify(config) });
+  success(res, { gameId, level, config });
+});
+
+/** 删除某关卡的覆盖（恢复内置默认难度） */
+export const deleteLevelOverride = asyncHandler(async (req: AdminRequest, res: Response) => {
+  const gameId = String(req.params.gameId || '');
+  const level = parseInt(String(req.params.level), 10);
+
+  if (!LEVEL_FIELDS[gameId]) {
+    fail(res, '未知的 gameId');
+    return;
+  }
+  await LevelConfig.destroy({ where: { gameId, level } });
+  success(res, { gameId, level });
 });
 
 // ─── 数据备份（纯 Node 导出，无外部依赖） ────────────────────────────────
