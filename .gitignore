@@ -1,0 +1,4 @@
+
+# 数据备份文件（含个人信息，不入库）
+database/*.sql
+*.backup.sql
