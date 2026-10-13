@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80">
+  <!-- Big fluffy rounded ears -->
+  <circle cx="16" cy="26" r="14" fill="#999" stroke="#333" stroke-width="2"/>
+  <circle cx="64" cy="26" r="14" fill="#999" stroke="#333" stroke-width="2"/>
+  <!-- Inner ear fluff -->
+  <circle cx="16" cy="26" r="8" fill="#CCCCCC"/>
+  <circle cx="64" cy="26" r="8" fill="#CCCCCC"/>
+  <!-- Head - gray -->
+  <circle cx="40" cy="42" r="26" fill="#999" stroke="#333" stroke-width="2"/>
+  <!-- Lighter face area -->
+  <ellipse cx="40" cy="46" rx="16" ry="14" fill="#BBBBBB"/>
+  <!-- Eyes -->
+  <circle cx="30" cy="38" r="4.5" fill="#333"/>
+  <circle cx="50" cy="38" r="4.5" fill="#333"/>
+  <circle cx="31.5" cy="36.5" r="1.8" fill="#fff"/>
+  <circle cx="51.5" cy="36.5" r="1.8" fill="#fff"/>
+  <!-- Large black nose -->
+  <ellipse cx="40" cy="48" rx="6" ry="4.5" fill="#333"/>
+  <ellipse cx="40" cy="47" rx="2.5" ry="1.2" fill="#666"/>
+  <!-- Mouth -->
+  <path d="M36 53 Q40 57 44 53" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Cheeks -->
+  <circle cx="22" cy="48" r="4" fill="#FFB5B5" opacity="0.3"/>
+  <circle cx="58" cy="48" r="4" fill="#FFB5B5" opacity="0.3"/>
+</svg>

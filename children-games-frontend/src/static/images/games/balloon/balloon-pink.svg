@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 120">
+  <!-- Balloon body -->
+  <ellipse cx="40" cy="42" rx="30" ry="36" fill="#F38181" stroke="#333" stroke-width="2.5"/>
+
+  <!-- Highlight arc -->
+  <path d="M 25 30 Q 22 38 25 48" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="5" stroke-linecap="round"/>
+
+  <!-- Eyes -->
+  <circle cx="32" cy="40" r="3" fill="#333"/>
+  <circle cx="48" cy="40" r="3" fill="#333"/>
+
+  <!-- Smile -->
+  <path d="M 32 52 Q 40 57 48 52" fill="none" stroke="#333" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Knot -->
+  <path d="M 36 76 L 40 82 L 44 76 Z" fill="#F38181" stroke="#333" stroke-width="2"/>
+
+  <!-- String -->
+  <path d="M 40 82 Q 38 95 42 105 Q 44 112 40 118" fill="none" stroke="#666" stroke-width="2" stroke-linecap="round"/>
+</svg>

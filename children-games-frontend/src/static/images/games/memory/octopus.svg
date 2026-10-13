@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80">
+  <!-- Tentacles curling down -->
+  <path d="M18 56 Q12 68 18 74 Q22 78 24 72 Q26 66 22 60" fill="#9C27B0" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+  <path d="M32 60 Q28 72 32 76 Q36 80 38 74 Q38 68 34 62" fill="#9C27B0" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+  <path d="M48 60 Q52 72 48 76 Q44 80 42 74 Q42 68 46 62" fill="#9C27B0" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+  <path d="M62 56 Q68 68 62 74 Q58 78 56 72 Q54 66 58 60" fill="#9C27B0" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+  <!-- Suction cups -->
+  <circle cx="18" cy="72" r="2" fill="#CE93D8"/>
+  <circle cx="32" cy="74" r="2" fill="#CE93D8"/>
+  <circle cx="48" cy="74" r="2" fill="#CE93D8"/>
+  <circle cx="62" cy="72" r="2" fill="#CE93D8"/>
+  <!-- Head - purple -->
+  <ellipse cx="40" cy="36" rx="28" ry="26" fill="#9C27B0" stroke="#333" stroke-width="2"/>
+  <!-- Big round eyes -->
+  <circle cx="28" cy="32" r="8" fill="#fff" stroke="#333" stroke-width="1.5"/>
+  <circle cx="52" cy="32" r="8" fill="#fff" stroke="#333" stroke-width="1.5"/>
+  <circle cx="30" cy="33" r="4.5" fill="#333"/>
+  <circle cx="54" cy="33" r="4.5" fill="#333"/>
+  <circle cx="31.5" cy="31" r="2" fill="#fff"/>
+  <circle cx="55.5" cy="31" r="2" fill="#fff"/>
+  <!-- Cute smile -->
+  <path d="M32 46 Q40 54 48 46" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+  <!-- Cheeks -->
+  <circle cx="18" cy="42" r="4" fill="#E1BEE7" opacity="0.5"/>
+  <circle cx="62" cy="42" r="4" fill="#E1BEE7" opacity="0.5"/>
+</svg>

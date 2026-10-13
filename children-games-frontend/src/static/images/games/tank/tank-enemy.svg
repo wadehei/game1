@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 80">
+  <!-- Left track -->
+  <rect x="1" y="8" width="13" height="44" rx="6" fill="#5C0000" stroke="#333" stroke-width="2"/>
+  <rect x="3" y="14" width="9" height="5" rx="2" fill="#8B0000" opacity="0.5"/>
+  <rect x="3" y="24" width="9" height="5" rx="2" fill="#8B0000" opacity="0.5"/>
+  <rect x="3" y="34" width="9" height="5" rx="2" fill="#8B0000" opacity="0.5"/>
+  <!-- Right track -->
+  <rect x="46" y="8" width="13" height="44" rx="6" fill="#5C0000" stroke="#333" stroke-width="2"/>
+  <rect x="48" y="14" width="9" height="5" rx="2" fill="#8B0000" opacity="0.5"/>
+  <rect x="48" y="24" width="9" height="5" rx="2" fill="#8B0000" opacity="0.5"/>
+  <rect x="48" y="34" width="9" height="5" rx="2" fill="#8B0000" opacity="0.5"/>
+  <!-- Body -->
+  <rect x="9" y="10" width="42" height="40" rx="8" fill="#8B0000" stroke="#333" stroke-width="2"/>
+  <!-- Body highlights -->
+  <rect x="13" y="14" width="34" height="5" rx="2" fill="#B22222" opacity="0.5"/>
+  <rect x="13" y="22" width="34" height="3" rx="1" fill="#B22222" opacity="0.3"/>
+  <!-- Cannon barrel (pointing DOWN) -->
+  <rect x="25" y="48" width="10" height="28" rx="4" fill="#700000" stroke="#333" stroke-width="2"/>
+  <circle cx="30" cy="75" r="4.5" fill="#5C0000" stroke="#333" stroke-width="1.5"/>
+  <circle cx="30" cy="75" r="2" fill="#400000"/>
+  <!-- Turret -->
+  <circle cx="30" cy="45" r="14" fill="#A52A2A" stroke="#333" stroke-width="2"/>
+  <!-- Eyes -->
+  <ellipse cx="24" cy="42" rx="3.5" ry="4" fill="white"/>
+  <circle cx="24" cy="43" r="2" fill="#333"/>
+  <ellipse cx="36" cy="42" rx="3.5" ry="4" fill="white"/>
+  <circle cx="36" cy="43" r="2" fill="#333"/>
+  <!-- Angry eyebrows -->
+  <line x1="19" y1="35" x2="27" y2="37" stroke="#333" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="41" y1="35" x2="33" y2="37" stroke="#333" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Angry frown -->
+  <path d="M25 50 Q30 47 35 50" stroke="#333" stroke-width="2" fill="none" stroke-linecap="round"/>
+</svg>

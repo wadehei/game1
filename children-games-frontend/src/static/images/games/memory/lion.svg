@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80">
+  <!-- Mane - rays around head -->
+  <ellipse cx="40" cy="14" rx="6" ry="10" fill="#E8A317" stroke="#333" stroke-width="1.5"/>
+  <ellipse cx="20" cy="20" rx="6" ry="10" fill="#E8A317" stroke="#333" stroke-width="1.5" transform="rotate(-30 20 20)"/>
+  <ellipse cx="60" cy="20" rx="6" ry="10" fill="#E8A317" stroke="#333" stroke-width="1.5" transform="rotate(30 60 20)"/>
+  <ellipse cx="12" cy="36" rx="6" ry="10" fill="#E8A317" stroke="#333" stroke-width="1.5" transform="rotate(-60 12 36)"/>
+  <ellipse cx="68" cy="36" rx="6" ry="10" fill="#E8A317" stroke="#333" stroke-width="1.5" transform="rotate(60 68 36)"/>
+  <ellipse cx="14" cy="52" rx="6" ry="10" fill="#E8A317" stroke="#333" stroke-width="1.5" transform="rotate(-80 14 52)"/>
+  <ellipse cx="66" cy="52" rx="6" ry="10" fill="#E8A317" stroke="#333" stroke-width="1.5" transform="rotate(80 66 52)"/>
+  <ellipse cx="26" cy="64" rx="6" ry="10" fill="#E8A317" stroke="#333" stroke-width="1.5" transform="rotate(-50 26 64)"/>
+  <ellipse cx="54" cy="64" rx="6" ry="10" fill="#E8A317" stroke="#333" stroke-width="1.5" transform="rotate(50 54 64)"/>
+  <!-- Face - golden/orange -->
+  <circle cx="40" cy="42" r="22" fill="#FFB347" stroke="#333" stroke-width="2"/>
+  <!-- Eyes -->
+  <circle cx="32" cy="38" r="4.5" fill="#fff" stroke="#333" stroke-width="1.5"/>
+  <circle cx="48" cy="38" r="4.5" fill="#fff" stroke="#333" stroke-width="1.5"/>
+  <circle cx="33" cy="38" r="2.5" fill="#333"/>
+  <circle cx="49" cy="38" r="2.5" fill="#333"/>
+  <circle cx="34" cy="37" r="1" fill="#fff"/>
+  <circle cx="50" cy="37" r="1" fill="#fff"/>
+  <!-- Nose -->
+  <ellipse cx="40" cy="46" rx="3.5" ry="2.5" fill="#CC7722"/>
+  <!-- Friendly smile -->
+  <path d="M32 50 Q40 58 48 50" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+  <!-- Cheeks -->
+  <circle cx="24" cy="46" r="4" fill="#FFD180" opacity="0.5"/>
+  <circle cx="56" cy="46" r="4" fill="#FFD180" opacity="0.5"/>
+</svg>

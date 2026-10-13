@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60">
+  <!-- Strings (drawn first, behind balloons) -->
+  <path d="M22 42 Q20 48 22 56" stroke="#999" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <path d="M30 44 Q30 50 30 58" stroke="#999" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <path d="M38 42 Q40 48 38 56" stroke="#999" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <!-- Red balloon -->
+  <ellipse cx="20" cy="24" rx="12" ry="15" fill="#FF4444" stroke="#333" stroke-width="2"/>
+  <ellipse cx="16" cy="19" rx="3" ry="4" fill="white" opacity="0.3"/>
+  <polygon points="20,39 17,42 23,42" fill="#FF4444" stroke="#333" stroke-width="1"/>
+  <!-- Yellow balloon -->
+  <ellipse cx="30" cy="20" rx="12" ry="15" fill="#FFD700" stroke="#333" stroke-width="2"/>
+  <ellipse cx="26" cy="15" rx="3" ry="4" fill="white" opacity="0.3"/>
+  <polygon points="30,35 27,38 33,38" fill="#FFD700" stroke="#333" stroke-width="1"/>
+  <!-- Green balloon -->
+  <ellipse cx="40" cy="24" rx="12" ry="15" fill="#4CAF50" stroke="#333" stroke-width="2"/>
+  <ellipse cx="36" cy="19" rx="3" ry="4" fill="white" opacity="0.3"/>
+  <polygon points="40,39 37,42 43,42" fill="#4CAF50" stroke="#333" stroke-width="1"/>
+</svg>

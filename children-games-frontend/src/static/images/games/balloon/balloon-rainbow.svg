@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 120">
+  <!-- Balloon base shape (for clipping) -->
+  <defs>
+    <clipPath id="balloonClip">
+      <ellipse cx="40" cy="42" rx="30" ry="36"/>
+    </clipPath>
+  </defs>
+
+  <!-- Balloon body outline -->
+  <ellipse cx="40" cy="42" rx="30" ry="36" fill="#FFFFFF" stroke="#333" stroke-width="2.5"/>
+
+  <!-- Rainbow stripes (clipped to balloon shape) -->
+  <g clip-path="url(#balloonClip)">
+    <rect x="10" y="10" width="60" height="10" fill="#FF6B6B"/>
+    <rect x="10" y="20" width="60" height="10" fill="#FFA07A"/>
+    <rect x="10" y="30" width="60" height="10" fill="#FFE66D"/>
+    <rect x="10" y="40" width="60" height="10" fill="#95E1D3"/>
+    <rect x="10" y="50" width="60" height="10" fill="#87CEEB"/>
+    <rect x="10" y="60" width="60" height="10" fill="#B19CD9"/>
+  </g>
+
+  <!-- Re-draw outline on top -->
+  <ellipse cx="40" cy="42" rx="30" ry="36" fill="none" stroke="#333" stroke-width="2.5"/>
+
+  <!-- Highlight arc -->
+  <path d="M 25 30 Q 22 38 25 48" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="5" stroke-linecap="round"/>
+
+  <!-- Sparkle marks -->
+  <path d="M 14 22 L 17 25 M 17 22 L 14 25" stroke="#FFD700" stroke-width="2" stroke-linecap="round"/>
+  <path d="M 63 25 L 66 28 M 66 25 L 63 28" stroke="#FFD700" stroke-width="2" stroke-linecap="round"/>
+  <path d="M 12 55 L 15 58 M 15 55 L 12 58" stroke="#FFD700" stroke-width="2" stroke-linecap="round"/>
+  <path d="M 65 58 L 68 61 M 68 58 L 65 61" stroke="#FFD700" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Eyes -->
+  <circle cx="32" cy="40" r="3" fill="#333"/>
+  <circle cx="48" cy="40" r="3" fill="#333"/>
+
+  <!-- Smile -->
+  <path d="M 32 52 Q 40 57 48 52" fill="none" stroke="#333" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Knot -->
+  <path d="M 36 76 L 40 82 L 44 76 Z" fill="#CCCCCC" stroke="#333" stroke-width="2"/>
+
+  <!-- String -->
+  <path d="M 40 82 Q 38 95 42 105 Q 44 112 40 118" fill="none" stroke="#666" stroke-width="2" stroke-linecap="round"/>
+</svg>

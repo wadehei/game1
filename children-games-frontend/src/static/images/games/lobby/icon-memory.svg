@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60">
+  <!-- Brain left hemisphere -->
+  <circle cx="20" cy="18" r="11" fill="#667eea" stroke="#333" stroke-width="2"/>
+  <circle cx="14" cy="25" r="9" fill="#667eea" stroke="#333" stroke-width="2"/>
+  <!-- Brain right hemisphere -->
+  <circle cx="40" cy="18" r="11" fill="#667eea" stroke="#333" stroke-width="2"/>
+  <circle cx="46" cy="25" r="9" fill="#667eea" stroke="#333" stroke-width="2"/>
+  <!-- Brain top bumps -->
+  <circle cx="30" cy="12" r="10" fill="#7B93FF" stroke="#333" stroke-width="2"/>
+  <circle cx="22" cy="10" r="6" fill="#667eea" stroke="#333" stroke-width="1.5"/>
+  <circle cx="38" cy="10" r="6" fill="#667eea" stroke="#333" stroke-width="1.5"/>
+  <!-- Brain fill to connect bumps -->
+  <ellipse cx="30" cy="22" rx="18" ry="10" fill="#667eea"/>
+  <!-- Brain center line -->
+  <line x1="30" y1="8" x2="30" y2="32" stroke="#5568D3" stroke-width="1.5" opacity="0.5"/>
+  <!-- Card grid (2x2) -->
+  <rect x="18" y="34" width="10" height="12" rx="2" fill="white" stroke="#333" stroke-width="1.5"/>
+  <rect x="19" y="35" width="8" height="10" rx="1" fill="#E8EAF6"/>
+  <text x="23" y="43" font-size="7" fill="#667eea" text-anchor="middle" font-weight="bold">?</text>
+  <rect x="32" y="34" width="10" height="12" rx="2" fill="white" stroke="#333" stroke-width="1.5"/>
+  <rect x="33" y="35" width="8" height="10" rx="1" fill="#E8EAF6"/>
+  <text x="37" y="43" font-size="7" fill="#667eea" text-anchor="middle" font-weight="bold">?</text>
+  <rect x="18" y="48" width="10" height="12" rx="2" fill="white" stroke="#333" stroke-width="1.5"/>
+  <rect x="19" y="49" width="8" height="10" rx="1" fill="#E8EAF6"/>
+  <text x="23" y="57" font-size="7" fill="#667eea" text-anchor="middle" font-weight="bold">?</text>
+  <rect x="32" y="48" width="10" height="12" rx="2" fill="white" stroke="#333" stroke-width="1.5"/>
+  <rect x="33" y="49" width="8" height="10" rx="1" fill="#E8EAF6"/>
+  <text x="37" y="57" font-size="7" fill="#667eea" text-anchor="middle" font-weight="bold">?</text>
+</svg>

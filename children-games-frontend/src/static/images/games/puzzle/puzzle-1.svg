@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300">
+  <!-- Sky -->
+  <rect width="300" height="300" fill="#87CEEB" rx="8"/>
+  <!-- Clouds -->
+  <g>
+    <circle cx="60" cy="50" r="20" fill="#fff"/>
+    <circle cx="80" cy="45" r="25" fill="#fff"/>
+    <circle cx="100" cy="50" r="20" fill="#fff"/>
+    <circle cx="80" cy="55" r="18" fill="#fff"/>
+  </g>
+  <g>
+    <circle cx="220" cy="70" r="16" fill="#fff"/>
+    <circle cx="240" cy="65" r="22" fill="#fff"/>
+    <circle cx="258" cy="70" r="16" fill="#fff"/>
+    <circle cx="240" cy="75" r="14" fill="#fff"/>
+  </g>
+  <!-- Sun -->
+  <circle cx="250" cy="40" r="30" fill="#FFD700"/>
+  <!-- Sun rays -->
+  <line x1="250" y1="2" x2="250" y2="10" stroke="#FFD700" stroke-width="4" stroke-linecap="round"/>
+  <line x1="250" y1="70" x2="250" y2="78" stroke="#FFD700" stroke-width="4" stroke-linecap="round"/>
+  <line x1="212" y1="40" x2="220" y2="40" stroke="#FFD700" stroke-width="4" stroke-linecap="round"/>
+  <line x1="280" y1="40" x2="288" y2="40" stroke="#FFD700" stroke-width="4" stroke-linecap="round"/>
+  <line x1="224" y1="14" x2="230" y2="20" stroke="#FFD700" stroke-width="4" stroke-linecap="round"/>
+  <line x1="270" y1="60" x2="276" y2="66" stroke="#FFD700" stroke-width="4" stroke-linecap="round"/>
+  <line x1="224" y1="66" x2="230" y2="60" stroke="#FFD700" stroke-width="4" stroke-linecap="round"/>
+  <line x1="270" y1="20" x2="276" y2="14" stroke="#FFD700" stroke-width="4" stroke-linecap="round"/>
+  <!-- Sun face -->
+  <circle cx="242" cy="36" r="3" fill="#CC8800"/>
+  <circle cx="258" cy="36" r="3" fill="#CC8800"/>
+  <path d="M242 46 Q250 52 258 46" fill="none" stroke="#CC8800" stroke-width="2" stroke-linecap="round"/>
+  <!-- Rolling green hills -->
+  <ellipse cx="150" cy="300" rx="200" ry="120" fill="#4CAF50"/>
+  <ellipse cx="50" cy="310" rx="140" ry="100" fill="#66BB6A"/>
+  <ellipse cx="260" cy="310" rx="120" ry="90" fill="#43A047"/>
+  <!-- Tree -->
+  <rect x="68" y="170" width="14" height="50" rx="3" fill="#795548"/>
+  <circle cx="75" cy="155" r="30" fill="#388E3C"/>
+  <circle cx="58" cy="165" r="22" fill="#43A047"/>
+  <circle cx="92" cy="165" r="22" fill="#2E7D32"/>
+  <circle cx="75" cy="145" r="20" fill="#4CAF50"/>
+  <!-- Flowers -->
+  <!-- Red flower -->
+  <line x1="140" y1="230" x2="140" y2="210" stroke="#388E3C" stroke-width="2.5"/>
+  <circle cx="140" cy="205" r="7" fill="#FF4444"/>
+  <circle cx="133" cy="202" r="5" fill="#FF6666"/>
+  <circle cx="147" cy="202" r="5" fill="#FF6666"/>
+  <circle cx="136" cy="209" r="5" fill="#FF6666"/>
+  <circle cx="144" cy="209" r="5" fill="#FF6666"/>
+  <circle cx="140" cy="205" r="3" fill="#FFD700"/>
+  <!-- Yellow flower -->
+  <line x1="180" y1="240" x2="180" y2="218" stroke="#388E3C" stroke-width="2.5"/>
+  <circle cx="180" cy="213" r="7" fill="#FFD700"/>
+  <circle cx="173" cy="210" r="5" fill="#FFE44D"/>
+  <circle cx="187" cy="210" r="5" fill="#FFE44D"/>
+  <circle cx="176" cy="217" r="5" fill="#FFE44D"/>
+  <circle cx="184" cy="217" r="5" fill="#FFE44D"/>
+  <circle cx="180" cy="213" r="3" fill="#FF8C00"/>
+  <!-- Pink flower -->
+  <line x1="220" y1="235" x2="220" y2="215" stroke="#388E3C" stroke-width="2.5"/>
+  <circle cx="220" cy="210" r="7" fill="#FF69B4"/>
+  <circle cx="213" cy="207" r="5" fill="#FF85C8"/>
+  <circle cx="227" cy="207" r="5" fill="#FF85C8"/>
+  <circle cx="216" cy="214" r="5" fill="#FF85C8"/>
+  <circle cx="224" cy="214" r="5" fill="#FF85C8"/>
+  <circle cx="220" cy="210" r="3" fill="#FFD700"/>
+  <!-- Small grass details -->
+  <path d="M110 250 Q112 240 114 250" fill="none" stroke="#388E3C" stroke-width="1.5"/>
+  <path d="M200 255 Q202 245 204 255" fill="none" stroke="#388E3C" stroke-width="1.5"/>
+  <path d="M260 245 Q262 235 264 245" fill="none" stroke="#388E3C" stroke-width="1.5"/>
+</svg>

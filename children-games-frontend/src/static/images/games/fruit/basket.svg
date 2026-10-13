@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 60">
+  <!-- Basket body (trapezoid, wider at top) -->
+  <path d="M 15 20 L 85 20 L 80 55 L 20 55 Z" fill="#8B4513" stroke="#333" stroke-width="2.5"/>
+
+  <!-- Rim at top -->
+  <rect x="10" y="15" width="80" height="8" rx="3" fill="#A0522D" stroke="#333" stroke-width="2.5"/>
+
+  <!-- Woven texture - horizontal lines -->
+  <path d="M 15 28 L 85 28" stroke="#654321" stroke-width="1.5" opacity="0.6"/>
+  <path d="M 16 36 L 84 36" stroke="#654321" stroke-width="1.5" opacity="0.6"/>
+  <path d="M 17 44 L 83 44" stroke="#654321" stroke-width="1.5" opacity="0.6"/>
+  <path d="M 18 52 L 82 52" stroke="#654321" stroke-width="1.5" opacity="0.6"/>
+
+  <!-- Woven texture - vertical lines -->
+  <path d="M 30 20 L 32 55" stroke="#654321" stroke-width="1.5" opacity="0.6"/>
+  <path d="M 45 20 L 46 55" stroke="#654321" stroke-width="1.5" opacity="0.6"/>
+  <path d="M 60 20 L 61 55" stroke="#654321" stroke-width="1.5" opacity="0.6"/>
+  <path d="M 75 20 L 76 55" stroke="#654321" stroke-width="1.5" opacity="0.6"/>
+
+  <!-- Highlight -->
+  <ellipse cx="35" cy="30" rx="12" ry="8" fill="rgba(255,255,255,0.2)"/>
+</svg>

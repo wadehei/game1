@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300">
+  <!-- Space background -->
+  <rect width="300" height="300" fill="#0D1B2A" rx="8"/>
+  <!-- Gradient nebula effect -->
+  <circle cx="80" cy="100" r="80" fill="#1A237E" opacity="0.4"/>
+  <circle cx="230" cy="200" r="90" fill="#4A148C" opacity="0.3"/>
+  <!-- White stars (small dots) -->
+  <circle cx="20" cy="20" r="1.5" fill="#fff"/>
+  <circle cx="60" cy="40" r="1" fill="#fff"/>
+  <circle cx="100" cy="15" r="2" fill="#fff"/>
+  <circle cx="140" cy="50" r="1" fill="#fff"/>
+  <circle cx="180" cy="25" r="1.5" fill="#fff"/>
+  <circle cx="220" cy="45" r="1" fill="#fff"/>
+  <circle cx="260" cy="20" r="1.5" fill="#fff"/>
+  <circle cx="280" cy="60" r="1" fill="#fff"/>
+  <circle cx="30" cy="80" r="1" fill="#fff"/>
+  <circle cx="150" cy="85" r="1.5" fill="#fff"/>
+  <circle cx="200" cy="100" r="1" fill="#fff"/>
+  <circle cx="270" cy="110" r="2" fill="#fff"/>
+  <circle cx="40" cy="150" r="1.5" fill="#fff"/>
+  <circle cx="120" cy="180" r="1" fill="#fff"/>
+  <circle cx="180" cy="160" r="1" fill="#fff"/>
+  <circle cx="250" cy="150" r="1.5" fill="#fff"/>
+  <circle cx="15" cy="200" r="1" fill="#fff"/>
+  <circle cx="80" cy="240" r="1.5" fill="#fff"/>
+  <circle cx="290" cy="200" r="1" fill="#fff"/>
+  <circle cx="200" cy="250" r="1.5" fill="#fff"/>
+  <circle cx="130" cy="270" r="1" fill="#fff"/>
+  <circle cx="260" cy="280" r="1.5" fill="#fff"/>
+  <circle cx="50" cy="280" r="1" fill="#fff"/>
+  <!-- Twinkling bigger stars -->
+  <g transform="translate(45, 55)">
+    <line x1="-4" y1="0" x2="4" y2="0" stroke="#fff" stroke-width="1.5"/>
+    <line x1="0" y1="-4" x2="0" y2="4" stroke="#fff" stroke-width="1.5"/>
+  </g>
+  <g transform="translate(240, 85)">
+    <line x1="-3" y1="0" x2="3" y2="0" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="-3" x2="0" y2="3" stroke="#fff" stroke-width="1"/>
+  </g>
+  <!-- Yellow moon with craters -->
+  <circle cx="240" cy="60" r="32" fill="#FFD700"/>
+  <circle cx="230" cy="50" r="6" fill="#FFC107" opacity="0.6"/>
+  <circle cx="250" cy="65" r="8" fill="#FFC107" opacity="0.6"/>
+  <circle cx="235" cy="72" r="4" fill="#FFC107" opacity="0.6"/>
+  <circle cx="252" cy="48" r="3" fill="#FFC107" opacity="0.5"/>
+  <!-- Moon face -->
+  <circle cx="233" cy="56" r="2" fill="#CC8800"/>
+  <circle cx="247" cy="56" r="2" fill="#CC8800"/>
+  <path d="M234 64 Q240 68 246 64" fill="none" stroke="#CC8800" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Saturn with ring -->
+  <g transform="translate(70, 200)">
+    <ellipse cx="0" cy="0" rx="28" ry="22" fill="#FF8A65" stroke="#333" stroke-width="1.5"/>
+    <!-- Saturn bands -->
+    <path d="M-26 -5 Q0 -8 26 -5" fill="none" stroke="#E64A19" stroke-width="2" opacity="0.5"/>
+    <path d="M-24 5 Q0 2 24 5" fill="none" stroke="#E64A19" stroke-width="2" opacity="0.5"/>
+    <!-- Ring -->
+    <ellipse cx="0" cy="0" rx="42" ry="10" fill="none" stroke="#FFD54F" stroke-width="4" transform="rotate(-15)"/>
+    <ellipse cx="0" cy="0" rx="42" ry="10" fill="none" stroke="#FFF176" stroke-width="2" transform="rotate(-15)"/>
+  </g>
+  <!-- Red Mars -->
+  <circle cx="200" cy="220" r="18" fill="#E53935" stroke="#333" stroke-width="1.5"/>
+  <circle cx="195" cy="215" r="3" fill="#C62828" opacity="0.5"/>
+  <circle cx="207" cy="222" r="4" fill="#C62828" opacity="0.5"/>
+  <circle cx="198" cy="228" r="2.5" fill="#C62828" opacity="0.5"/>
+  <!-- Colorful rocket ship -->
+  <g transform="translate(150, 130) rotate(-30)">
+    <!-- Rocket body -->
+    <rect x="-12" y="-30" width="24" height="50" rx="12" fill="#E0E0E0" stroke="#333" stroke-width="2"/>
+    <!-- Nose cone -->
+    <path d="M-12 -30 Q0 -52 12 -30" fill="#FF4444" stroke="#333" stroke-width="2"/>
+    <!-- Window -->
+    <circle cx="0" cy="-12" r="7" fill="#42A5F5" stroke="#333" stroke-width="1.5"/>
+    <circle cx="-2" cy="-14" r="2.5" fill="#90CAF9" opacity="0.7"/>
+    <!-- Body stripe -->
+    <rect x="-12" y="4" width="24" height="6" fill="#FF4444"/>
+    <!-- Fins -->
+    <path d="M-12 10 L-22 24 L-12 20" fill="#FF8C00" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M12 10 L22 24 L12 20" fill="#FF8C00" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
+    <!-- Flame -->
+    <path d="M-8 20 Q-4 34 0 42 Q4 34 8 20" fill="#FF6B00"/>
+    <path d="M-5 20 Q-2 30 0 36 Q2 30 5 20" fill="#FFD700"/>
+    <path d="M-3 20 Q0 28 3 20" fill="#FFF176"/>
+  </g>
+  <!-- Small asteroids -->
+  <g transform="translate(40, 120)">
+    <ellipse cx="0" cy="0" rx="8" ry="6" fill="#78909C" stroke="#333" stroke-width="1.5" transform="rotate(20)"/>
+    <circle cx="-2" cy="-1" r="1.5" fill="#546E7A"/>
+    <circle cx="3" cy="2" r="1" fill="#546E7A"/>
+  </g>
+  <g transform="translate(270, 170)">
+    <ellipse cx="0" cy="0" rx="6" ry="5" fill="#78909C" stroke="#333" stroke-width="1.5" transform="rotate(-15)"/>
+    <circle cx="1" cy="-1" r="1" fill="#546E7A"/>
+  </g>
+  <g transform="translate(100, 270)">
+    <ellipse cx="0" cy="0" rx="7" ry="5" fill="#78909C" stroke="#333" stroke-width="1" transform="rotate(30)"/>
+  </g>
+</svg>

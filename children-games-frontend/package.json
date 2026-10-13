@@ -1,0 +1,28 @@
+{
+  "name": "children-games-frontend",
+  "version": "1.0.0",
+  "description": "儿童游戏乐园前端",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "vue-tsc --noEmit",
+    "smoke": "node tests/smoke.mjs",
+    "gen:icons": "node tests/gen-icons.mjs"
+  },
+  "dependencies": {
+    "axios": "^1.6.8",
+    "pinia": "^2.1.7",
+    "vue": "^3.4.21",
+    "vue-router": "^4.3.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.0",
+    "@types/node": "^20.12.7",
+    "@vitejs/plugin-vue": "^5.0.4",
+    "puppeteer": "^25.13.0",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.10",
+    "vue-tsc": "^2.0.11"
+  }
+}

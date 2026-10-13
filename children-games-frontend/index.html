@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#667eea" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="游戏乐园" />
+    <link rel="apple-touch-icon" href="/icons/icon-180.png" />
+    <title>儿童游戏乐园</title>
+    <style>
+      #splash {
+        position: fixed; inset: 0; z-index: 9999;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        transition: opacity 0.4s ease;
+      }
+      #splash.hide { opacity: 0; pointer-events: none; }
+      #splash .icon { font-size: 64px; animation: bounce 1s ease infinite; }
+      #splash .title { color: #fff; font-size: 24px; font-weight: bold; margin-top: 16px; font-family: sans-serif; }
+      #splash .dots { color: rgba(255,255,255,0.8); font-size: 14px; margin-top: 12px; font-family: sans-serif; }
+      @keyframes bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="splash">
+      <div class="icon">🎮</div>
+      <div class="title">儿童游戏乐园</div>
+      <div class="dots">加载中...</div>
+    </div>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+    <script>
+      window.addEventListener('DOMContentLoaded', function() {
+        setTimeout(function() {
+          var splash = document.getElementById('splash');
+          if (splash) { splash.classList.add('hide'); setTimeout(function() { splash.remove(); }, 400); }
+        }, 800);
+      });
+    </script>
+  </body>
+</html>

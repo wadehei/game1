@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60">
+  <!-- Puzzle piece shape -->
+  <path d="
+    M15 12
+    L24 12
+    Q24 6 30 6
+    Q36 6 36 12
+    L48 12
+    L48 24
+    Q54 24 54 30
+    Q54 36 48 36
+    L48 48
+    L36 48
+    Q36 54 30 54
+    Q24 54 24 48
+    L15 48
+    L15 36
+    Q9 36 9 30
+    Q9 24 15 24
+    Z
+  " fill="#4facfe" stroke="#333" stroke-width="2.5" stroke-linejoin="round"/>
+  <!-- Surface highlight -->
+  <path d="
+    M18 15
+    L24 15
+    Q24 10 30 10
+    Q36 10 36 15
+    L40 15
+    L40 18
+    L18 18
+    Z
+  " fill="white" opacity="0.15"/>
+  <!-- Inner shadow for depth -->
+  <path d="
+    M18 42
+    L24 42
+    Q24 47 30 47
+    Q36 47 36 42
+    L42 42
+    L42 45
+    L18 45
+    Z
+  " fill="#2196F3" opacity="0.3"/>
+</svg>

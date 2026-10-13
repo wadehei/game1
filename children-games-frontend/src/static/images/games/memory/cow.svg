@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80">
+  <!-- Small horns -->
+  <ellipse cx="24" cy="14" rx="4" ry="8" fill="#FFD700" stroke="#333" stroke-width="1.5" transform="rotate(-10 24 14)"/>
+  <ellipse cx="56" cy="14" rx="4" ry="8" fill="#FFD700" stroke="#333" stroke-width="1.5" transform="rotate(10 56 14)"/>
+  <!-- Small ears -->
+  <ellipse cx="16" cy="26" rx="7" ry="9" fill="#fff" stroke="#333" stroke-width="2" transform="rotate(-15 16 26)"/>
+  <ellipse cx="64" cy="26" rx="7" ry="9" fill="#fff" stroke="#333" stroke-width="2" transform="rotate(15 64 26)"/>
+  <!-- Head - white -->
+  <circle cx="40" cy="42" r="26" fill="#fff" stroke="#333" stroke-width="2"/>
+  <!-- Black spots -->
+  <circle cx="24" cy="32" r="8" fill="#333"/>
+  <circle cx="52" cy="28" r="6" fill="#333"/>
+  <circle cx="56" cy="52" r="5" fill="#333"/>
+  <!-- Eyes -->
+  <circle cx="30" cy="38" r="4.5" fill="#fff" stroke="#333" stroke-width="1.5"/>
+  <circle cx="50" cy="38" r="4.5" fill="#fff" stroke="#333" stroke-width="1.5"/>
+  <circle cx="31" cy="38" r="2.5" fill="#333"/>
+  <circle cx="51" cy="38" r="2.5" fill="#333"/>
+  <circle cx="32" cy="37" r="1" fill="#fff"/>
+  <circle cx="52" cy="37" r="1" fill="#fff"/>
+  <!-- Pink nose/muzzle -->
+  <ellipse cx="40" cy="52" rx="10" ry="7" fill="#FFB6C1" stroke="#333" stroke-width="1.5"/>
+  <circle cx="36" cy="52" r="2.5" fill="#E8899A"/>
+  <circle cx="44" cy="52" r="2.5" fill="#E8899A"/>
+  <!-- Cheeks -->
+  <circle cx="22" cy="48" r="4" fill="#FFB5B5" opacity="0.4"/>
+  <circle cx="58" cy="48" r="4" fill="#FFB5B5" opacity="0.4"/>
+</svg>

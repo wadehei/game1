@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80">
+  <!-- Head - green -->
+  <ellipse cx="40" cy="44" rx="28" ry="24" fill="#4CAF50" stroke="#333" stroke-width="2"/>
+  <!-- Large bulging eyes -->
+  <circle cx="26" cy="26" r="14" fill="#fff" stroke="#333" stroke-width="2"/>
+  <circle cx="54" cy="26" r="14" fill="#fff" stroke="#333" stroke-width="2"/>
+  <circle cx="28" cy="26" r="7" fill="#333"/>
+  <circle cx="56" cy="26" r="7" fill="#333"/>
+  <circle cx="30" cy="24" r="3" fill="#fff"/>
+  <circle cx="58" cy="24" r="3" fill="#fff"/>
+  <!-- Wide smile -->
+  <path d="M20 48 Q30 64 40 58 Q50 64 60 48" fill="#FF6B6B" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+  <!-- Tongue hint -->
+  <ellipse cx="40" cy="56" rx="6" ry="4" fill="#FF8888"/>
+  <!-- Nostrils -->
+  <circle cx="36" cy="42" r="2" fill="#388E3C"/>
+  <circle cx="44" cy="42" r="2" fill="#388E3C"/>
+  <!-- Cheeks -->
+  <circle cx="16" cy="44" r="5" fill="#66BB6A" opacity="0.5"/>
+  <circle cx="64" cy="44" r="5" fill="#66BB6A" opacity="0.5"/>
+</svg>

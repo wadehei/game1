@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80">
+  <!-- Pointed ears -->
+  <polygon points="16,32 24,6 34,28" fill="#FF8C00" stroke="#333" stroke-width="2" stroke-linejoin="round"/>
+  <polygon points="46,28 56,6 64,32" fill="#FF8C00" stroke="#333" stroke-width="2" stroke-linejoin="round"/>
+  <!-- Inner ears -->
+  <polygon points="20,28 24,14 30,28" fill="#FFAA44"/>
+  <polygon points="50,28 56,14 60,28" fill="#FFAA44"/>
+  <!-- Head - orange -->
+  <ellipse cx="40" cy="44" rx="25" ry="24" fill="#FF8C00" stroke="#333" stroke-width="2"/>
+  <!-- White muzzle/face area -->
+  <ellipse cx="40" cy="52" rx="15" ry="12" fill="#FFF5E6"/>
+  <!-- White cheek patches -->
+  <ellipse cx="26" cy="46" rx="8" ry="6" fill="#FFF5E6"/>
+  <ellipse cx="54" cy="46" rx="8" ry="6" fill="#FFF5E6"/>
+  <!-- Eyes -->
+  <ellipse cx="30" cy="38" rx="4.5" ry="5" fill="#fff" stroke="#333" stroke-width="1.5"/>
+  <ellipse cx="50" cy="38" rx="4.5" ry="5" fill="#fff" stroke="#333" stroke-width="1.5"/>
+  <ellipse cx="30" cy="39" rx="2.5" ry="3" fill="#333"/>
+  <ellipse cx="50" cy="39" rx="2.5" ry="3" fill="#333"/>
+  <circle cx="31" cy="37" r="1.2" fill="#fff"/>
+  <circle cx="51" cy="37" r="1.2" fill="#fff"/>
+  <!-- Nose -->
+  <ellipse cx="40" cy="48" rx="3.5" ry="2.5" fill="#333"/>
+  <!-- Mouth -->
+  <path d="M37 51 Q40 55 43 51" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Bushy tail hint on side -->
+  <path d="M66 55 Q74 48 72 38 Q70 44 66 48" fill="#FF8C00" stroke="#333" stroke-width="1.5"/>
+  <path d="M72 38 Q71 36 70 38" fill="#FFF5E6" stroke="none"/>
+  <!-- Cheeks -->
+  <circle cx="22" cy="48" r="3.5" fill="#FFB5B5" opacity="0.4"/>
+  <circle cx="58" cy="48" r="3.5" fill="#FFB5B5" opacity="0.4"/>
+</svg>
