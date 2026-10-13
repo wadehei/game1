@@ -23,6 +23,27 @@ await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 3 });
 let pageErrors = [];
 page.on('pageerror', (err) => pageErrors.push(err.message));
 
+// 角色路由守卫会拦截无 token 访问：在线则真登录，离线用占位 token 通过守卫（页面走离线兜底）
+await page.goto(`${BASE}/#/profiles`, { waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {});
+await new Promise((resolve) => setTimeout(resolve, 800));
+await page.evaluate(async () => {
+  if (localStorage.getItem('token')) return;
+  try {
+    const res = await fetch('/api/user/login/family', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nickname: '冒烟测试', avatar: '🤖' }),
+    });
+    const data = await res.json();
+    localStorage.setItem('token', data?.data?.token || 'offline-smoke');
+    if (data?.data?.userInfo) {
+      localStorage.setItem('userInfo', JSON.stringify(data.data.userInfo));
+    }
+  } catch {
+    localStorage.setItem('token', 'offline-smoke');
+  }
+});
+
 // 后端未启动时的网络报错属于预期噪音
 const isNetworkNoise = (e) =>
   /NetworkError|Failed to fetch|Network request failed|ERR_CONNECTION|404|500|502|503|504|Request failed|AxiosError/i.test(e);
