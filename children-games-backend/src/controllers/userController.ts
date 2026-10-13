@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { Op } from 'sequelize';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import { User, UserPlaytime } from '../models';
+import { User, UserPlaytime, GameProgress, DailyTask } from '../models';
 import { config } from '../config';
 import { AuthRequest } from '../middleware/auth';
 import { success, fail, asyncHandler } from '../utils/response';
@@ -230,6 +230,67 @@ export const updateMyPin = asyncHandler(async (req: AuthRequest, res: Response) 
   user.pinHash = hashPin(newPin);
   await user.save();
   success(res, { hasPin: true });
+});
+
+// 我的生涯：个人信息 + 全游戏生涯数据 + 累计时长/局数/成就汇总
+export const getMyCareer = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const userId = req.userId!;
+  const user = await User.findByPk(userId);
+  if (!user) {
+    fail(res, '用户不存在', 404);
+    return;
+  }
+
+  const progresses = await GameProgress.findAll({ where: { userId } });
+
+  // 累计游玩时长与天数
+  const timeRows = await UserPlaytime.findAll({
+    where: { userId },
+    attributes: ['date', 'seconds'],
+  });
+  const playSeconds = timeRows.reduce((sum, r) => sum + r.seconds, 0);
+  const playDays = timeRows.filter((r) => r.seconds > 0).length;
+
+  // 每日任务累计奖励星
+  const rewardRows = await DailyTask.findAll({
+    where: { userId },
+    attributes: ['taskReward'],
+  });
+  const rewardStars = rewardRows.reduce((sum, r) => sum + (r.taskReward || 0), 0);
+
+  const achievements = JSON.parse(user.achievements || '[]') as string[];
+  const totalPlayCount = progresses.reduce((sum, p) => sum + (p.playCount || 0), 0);
+  const totalWinCount = progresses.reduce((sum, p) => sum + (p.winCount || 0), 0);
+
+  success(res, {
+    user: {
+      id: user.id,
+      nickname: user.nickname,
+      avatar: user.avatar,
+      level: user.level,
+      totalStars: user.totalStars,
+      joinedAt: user.createdAt,
+    },
+    totals: {
+      playSeconds,
+      playDays,
+      playCount: totalPlayCount,
+      winCount: totalWinCount,
+      achievementCount: achievements.length,
+      rewardStars,
+    },
+    games: progresses
+      .map((p) => ({
+        gameId: p.gameId,
+        currentLevel: p.currentLevel,
+        stars: p.stars,
+        highScore: p.highScore,
+        playCount: p.playCount || 0,
+        winCount: p.winCount || 0,
+        lastPlayedAt: p.updatedAt,
+      }))
+      .sort((a, b) => new Date(b.lastPlayedAt || 0).getTime() - new Date(a.lastPlayedAt || 0).getTime()),
+  });
 });
 
 // 上报游玩时长（客户端心跳，供后台看板统计）

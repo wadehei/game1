@@ -10,11 +10,13 @@ interface GameProgressAttributes {
   stars: number;
   levelStars: string;
   achievements: string;
+  playCount: number;
+  winCount: number;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
-interface GameProgressCreationAttributes extends Optional<GameProgressAttributes, 'id' | 'currentLevel' | 'highScore' | 'stars' | 'levelStars' | 'achievements'> {}
+interface GameProgressCreationAttributes extends Optional<GameProgressAttributes, 'id' | 'currentLevel' | 'highScore' | 'stars' | 'levelStars' | 'achievements' | 'playCount' | 'winCount'> {}
 
 export class GameProgress extends Model<GameProgressAttributes, GameProgressCreationAttributes> implements GameProgressAttributes {
   public id!: number;
@@ -25,6 +27,8 @@ export class GameProgress extends Model<GameProgressAttributes, GameProgressCrea
   public stars!: number;
   public levelStars!: string;
   public achievements!: string;
+  public playCount!: number;
+  public winCount!: number;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -69,6 +73,18 @@ GameProgress.init(
       allowNull: true,
       defaultValue: '{}',
       comment: '每关最佳星级JSON对象，如 {"1":3,"2":2}',
+    },
+    playCount: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+      defaultValue: 0,
+      comment: '总游玩局数（含失败）',
+    },
+    winCount: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+      defaultValue: 0,
+      comment: '通关局数',
     },
     achievements: {
       type: DataTypes.TEXT,

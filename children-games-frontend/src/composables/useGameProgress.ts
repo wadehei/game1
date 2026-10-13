@@ -1,5 +1,5 @@
 import { useGameStore } from '@/store/game';
-import { getGameProgress, updateGameProgress } from '@/api/game';
+import { getGameProgress, updateGameProgress, recordPlay } from '@/api/game';
 import { notifyAchievements } from '@/utils/achievementBus';
 
 const localKey = (gameId: string) => `game_progress_${gameId}`;
@@ -64,5 +64,5 @@ export function useGameProgress(gameId: string) {
     }
   };
 
-  return { loadStartLevel, saveProgress };
+  return { loadStartLevel, saveProgress, recordPlay: () => recordPlay(gameId) };
 }

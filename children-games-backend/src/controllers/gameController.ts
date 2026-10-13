@@ -172,10 +172,15 @@ export const updateGameProgress = asyncHandler(async (req: AuthRequest, res: Res
       stars: starsNum,
       levelStars: JSON.stringify({ [String(levelNum)]: starsNum }),
       achievements: JSON.stringify(achievements || []),
+      playCount: 1,
+      winCount: 1,
     },
   });
 
   if (!created) {
+    // 生涯统计：每局通关计一次局数与胜局
+    progress.playCount += 1;
+    progress.winCount += 1;
     // 每关保留历史最佳星级
     const levelStars = parseLevelStars(progress.levelStars);
     // 兼容旧数据：把原有单一最高星级迁移到当时的关卡上
@@ -280,6 +285,25 @@ export const getAchievements = asyncHandler(async (req: AuthRequest, res: Respon
     desc,
     unlocked: owned.includes(id) || unlockedIds.has(id),
   })));
+});
+
+// 上报一局游玩（失败结算时调用，胜局在 updateGameProgress 里已计入）
+export const recordPlay = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const gameId = String(req.params.gameId || '');
+  if (!GAME_RULES[gameId]) {
+    fail(res, '未知的 gameId');
+    return;
+  }
+  const userId = req.userId!;
+  const [progress] = await GameProgress.findOrCreate({
+    where: { userId, gameId },
+    defaults: { userId, gameId, playCount: 0, winCount: 0 } as any,
+  });
+  if (progress) {
+    progress.playCount += 1;
+    await progress.save();
+  }
+  success(res, { ok: true });
 });
 
 // 获取今日任务进度

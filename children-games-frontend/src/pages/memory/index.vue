@@ -133,7 +133,7 @@ const stars = ref(0);
 const paused = ref(false);
 const showLevelSelect = ref(false);
 let levelSelectPaused = false;
-const { loadStartLevel, saveProgress: saveGameProgress } = useGameProgress('memory');
+const { loadStartLevel, saveProgress: saveGameProgress, recordPlay } = useGameProgress('memory');
 const assist = useAdaptiveAssist('memory');
 let timer: ReturnType<typeof setInterval> | null = null;
 let gameEnded = false;
@@ -349,6 +349,7 @@ const endGame = (won: boolean) => {
   } else {
     sounds.play('fail');
     assist.record(false);
+    recordPlay();
   }
 
   showResult.value = true;

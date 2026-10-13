@@ -128,7 +128,7 @@ const canvasRef = ref<HTMLCanvasElement | null>(null);
 const gameCanvas = useGameCanvas();
 const canvasWidth = gameCanvas.canvasWidth;
 const canvasHeight = gameCanvas.canvasHeight;
-const { loadStartLevel, saveProgress: saveGameProgress } = useGameProgress('balloon');
+const { loadStartLevel, saveProgress: saveGameProgress, recordPlay } = useGameProgress('balloon');
 const assist = useAdaptiveAssist('balloon');
 let ctx: CanvasRenderingContext2D | null = null;
 let animationId: number | null = null;
@@ -491,6 +491,7 @@ const endGame = (won: boolean) => {
   } else {
     sounds.play('fail');
     assist.record(false);
+    recordPlay();
   }
 
   showResult.value = true;

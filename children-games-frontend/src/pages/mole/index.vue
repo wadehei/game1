@@ -77,7 +77,7 @@ interface Hole {
 
 const router = useRouter();
 const sounds = useGameSounds();
-const { loadStartLevel, saveProgress: saveGameProgress } = useGameProgress('mole');
+const { loadStartLevel, saveProgress: saveGameProgress, recordPlay } = useGameProgress('mole');
 const assist = useAdaptiveAssist('mole');
 
 const currentLevel = ref(1);
@@ -338,6 +338,7 @@ const endGame = (won: boolean) => {
   } else {
     sounds.play('fail');
     assist.record(false);
+    recordPlay();
   }
 
   showResult.value = true;

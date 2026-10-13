@@ -1,6 +1,7 @@
 import { Router } from 'express';
-import { wxLogin, testLogin, familyLogin, getProfiles, getUserInfo, updateUserInfo, updateMyPin, reportPlaytime } from '../controllers/userController';
+import { wxLogin, testLogin, familyLogin, getProfiles, getUserInfo, updateUserInfo, updateMyPin, getMyCareer, reportPlaytime } from '../controllers/userController';
 import { authMiddleware } from '../middleware/auth';
+import { recordPlay } from '../controllers/gameController';
 
 const router = Router();
 
@@ -15,9 +16,13 @@ router.get('/profiles', getProfiles);
 // 用户信息接口（需要认证）
 router.get('/info', authMiddleware, getUserInfo);
 router.put('/info', authMiddleware, updateUserInfo);
+// 我的生涯（需要认证）
+router.get('/career', authMiddleware, getMyCareer);
 // 角色口令（需要认证）
 router.put('/pin', authMiddleware, updateMyPin);
 // 游玩时长心跳上报（需要认证）
 router.post('/playtime', authMiddleware, reportPlaytime);
+// 记一局游玩（失败结算；挂在 /user 下避免与 /game/progress/:gameId 的 POST 冲突语义）
+router.post('/play/:gameId', authMiddleware, recordPlay);
 
 export default router;

@@ -84,7 +84,7 @@ type Phase = 'ready' | 'playing' | 'input' | 'replay' | 'done';
 
 const router = useRouter();
 const sounds = useGameSounds();
-const { loadStartLevel, saveProgress: saveGameProgress } = useGameProgress('simon');
+const { loadStartLevel, saveProgress: saveGameProgress, recordPlay } = useGameProgress('simon');
 
 const currentLevel = ref(1);
 const hearts = ref(3);
@@ -242,6 +242,7 @@ const endGame = (won: boolean) => {
     saveProgress();
   } else {
     sounds.play('fail');
+    recordPlay();
   }
 
   showResult.value = true;

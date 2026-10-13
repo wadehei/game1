@@ -44,6 +44,42 @@ export const updateMyPin = async (data: { oldPin?: string; newPin?: string }): P
   return api.put<{ hasPin: boolean }>('/user/pin', data);
 };
 
+// ─── 我的生涯 ────────────────────────────────
+
+export interface CareerGame {
+  gameId: string;
+  currentLevel: number;
+  stars: number;
+  highScore: number;
+  playCount: number;
+  winCount: number;
+  lastPlayedAt: string | null;
+}
+
+export interface MyCareer {
+  user: {
+    id: number;
+    nickname: string;
+    avatar: string;
+    level: number;
+    totalStars: number;
+    joinedAt: string;
+  };
+  totals: {
+    playSeconds: number;
+    playDays: number;
+    playCount: number;
+    winCount: number;
+    achievementCount: number;
+    rewardStars: number;
+  };
+  games: CareerGame[];
+}
+
+export const getMyCareer = async (): Promise<MyCareer> => {
+  return api.get<MyCareer>('/user/career');
+};
+
 // 家庭成员列表（按总星星排序）
 export const getProfiles = async (): Promise<FamilyProfile[]> => {
   return api.get<FamilyProfile[]>('/user/profiles');

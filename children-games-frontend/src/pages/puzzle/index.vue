@@ -106,7 +106,7 @@ const stars = ref(0);
 const paused = ref(false);
 const showLevelSelect = ref(false);
 let levelSelectPaused = false;
-const { loadStartLevel, saveProgress: saveGameProgress } = useGameProgress('puzzle');
+const { loadStartLevel, saveProgress: saveGameProgress, recordPlay } = useGameProgress('puzzle');
 const assist = useAdaptiveAssist('puzzle');
 let timer: ReturnType<typeof setInterval> | null = null;
 let gameEnded = false;
@@ -384,6 +384,7 @@ const endGame = (won: boolean) => {
   } else {
     sounds.play('fail');
     assist.record(false);
+    recordPlay();
   }
 
   showResult.value = true;

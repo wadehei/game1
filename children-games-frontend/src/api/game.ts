@@ -57,6 +57,13 @@ export const getDailyTask = async (): Promise<DailyTaskInfo> => {
   return api.get<DailyTaskInfo>('/game/daily-task');
 };
 
+// 记一局游玩（失败结算时上报，胜局随保存进度自动计入）
+export const recordPlay = (gameId: string): void => {
+  api.post(`/user/play/${gameId}`).catch(() => {
+    // 离线时丢弃（生涯统计以服务器为准）
+  });
+};
+
 // ─── 关卡难度覆盖（后台可调） ────────────────────────────────
 
 type LevelOverride = Record<string, number | boolean>;

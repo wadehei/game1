@@ -33,22 +33,62 @@
       </div>
     </div>
 
-    <!-- 游戏进度 -->
-    <div class="progress-section card">
-      <div class="section-title">🎮 游戏进度</div>
-      <div class="progress-list">
-        <div v-for="game in games" :key="game.id" class="progress-item">
-          <div class="progress-header">
-            <span class="game-icon">{{ game.icon }}</span>
-            <span class="game-name">{{ game.name }}</span>
-            <span class="game-level">关卡 {{ getGameLevel(game.id) }}/{{ game.totalLevels }}</span>
-          </div>
-          <div class="progress-bar">
-            <div class="progress-fill" :style="{ width: `${Math.min((getGameLevel(game.id) / game.totalLevels) * 100, 100)}%` }" />
+    <!-- 我的生涯 -->
+    <div class="career-section card">
+      <div class="section-title">🏁 我的生涯</div>
+
+      <!-- 生涯总览 -->
+      <div v-if="career" class="career-overview">
+        <div class="ov-item">
+          <div class="ov-num">{{ joinedDays }}</div>
+          <div class="ov-label">加入天数</div>
+        </div>
+        <div class="ov-item">
+          <div class="ov-num">{{ playTimeText }}</div>
+          <div class="ov-label">累计{{ career.totals.playDays }} 天</div>
+        </div>
+        <div class="ov-item">
+          <div class="ov-num">{{ career.totals.playCount }}</div>
+          <div class="ov-label">总局数</div>
+        </div>
+        <div class="ov-item">
+          <div class="ov-num">{{ winRateText }}</div>
+          <div class="ov-label">通关率</div>
+        </div>
+        <div class="ov-item">
+          <div class="ov-num">{{ career.totals.achievementCount }}</div>
+          <div class="ov-label">成就</div>
+        </div>
+        <div class="ov-item">
+          <div class="ov-num">+{{ career.totals.rewardStars }}</div>
+          <div class="ov-label">任务奖励⭐</div>
+        </div>
+      </div>
+
+      <!-- 各游戏生涯 -->
+      <div v-if="career && career.games.length" class="career-list">
+        <div v-for="g in career.games" :key="g.gameId" class="career-row">
+          <span class="game-icon">{{ gameIcon(g.gameId) }}</span>
+          <div class="career-main">
+            <div class="career-line1">
+              <span class="game-name">{{ gameName(g.gameId) }}</span>
+              <span class="career-record">{{ recordText(g) }}</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" :style="{ width: `${Math.min((g.currentLevel / gameTotal(g.gameId)) * 100, 100)}%` }" />
+            </div>
+            <div class="career-line2">
+              关卡 {{ g.currentLevel }}/{{ gameTotal(g.gameId) }} · ⭐{{ g.stars }}
+              <template v-if="g.playCount > 0"> · {{ g.winCount }}胜/{{ g.playCount }}局{{ g.playCount > 0 ? `（${Math.round((g.winCount / g.playCount) * 100)}%）` : '' }}</template>
+              <template v-if="g.lastPlayedAt"> · {{ timeAgo(g.lastPlayedAt) }}</template>
+            </div>
           </div>
         </div>
       </div>
+      <div v-else class="career-empty">还没开始冒险，去玩一局点亮生涯吧！🚀</div>
     </div>
+
+    <!-- 成就展示 -->
 
     <!-- 成就展示 -->
     <div class="achievement-section card">
@@ -179,8 +219,9 @@ import { useRouter } from 'vue-router';
 import { useUserStore } from '@/store/user';
 import { useGameStore } from '@/store/game';
 import { getAchievements, type AchievementInfo } from '@/api/game';
-import { updateUserInfo, updateMyPin } from '@/api/user';
+import { updateUserInfo, updateMyPin, getMyCareer, type MyCareer, type CareerGame } from '@/api/user';
 import { uploadPhotoAvatar } from '@/utils/avatarUpload';
+import { getGameMeta, formatScore } from '@/utils/gameMeta';
 import { getRestIntervalMinutes, getTodayPlaySeconds, resetTodayPlayTime } from '@/composables/usePlayTimeGuard';
 import PlayerAvatar from '@/components/PlayerAvatar.vue';
 
@@ -204,6 +245,48 @@ const games = [
 ];
 
 const achievements = ref<AchievementInfo[]>([]);
+
+// ─── 我的生涯 ────────────────────────────────
+const career = ref<MyCareer | null>(null);
+
+const joinedDays = computed(() => {
+  if (!career.value?.user.joinedAt) return '-';
+  return Math.max(1, Math.ceil((Date.now() - new Date(career.value.user.joinedAt).getTime()) / 86400000));
+});
+
+const playTimeText = computed(() => {
+  const s = career.value?.totals.playSeconds || 0;
+  if (s < 60) return `${s}秒`;
+  if (s < 3600) return `${Math.floor(s / 60)}分`;
+  const h = Math.floor(s / 3600);
+  const m = Math.round((s % 3600) / 60);
+  return m > 0 ? `${h}时${m}分` : `${h}时`;
+});
+
+const winRateText = computed(() => {
+  const t = career.value?.totals;
+  if (!t || t.playCount === 0) return '-';
+  return `${Math.round((t.winCount / t.playCount) * 100)}%`;
+});
+
+const gameName = (id: string): string => getGameMeta(id)?.name || id;
+const gameIcon = (id: string): string => games.find((g) => g.id === id)?.icon || '🎮';
+const gameTotal = (id: string): number => getGameMeta(id)?.totalLevels || 20;
+
+const recordText = (g: CareerGame): string => {
+  if (!g.highScore) return '';
+  return formatScore(g.gameId, g.highScore);
+};
+
+const timeAgo = (iso: string): string => {
+  const min = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (min < 1) return '刚刚';
+  if (min < 60) return `${min}分钟前`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `${h}小时前`;
+  const d = Math.floor(h / 24);
+  return d < 30 ? `${d}天前` : `${Math.floor(d / 30)}个月前`;
+};
 
 // 等级经验：与后端一致，每 15 颗星升一级
 const LEVEL_STAR_THRESHOLD = 15;
@@ -373,6 +456,11 @@ onMounted(async () => {
     achievements.value = await getAchievements();
   } catch (e) {
     console.log('获取成就失败', e);
+  }
+  try {
+    career.value = await getMyCareer();
+  } catch (e) {
+    console.log('获取生涯失败', e);
   }
   // 初始口令状态：探测一次（输错也算错，用设置接口无法探测——改由成员列表接口无此信息，
   // 这里用 profiles 公开列表查询自己是否带锁）
@@ -663,6 +751,77 @@ onMounted(async () => {
 .setting-arrow {
   font-size: 24px;
   color: #ccc;
+}
+
+/* 我的生涯 */
+.career-overview {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.ov-item {
+  background: #f7f9fc;
+  border-radius: 12px;
+  padding: 12px 6px;
+  text-align: center;
+}
+
+.ov-num {
+  font-size: 20px;
+  font-weight: bold;
+  color: #5b6ee2;
+}
+
+.ov-label {
+  font-size: 11px;
+  color: #999;
+  margin-top: 3px;
+}
+
+.career-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.career-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.career-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.career-line1 {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.career-record {
+  font-size: 12px;
+  color: #e67e22;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.career-line2 {
+  font-size: 11px;
+  color: #999;
+  margin-top: 4px;
+}
+
+.career-empty {
+  text-align: center;
+  color: #bbb;
+  font-size: 13px;
+  padding: 14px 0;
 }
 
 /* 我的资料 + 口令 */
