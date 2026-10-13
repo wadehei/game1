@@ -21,6 +21,7 @@
           @pointerdown.stop.prevent="whack(index)"
         >
           <span class="critter-face">{{ hole.kind === 'bunny' ? '🐰' : '🐹' }}</span>
+          <span v-if="hole.state === 'whacked'" class="hammer">🔨</span>
           <span v-if="hole.state === 'whacked'" class="hit-effect">💥</span>
         </div>
       </div>
@@ -465,6 +466,24 @@ onUnmounted(() => {
 
 .critter.whacked {
   animation: critterWhacked 0.25s ease-in forwards;
+}
+
+/* 敲击锤子：从右上抡下来 */
+.hammer {
+  position: absolute;
+  right: -8px;
+  top: -16px;
+  font-size: 32px;
+  transform-origin: 85% 85%;
+  animation: hammerSmack 0.28s ease-out forwards;
+  pointer-events: none;
+  z-index: 2;
+}
+
+@keyframes hammerSmack {
+  0% { transform: rotate(-70deg) scale(1.15); opacity: 1; }
+  55% { transform: rotate(6deg) scale(1); opacity: 1; }
+  100% { transform: rotate(6deg) translateY(5px); opacity: 0; }
 }
 
 .hit-effect {

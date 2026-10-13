@@ -59,6 +59,7 @@ import balloonGreenSvg from '@/static/images/games/balloon/balloon-green.svg';
 import balloonPinkSvg from '@/static/images/games/balloon/balloon-pink.svg';
 import balloonGoldenSvg from '@/static/images/games/balloon/balloon-golden.svg';
 import balloonRainbowSvg from '@/static/images/games/balloon/balloon-rainbow.svg';
+import balloonDartSvg from '@/static/images/games/balloon/balloon-dart.svg';
 import { ImageLoader } from '@/utils/imageLoader';
 
 const router = useRouter();
@@ -91,8 +92,12 @@ interface Bullet {
 
 interface PopParticle {
   x: number; y: number;
-  radius: number; alpha: number;
-  color: string; speed: number;
+  radius: number;   // 当前尺寸
+  grow: number;     // 每帧尺寸增量（闪光用，纸屑为 0）
+  alpha: number;
+  color: string;
+  speed: number;    // 飞散速度
+  angle: number;    // 飞散方向
 }
 
 const balloonColors = ['#FF6B6B', '#4ECDC4', '#FFE66D', '#95E1D3', '#F38181'];
@@ -120,6 +125,7 @@ let animationId: number | null = null;
 let spawnTimer: ReturnType<typeof setInterval> | null = null;
 let shakeOffset = { x: 0, y: 0 };
 let bgGradient: CanvasGradient | null = null;
+let floatTexts: { x: number; y: number; text: string; life: number; color: string }[] = [];
 let gameEnded = false;
 
 const levelConfig = ref({
@@ -141,6 +147,7 @@ const initGame = async () => {
   balloons = [];
   bulletList = [];
   popParticles = [];
+  floatTexts = [];
   showResult.value = false;
   gameWon.value = false;
   stars.value = 0;
@@ -153,6 +160,7 @@ const initGame = async () => {
       red: balloonRedSvg, teal: balloonTealSvg, yellow: balloonYellowSvg,
       green: balloonGreenSvg, pink: balloonPinkSvg,
       golden: balloonGoldenSvg, rainbow: balloonRainbowSvg,
+      dart: balloonDartSvg,
     });
     imagesLoaded.value = true;
   }
@@ -254,27 +262,43 @@ const update = () => {
       if (distance < balloon.radius) {
         score.value += balloon.points;
 
-        // 气球爆炸粒子效果（扩展环）
-        for (let i = 0; i < 6; i++) {
-          if (popParticles.length < 20) {
+        // 爆裂效果：白色闪光 + 彩色纸屑飞散
+        popParticles.push({
+          x: balloon.x, y: balloon.y,
+          radius: 8, grow: 2.4, alpha: 0.85,
+          color: '#FFFFFF', speed: 0, angle: 0,
+        });
+        for (let i = 0; i < 8; i++) {
+          if (popParticles.length < 26) {
             popParticles.push({
               x: balloon.x, y: balloon.y,
-              radius: 2 + Math.random() * 3,
+              radius: 2 + Math.random() * 1.5, grow: 0,
               alpha: 1,
-              color: balloon.color === '#FF00FF'
+              color: balloon.type === 'rainbow'
                 ? ['#FF6B6B', '#4ECDC4', '#FFE66D', '#F38181'][Math.floor(Math.random() * 4)]
                 : balloon.color,
               speed: 1.5 + Math.random() * 2,
+              angle: Math.random() * Math.PI * 2,
             });
           }
         }
+        floatTexts.push({
+          x: balloon.x, y: balloon.y - 10,
+          text: `+${balloon.points}`, life: 1,
+          color: balloon.type === 'golden' ? '#FF8F00' : '#FFFFFF',
+        });
 
         balloons.splice(i, 1);
 
         // 彩虹气球特效：消除所有气球并触发屏幕震动
         if (balloon.type === 'rainbow') {
           sounds.play('explosion');
-          score.value += balloons.length * 10;
+          const bonus = balloons.length * 10;
+          score.value += bonus;
+          floatTexts.push({
+            x: balloon.x, y: balloon.y - 34,
+            text: `+${bonus}!`, life: 1.4, color: '#E91E63',
+          });
           balloons = [];
           shakeOffset = { x: (Math.random() - 0.5) * 10, y: (Math.random() - 0.5) * 10 };
         } else {
@@ -339,26 +363,51 @@ const render = () => {
     }
   });
 
-  // 绘制子弹
-  c.fillStyle = '#333';
+  // 绘制子弹（小飞镖，兜底圆点）
+  const dart = balloonImages.get('dart');
   bulletList.forEach((bullet) => {
-    c.beginPath();
-    c.arc(bullet.x, bullet.y, 5, 0, Math.PI * 2);
-    c.fill();
+    if (dart) {
+      c.drawImage(dart, bullet.x - 8, bullet.y - 10, 16, 20);
+    } else {
+      c.fillStyle = '#333';
+      c.beginPath();
+      c.arc(bullet.x, bullet.y, 5, 0, Math.PI * 2);
+      c.fill();
+    }
   });
 
-  // 绘制爆炸粒子（扩展环）
+  // 绘制爆裂效果：闪光 + 纸屑（带重力飞散）
   if (popParticles.length > 0) {
     popParticles = popParticles.filter(p => {
-      p.radius += p.speed;
-      p.alpha -= 0.03;
+      p.x += Math.cos(p.angle) * p.speed;
+      p.y += Math.sin(p.angle) * p.speed + 0.12;
+      p.radius += p.grow;
+      p.alpha -= p.grow > 0 ? 0.08 : 0.045;
       if (p.alpha <= 0) return false;
+      c.globalAlpha = p.alpha;
+      c.fillStyle = p.color;
       c.beginPath();
       c.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-      c.strokeStyle = p.color;
-      c.lineWidth = 2;
-      c.globalAlpha = p.alpha;
-      c.stroke();
+      c.fill();
+      c.globalAlpha = 1;
+      return true;
+    });
+  }
+
+  // 飘分数字
+  if (floatTexts.length > 0) {
+    floatTexts = floatTexts.filter(t => {
+      t.y -= 1.3;
+      t.life -= 0.03;
+      if (t.life <= 0) return false;
+      c.globalAlpha = Math.min(1, t.life * 1.4);
+      c.font = 'bold 18px sans-serif';
+      c.textAlign = 'center';
+      c.lineWidth = 4;
+      c.strokeStyle = 'rgba(44, 62, 80, 0.8)';
+      c.strokeText(t.text, t.x, t.y);
+      c.fillStyle = t.color;
+      c.fillText(t.text, t.x, t.y);
       c.globalAlpha = 1;
       return true;
     });

@@ -145,6 +145,7 @@ const showLevelSelect = ref(false);
 let levelSelectPaused = false;
 let explosions: Explosion[] = [];
 const playerHitFlash = ref(0);
+let muzzleFlash: { x: number; y: number; life: number } | null = null;
 let gameEnded = false;
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
@@ -194,6 +195,7 @@ const initGame = async () => {
   player.hp = 3;
   bullets = [];
   explosions = [];
+  muzzleFlash = null;
   playerHitFlash.value = 0;
   showResult.value = false;
   gameWon.value = false;
@@ -448,20 +450,52 @@ const render = () => {
     c.fill();
   });
 
-  // 绘制爆炸效果
+  // 绘制爆炸效果：光晕 + 放射火花
   if (explosions.length > 0) {
     explosions = explosions.filter(e => {
       e.radius += 1.5;
       e.alpha -= 0.04;
       if (e.alpha <= 0) return false;
-      c.beginPath();
-      c.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
-      c.fillStyle = e.color;
+      const glow = c.createRadialGradient(e.x, e.y, 0, e.x, e.y, e.radius * 1.6);
+      glow.addColorStop(0, e.color);
+      glow.addColorStop(1, 'rgba(255,255,255,0)');
       c.globalAlpha = e.alpha;
+      c.fillStyle = glow;
+      c.beginPath();
+      c.arc(e.x, e.y, e.radius * 1.6, 0, Math.PI * 2);
       c.fill();
+      // 四向火花线
+      c.strokeStyle = e.color;
+      c.lineWidth = 2;
+      for (let k = 0; k < 4; k++) {
+        const angle = (Math.PI / 2) * k + e.radius * 0.3;
+        const r1 = e.radius * 1.2;
+        const r2 = e.radius * 1.9;
+        c.beginPath();
+        c.moveTo(e.x + Math.cos(angle) * r1, e.y + Math.sin(angle) * r1);
+        c.lineTo(e.x + Math.cos(angle) * r2, e.y + Math.sin(angle) * r2);
+        c.stroke();
+      }
       c.globalAlpha = 1;
       return true;
     });
+  }
+
+  // 炮口火光
+  if (muzzleFlash) {
+    muzzleFlash.life--;
+    if (muzzleFlash.life <= 0) {
+      muzzleFlash = null;
+    } else {
+      const r = 6 + (5 - muzzleFlash.life) * 2;
+      const flash = c.createRadialGradient(muzzleFlash.x, muzzleFlash.y, 0, muzzleFlash.x, muzzleFlash.y, r);
+      flash.addColorStop(0, 'rgba(255,241,118,0.95)');
+      flash.addColorStop(1, 'rgba(255,160,0,0)');
+      c.fillStyle = flash;
+      c.beginPath();
+      c.arc(muzzleFlash.x, muzzleFlash.y, r, 0, Math.PI * 2);
+      c.fill();
+    }
   }
 };
 
@@ -491,6 +525,8 @@ const fire = () => {
     isPlayer: true,
   });
 
+  // 炮口火光
+  muzzleFlash = { x: player.x + player.width / 2, y: player.y - 4, life: 5 };
   player.lastFire = now;
 };
 

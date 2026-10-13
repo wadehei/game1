@@ -26,7 +26,7 @@
             <img :src="getAnimalImage(card.emoji)" class="card-image" alt="animal" />
           </div>
           <div class="card-back">
-            <span class="card-question">?</span>
+            <span class="card-question">⭐</span>
           </div>
         </div>
       </div>
@@ -503,8 +503,20 @@ onUnmounted(() => {
 }
 
 .card-back {
-  background: linear-gradient(135deg, #FFE66D 0%, #FFB347 100%);
+  /* 圆点纹理 + 渐变底：比纯色卡背更有"卡牌感" */
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.4) 2.5px, transparent 2.5px),
+    linear-gradient(135deg, #FFB347 0%, #FF9A56 100%);
+  background-size: 18px 18px, 100% 100%;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.card-back::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 2px dashed rgba(255, 255, 255, 0.65);
+  border-radius: 7px;
 }
 
 .card-image {
@@ -514,9 +526,8 @@ onUnmounted(() => {
 }
 
 .card-question {
-  font-size: 40px;
-  color: #fff;
-  font-weight: bold;
+  font-size: 30px;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.25));
 }
 
 .pause-btn {

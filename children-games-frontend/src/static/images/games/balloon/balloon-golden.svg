@@ -1,30 +1,40 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 120">
-  <!-- Balloon body -->
-  <ellipse cx="40" cy="42" rx="30" ry="36" fill="#FFD700" stroke="#333" stroke-width="2.5"/>
+  <defs>
+    <radialGradient id="goldBody" cx="0.35" cy="0.3" r="0.9">
+      <stop offset="0" stop-color="#FFE082"/>
+      <stop offset="0.55" stop-color="#FFB300"/>
+      <stop offset="1" stop-color="#FF8F00"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Balloon body：深琥珀金渐变，和普通黄气球拉开差距 -->
+  <ellipse cx="40" cy="42" rx="31" ry="37" fill="url(#goldBody)" stroke="#E65100" stroke-width="2.5"/>
 
   <!-- Highlight arc -->
-  <path d="M 25 30 Q 22 38 25 48" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="5" stroke-linecap="round"/>
+  <path d="M 25 28 Q 21 37 24 48" fill="none" stroke="rgba(255,255,255,0.75)" stroke-width="5" stroke-linecap="round"/>
 
-  <!-- Star emblem on balloon -->
-  <path d="M 40 32 L 43 39 L 50 39 L 44 44 L 46 51 L 40 47 L 34 51 L 36 44 L 30 39 L 37 39 Z"
-        fill="#FFF8DC" stroke="#DAA520" stroke-width="1.5"/>
+  <!-- 大星星徽章（核心识别点） -->
+  <path d="M 40 24 L 43.5 34 L 54 34.5 L 45.8 41 L 48.6 51 L 40 45.2 L 31.4 51 L 34.2 41 L 26 34.5 L 36.5 34 Z"
+        fill="#FFFDE7" stroke="#E65100" stroke-width="2" stroke-linejoin="round"/>
 
-  <!-- Sparkle marks around balloon -->
-  <path d="M 15 25 L 18 28 M 18 25 L 15 28" stroke="#FFD700" stroke-width="2" stroke-linecap="round"/>
-  <path d="M 62 30 L 65 33 M 65 30 L 62 33" stroke="#FFD700" stroke-width="2" stroke-linecap="round"/>
-  <path d="M 12 50 L 15 53 M 15 50 L 12 53" stroke="#FFD700" stroke-width="2" stroke-linecap="round"/>
-  <path d="M 65 55 L 68 58 M 68 55 L 65 58" stroke="#FFD700" stroke-width="2" stroke-linecap="round"/>
+  <!-- 环绕闪光（放大加粗，远看也像星星在闪） -->
+  <g stroke="#FFF8DC" stroke-width="3" stroke-linecap="round">
+    <path d="M 12 20 L 12 28 M 8 24 L 16 24"/>
+    <path d="M 68 22 L 68 30 M 64 26 L 72 26"/>
+    <path d="M 10 52 L 10 60 M 6 56 L 14 56"/>
+    <path d="M 70 54 L 70 62 M 66 58 L 74 58"/>
+  </g>
 
   <!-- Eyes -->
-  <circle cx="32" cy="42" r="2.5" fill="#333"/>
-  <circle cx="48" cy="42" r="2.5" fill="#333"/>
+  <circle cx="32" cy="56" r="2.5" fill="#333"/>
+  <circle cx="48" cy="56" r="2.5" fill="#333"/>
 
   <!-- Smile -->
-  <path d="M 32 52 Q 40 57 48 52" fill="none" stroke="#333" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M 32 65 Q 40 70 48 65" fill="none" stroke="#333" stroke-width="2.5" stroke-linecap="round"/>
 
   <!-- Knot -->
-  <path d="M 36 76 L 40 82 L 44 76 Z" fill="#FFD700" stroke="#333" stroke-width="2"/>
+  <path d="M 36 77 L 40 83 L 44 77 Z" fill="#FFB300" stroke="#E65100" stroke-width="2"/>
 
   <!-- String -->
-  <path d="M 40 82 Q 38 95 42 105 Q 44 112 40 118" fill="none" stroke="#666" stroke-width="2" stroke-linecap="round"/>
+  <path d="M 40 83 Q 38 95 42 105 Q 44 112 40 118" fill="none" stroke="#666" stroke-width="2" stroke-linecap="round"/>
 </svg>
