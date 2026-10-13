@@ -72,16 +72,24 @@
       </div>
       <div class="edit-row">
         <span class="edit-label">形象</span>
-        <div class="edit-emojis">
-          <span
-            v-for="e in AVATARS"
-            :key="e"
-            class="edit-emoji"
-            :class="{ picked: editAvatar === e }"
-            @click="editAvatar = e"
-          >{{ e }}</span>
+        <div class="avatar-tools">
+          <label class="me-photo-btn" :title="'上传照片'">
+            <PlayerAvatar v-if="isPhotoAvatar" :avatar="editAvatar" :size="44" />
+            <span v-else class="me-photo-icon">📷</span>
+            <input type="file" accept="image/*" class="photo-input" @change="onPhotoPick" />
+          </label>
+          <div class="edit-emojis">
+            <span
+              v-for="e in AVATARS"
+              :key="e"
+              class="edit-emoji"
+              :class="{ picked: editAvatar === e }"
+              @click="editAvatar = e"
+            >{{ e }}</span>
+          </div>
         </div>
       </div>
+      <div v-if="uploadTip" class="upload-tip">{{ uploadTip }}</div>
       <button class="save-profile-btn" :disabled="savingProfile" @click="saveProfile">
         {{ savingProfile ? '保存中…' : '保存资料' }}
       </button>
@@ -172,6 +180,7 @@ import { useUserStore } from '@/store/user';
 import { useGameStore } from '@/store/game';
 import { getAchievements, type AchievementInfo } from '@/api/game';
 import { updateUserInfo, updateMyPin } from '@/api/user';
+import { uploadPhotoAvatar } from '@/utils/avatarUpload';
 import { getRestIntervalMinutes, getTodayPlaySeconds, resetTodayPlayTime } from '@/composables/usePlayTimeGuard';
 import PlayerAvatar from '@/components/PlayerAvatar.vue';
 
@@ -227,6 +236,26 @@ const AVATARS = ['🐰', '🐻', '🐼', '🦊', '🐸', '🐵', '🐯', '🦁',
 const editNickname = ref(userInfo.value?.nickname || '');
 const editAvatar = ref(userInfo.value?.avatar || '😊');
 const savingProfile = ref(false);
+const uploadTip = ref('');
+const isPhotoAvatar = computed(() => /^\//.test(editAvatar.value));
+
+const onPhotoPick = async (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+  uploadTip.value = '照片上传中…';
+  try {
+    editAvatar.value = await uploadPhotoAvatar(file);
+    uploadTip.value = '照片已上传，记得点「保存资料」生效';
+  } catch (e) {
+    uploadTip.value = '上传失败，请换张图片试试';
+  } finally {
+    input.value = '';
+    setTimeout(() => {
+      uploadTip.value = '';
+    }, 4000);
+  }
+};
 
 const saveProfile = async () => {
   if (!editNickname.value.trim() || savingProfile.value) return;
@@ -637,6 +666,45 @@ onMounted(async () => {
 }
 
 /* 我的资料 + 口令 */
+.avatar-tools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.me-photo-btn {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 2px dashed #c9c9c9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.me-photo-btn:hover {
+  border-color: #667eea;
+}
+
+.me-photo-icon {
+  font-size: 20px;
+}
+
+.photo-input {
+  display: none;
+}
+
+.upload-tip {
+  font-size: 12px;
+  color: #667eea;
+  margin-top: -6px;
+  margin-bottom: 8px;
+}
 .profile-edit {
   /* 卡片基础样式沿用 .card */
 }

@@ -16,7 +16,8 @@ const props = withDefaults(defineProps<{
   size: 44,
 });
 
-const isUrl = computed(() => /^https?:\/\//.test(props.avatar));
+// 支持 http(s) 外链与站内相对路径（/api/avatars/...，本地上传的照片）
+const isUrl = computed(() => /^(https?:)?\//.test(props.avatar));
 const emoji = computed(() => (props.avatar && !isUrl.value ? props.avatar : '😊'));
 const sizeStyle = computed(() => ({
   width: `${props.size}px`,

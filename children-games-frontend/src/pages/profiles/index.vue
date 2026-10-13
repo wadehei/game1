@@ -33,13 +33,27 @@
       <div class="create-content">
         <div class="create-title">创建新角色</div>
         <input v-model="nickname" class="create-input" maxlength="12" placeholder="起个名字吧" />
-        <div class="emoji-label">选一个你的角色</div>
+        <div class="emoji-label">选一个你的角色（或上传照片）</div>
+        <div class="avatar-photo-row">
+          <label class="photo-btn" :class="{ active: !!photoUrl }">
+            <template v-if="photoUrl">
+              <img :src="photoUrl" class="photo-preview" alt="头像预览" />
+              <span class="photo-tip">点击更换</span>
+            </template>
+            <template v-else>
+              <span class="photo-plus">📷</span>
+              <span class="photo-tip">{{ uploading ? '上传中…' : '传照片' }}</span>
+            </template>
+            <input type="file" accept="image/*" class="photo-input" @change="onPhotoPick" />
+          </label>
+          <span v-if="photoUrl" class="photo-clear" @click="photoUrl = ''">✕ 用回 emoji</span>
+        </div>
         <div class="emoji-grid">
           <span
             v-for="e in EMOJIS"
             :key="e"
             class="emoji-cell"
-            :class="{ picked: pickedEmoji === e }"
+            :class="{ picked: pickedEmoji === e && !photoUrl }"
             @click="pickedEmoji = e"
           >{{ e }}</span>
         </div>
@@ -57,6 +71,7 @@ import { computed, ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { familyLogin, getProfiles, type FamilyProfile } from '@/api/user';
 import { useUserStore } from '@/store/user';
+import { uploadPhotoAvatar } from '@/utils/avatarUpload';
 import PlayerAvatar from '@/components/PlayerAvatar.vue';
 import PinPad from '@/components/PinPad.vue';
 
@@ -69,8 +84,26 @@ const profiles = ref<FamilyProfile[]>([]);
 const creating = ref(false);
 const nickname = ref('');
 const pickedEmoji = ref('');
-const canCreate = computed(() => !!nickname.value.trim() && !!pickedEmoji.value);
+// 照片头像（非必填；与 emoji 二选一，照片优先）
+const photoUrl = ref('');
+const uploading = ref(false);
+const canCreate = computed(() => !!nickname.value.trim() && (!!pickedEmoji.value || !!photoUrl.value));
 const myUserId = computed(() => userStore.userInfo?.id);
+
+const onPhotoPick = async (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+  uploading.value = true;
+  try {
+    photoUrl.value = await uploadPhotoAvatar(file);
+  } catch (e) {
+    console.log('头像上传失败', e);
+  } finally {
+    uploading.value = false;
+    input.value = '';
+  }
+};
 
 const loadProfiles = async () => {
   try {
@@ -117,13 +150,14 @@ const submitPin = async (pin: string) => {
 const openCreate = () => {
   nickname.value = '';
   pickedEmoji.value = '';
+  photoUrl.value = '';
   creating.value = true;
 };
 
 const createProfile = async () => {
   if (!canCreate.value) return;
   try {
-    await familyLogin({ nickname: nickname.value, avatar: pickedEmoji.value });
+    await familyLogin({ nickname: nickname.value, avatar: photoUrl.value || pickedEmoji.value });
     creating.value = false;
     enter();
   } catch (e) {
@@ -300,6 +334,73 @@ onMounted(loadProfiles);
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 8px;
+}
+
+.avatar-photo-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.photo-btn {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 2px dashed #c9c9c9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: border-color 0.15s ease;
+}
+
+.photo-btn.active {
+  border: 3px solid #667eea;
+  border-style: solid;
+}
+
+.photo-plus {
+  font-size: 22px;
+}
+
+.photo-tip {
+  font-size: 10px;
+  color: #999;
+}
+
+.photo-preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo-btn.active .photo-tip {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  text-align: center;
+  padding: 2px 0;
+}
+
+.photo-clear {
+  font-size: 12px;
+  color: #e74c3c;
+  cursor: pointer;
+}
+
+.photo-input {
+  display: none;
 }
 
 .emoji-cell {

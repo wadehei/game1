@@ -5,6 +5,7 @@ import { config } from './config';
 import { sequelize, testConnection } from './config/database';
 import { initModels } from './models';
 import routes from './routes';
+import avatarRoutes from './routes/avatar';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { logError, initLogger } from './utils/logger';
 
@@ -17,6 +18,7 @@ app.use(express.json({ limit: '64kb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // 路由
+app.use(avatarRoutes); // 头像上传/静态（自带完整路径）
 app.use('/api', routes);
 
 // 错误处理
