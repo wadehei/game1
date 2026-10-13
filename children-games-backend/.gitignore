@@ -32,3 +32,10 @@ coverage/
 
 # 错误日志
 logs/
+
+# 临时排查脚本/输出
+schema-check*
+schema-snapshot*
+users-check*
+db-test*
+pw-check*

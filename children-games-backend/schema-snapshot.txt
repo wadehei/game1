@@ -1,6 +1,0 @@
-app_settings: key, value, updatedAt
-daily_tasks: id, userId, date, completedGames, taskReward, createdAt, updatedAt
-game_progress: id, userId, gameId, currentLevel, highScore, stars, levelStars, achievements, createdAt, updatedAt
-level_configs: id, gameId, level, config, createdAt, updatedAt
-user_playtime: id, userId, date, seconds, createdAt, updatedAt
-users: id, openid, nickname, avatar, totalStars, level, achievements, createdAt, updatedAt
