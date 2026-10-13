@@ -1,7 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
+import { logError } from '../utils/logger';
 
 export const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction): void => {
-  console.error('Error:', err);
+  logError(
+    'server',
+    `${req.method} ${req.originalUrl} → ${err.message}`,
+    err.stack
+  );
 
   const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
 

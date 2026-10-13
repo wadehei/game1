@@ -124,6 +124,20 @@ export const saveLevelOverride = (
 export const deleteLevelOverride = (gameId: string, level: number): Promise<void> =>
   client.delete(`/levels/${gameId}/${level}`);
 
+// ─── 错误日志 ────────────────────────────────
+
+export interface AdminErrorLog {
+  time: string;
+  source: string;
+  message: string;
+  detail?: string;
+}
+
+export const getErrorLogs = (limit = 200): Promise<AdminErrorLog[]> =>
+  client.get(`/logs?limit=${limit}`);
+
+export const clearErrorLogs = (): Promise<void> => client.delete('/logs');
+
 // ─── 备份（下载 .sql） ────────────────────────────────
 
 export const downloadBackup = async (): Promise<void> => {

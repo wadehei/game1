@@ -6,6 +6,7 @@ import { User, GameProgress, DailyTask, AppSetting, UserPlaytime, LevelConfig } 
 import { AdminRequest } from '../middleware/adminAuth';
 import { success, fail, asyncHandler } from '../utils/response';
 import { LEVEL_FIELDS } from './levelController';
+import { readRecentErrors, clearErrors } from '../utils/logger';
 
 const localDateString = (): string => {
   const now = new Date();
@@ -276,6 +277,20 @@ export const deleteLevelOverride = asyncHandler(async (req: AdminRequest, res: R
   }
   await LevelConfig.destroy({ where: { gameId, level } });
   success(res, { gameId, level });
+});
+
+// ─── 错误日志 ────────────────────────────────
+
+/** 最近错误日志（新→旧） */
+export const getErrorLogs = asyncHandler(async (req: AdminRequest, res: Response) => {
+  const limit = Math.min(Math.max(parseInt(String(req.query.limit || '100')), 1) || 100, 500);
+  success(res, readRecentErrors(limit));
+});
+
+/** 清空错误日志 */
+export const clearErrorLogs = asyncHandler(async (req: AdminRequest, res: Response) => {
+  clearErrors();
+  success(res, { ok: true });
 });
 
 // ─── 数据备份（纯 Node 导出，无外部依赖） ────────────────────────────────

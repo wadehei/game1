@@ -3,6 +3,7 @@ import userRoutes from './user';
 import gameRoutes from './game';
 import levelRoutes from './level';
 import adminRoutes from './admin';
+import logsRoutes from './logs';
 import { getPublicSettings } from '../controllers/adminController';
 
 const router = Router();
@@ -11,6 +12,7 @@ router.use('/user', userRoutes);
 router.use('/game', gameRoutes);
 router.use('/level', levelRoutes);
 router.use('/admin', adminRoutes);
+router.use('/logs', logsRoutes);
 
 // 公开全局设置（客户端护眼守卫读取默认间隔）
 router.get('/settings/public', getPublicSettings);

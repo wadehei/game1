@@ -29,3 +29,6 @@ coverage/
 # Misc
 *.tgz
 .npm
+
+# 错误日志
+logs/
