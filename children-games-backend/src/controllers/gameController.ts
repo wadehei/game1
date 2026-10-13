@@ -14,7 +14,8 @@ const GAME_RULES: Record<string, { lowerScoreIsBetter: boolean }> = {
   tank: { lowerScoreIsBetter: false },
   mole: { lowerScoreIsBetter: false },
   simon: { lowerScoreIsBetter: false },
-  math: { lowerScoreIsBetter: false },
+  // 数学小怪兽的成绩是通关用时（秒），越快越好
+  math: { lowerScoreIsBetter: true },
 };
 
 // 每 15 颗星升一级
@@ -296,20 +297,32 @@ export const getDailyTask = asyncHandler(async (req: AuthRequest, res: Response)
   });
 });
 
-// 获取排行榜
+// 获取排行榜（按各游戏计分方向排序：步数/用时类少者在前）
 export const getLeaderboard = asyncHandler(async (req: Request, res: Response) => {
   const { gameId } = req.params;
 
-  if (!GAME_RULES[gameId as string]) {
+  const rule = GAME_RULES[gameId as string];
+  if (!rule) {
     fail(res, '未知的 gameId');
     return;
   }
 
   const limit = Math.min(Math.max(parseInt(req.query.limit as string, 10) || 50, 1), 100);
 
+  // 只比家庭角色（排除历史游客数据）
+  const familyUsers = await User.findAll({
+    where: { openid: { [Op.like]: 'family_%' } },
+    attributes: ['id'],
+  });
+  const familyIds = familyUsers.map((u) => u.id);
+  if (familyIds.length === 0) {
+    success(res, []);
+    return;
+  }
+
   const progressList = await GameProgress.findAll({
-    where: { gameId },
-    order: [['highScore', 'DESC']],
+    where: { gameId, highScore: { [Op.gt]: 0 }, userId: { [Op.in]: familyIds } },
+    order: [['highScore', rule.lowerScoreIsBetter ? 'ASC' : 'DESC']],
     limit,
   });
 

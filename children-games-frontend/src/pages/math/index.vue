@@ -11,6 +11,9 @@
       @selectLevel="openLevelSelect"
     />
 
+    <!-- 计时展示 -->
+    <div class="timer-bar">⏱️ {{ timeCost }} 秒</div>
+
     <!-- 小怪兽 + 题目 -->
     <div class="monster-area">
       <div class="monster" :class="monsterState">👾</div>
@@ -54,7 +57,7 @@
       :stars="stars"
       icon="🎉"
       title="小怪兽吃饱啦！"
-      :info="`答对 ${correctCount} 题 · 想了又想 ${wrongCount} 次`"
+      :info="`答对 ${correctCount} 题 · 用时 ${finalSeconds} 秒`"
       @retry="restartGame"
       @next="nextLevel"
     />
@@ -98,6 +101,11 @@ const monsterState = ref<'idle' | 'happy' | 'shake'>('idle');
 const showResult = ref(false);
 const stars = ref(0);
 const showLevelSelect = ref(false);
+// 计时统计：通关用时是成绩（秒），进排行榜比快慢
+const timeCost = ref(0);
+const finalSeconds = ref(0);
+let levelStartTs = 0;
+let timeTicker: ReturnType<typeof setInterval> | null = null;
 
 const levelConfig = ref({ targetCorrect: 8 });
 const question = ref<MathQuestion>({ mode: 'count', countA: 1, countB: 0, answer: 1, options: [1, 2, 3] });
@@ -109,6 +117,7 @@ let transitionTimer: ReturnType<typeof setTimeout> | null = null;
 const headerItems = computed(() => [
   { label: '关卡', value: currentLevel.value },
   { label: '答对', value: `${correctCount.value}/${levelConfig.value.targetCorrect}` },
+  { label: '用时', value: `${timeCost.value}s`, valueClass: 'math-timer' },
   { label: '想一想', value: wrongCount.value },
 ]);
 
@@ -217,7 +226,15 @@ const initGame = () => {
   monsterState.value = 'idle';
   showResult.value = false;
   stars.value = 0;
+  timeCost.value = 0;
+  finalSeconds.value = 0;
+  levelStartTs = Date.now();
   clearTimers();
+  timeTicker = setInterval(() => {
+    if (!gameEnded) {
+      timeCost.value = Math.floor((Date.now() - levelStartTs) / 1000);
+    }
+  }, 1000);
   nextQuestion();
 };
 
@@ -225,6 +242,11 @@ const endGame = () => {
   if (gameEnded) return;
   gameEnded = true;
 
+  finalSeconds.value = Math.max(1, Math.round((Date.now() - levelStartTs) / 1000));
+  if (timeTicker) {
+    clearInterval(timeTicker);
+    timeTicker = null;
+  }
   sounds.play('success');
   // 错得越少星星越多：0 次失误 3 星，≤2 次 2 星
   stars.value = wrongCount.value === 0 ? 3 : wrongCount.value <= 2 ? 2 : 1;
@@ -235,7 +257,7 @@ const endGame = () => {
 const saveProgress = () => {
   saveGameProgress({
     level: currentLevel.value,
-    score: correctCount.value,
+    score: finalSeconds.value,
     stars: stars.value,
   });
 };
@@ -274,6 +296,10 @@ onMounted(async () => {
 
 onUnmounted(() => {
   clearTimers();
+  if (timeTicker) {
+    clearInterval(timeTicker);
+    timeTicker = null;
+  }
 });
 </script>
 
@@ -306,6 +332,19 @@ onUnmounted(() => {
 :deep(.math-header .sound-btn),
 :deep(.math-header .back-btn) {
   background: rgba(67, 197, 158, 0.15);
+}
+
+.timer-bar {
+  text-align: center;
+  font-size: 15px;
+  font-weight: bold;
+  color: #14513f;
+  background: rgba(255, 255, 255, 0.45);
+  display: table;
+  margin: 0 auto 10px;
+  padding: 5px 16px;
+  border-radius: 14px;
+  font-variant-numeric: tabular-nums;
 }
 
 .monster-area {

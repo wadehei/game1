@@ -2,10 +2,10 @@
   <div class="home-page">
     <!-- 顶部状态栏 -->
     <div class="header">
-      <div class="user-info" @click="goToUser">
-        <img class="avatar" :src="userInfo?.avatar || defaultAvatar" alt="avatar" />
+      <div class="user-info" @click="goToProfiles">
+        <PlayerAvatar :avatar="userInfo?.avatar" :size="50" />
         <div class="user-details">
-          <div class="nickname">{{ userInfo?.nickname || '点击登录' }}</div>
+          <div class="nickname">{{ userInfo?.nickname || '选个角色' }}</div>
           <div class="level-badge">
             <span class="level-text">Lv.{{ userInfo?.level || 1 }}</span>
           </div>
@@ -43,11 +43,22 @@
             </div>
           </div>
         </div>
-        <div class="game-stars">
-          <span v-for="i in 3" :key="i" class="star" :class="{ active: i <= getGameStars(game.id) }">⭐</span>
+        <div class="card-right">
+          <div class="game-stars">
+            <span v-for="i in 3" :key="i" class="star" :class="{ active: i <= getGameStars(game.id) }">⭐</span>
+          </div>
+          <button class="board-btn" @click.stop="openBoard(game.id, game.name)">🏆 排行</button>
         </div>
       </div>
     </div>
+
+    <!-- 家庭排行榜弹层 -->
+    <LeaderboardModal
+      :show="!!boardGame"
+      :game-id="boardGame?.id || ''"
+      :game-name="boardGame?.name || ''"
+      @close="boardGame = null"
+    />
 
     <!-- 每日任务 -->
     <div class="daily-task card">
@@ -76,9 +87,12 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useUserStore } from '@/store/user';
 import { useGameStore } from '@/store/game';
-import { testLogin, getUserInfo } from '@/api/user';
+import { getUserInfo } from '@/api/user';
 import { getAllProgress, getDailyTask, type DailyTaskInfo } from '@/api/game';
 import { soundManager } from '@/utils/sound';
+import { formatScore } from '@/utils/gameMeta';
+import PlayerAvatar from '@/components/PlayerAvatar.vue';
+import LeaderboardModal from '@/components/LeaderboardModal.vue';
 import iconMemorySvg from '@/static/images/games/lobby/icon-memory.svg';
 import iconFruitSvg from '@/static/images/games/lobby/icon-fruit.svg';
 import iconPuzzleSvg from '@/static/images/games/lobby/icon-puzzle.svg';
@@ -87,7 +101,6 @@ import iconTankSvg from '@/static/images/games/lobby/icon-tank.svg';
 import iconMoleSvg from '@/static/images/games/lobby/icon-mole.svg';
 import iconSimonSvg from '@/static/images/games/lobby/icon-simon.svg';
 import iconMathSvg from '@/static/images/games/lobby/icon-math.svg';
-import defaultAvatar from '@/static/images/avatar.svg';
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -96,6 +109,11 @@ const gameStore = useGameStore();
 const userInfo = computed(() => userStore.userInfo);
 const dailyTask = ref<DailyTaskInfo>({ completedGames: 0, taskGoal: 3, rewardStars: 10, claimed: false });
 const starPulse = ref(false);
+const boardGame = ref<{ id: string; name: string } | null>(null);
+
+const openBoard = (id: string, name: string) => {
+  boardGame.value = { id, name };
+};
 
 // 星星数变化时触发脉冲动画
 watch(() => userInfo.value?.totalStars, () => {
@@ -126,31 +144,16 @@ const getGameStars = (gameId: string): number => {
   return Math.min(progress.levelStars?.[String(progress.currentLevel)] || 0, 3);
 };
 
-// 最高纪录文案（步数类游戏越小越好，文案区分）
-const SCORE_LABELS: Record<string, string> = {
-  fruit: '最高 {v} 分',
-  balloon: '最高 {v} 分',
-  tank: '最高 {v} 分',
-  mole: '最多 {v} 只',
-  simon: '最长 {v} 步',
-  memory: '最快 {v} 步',
-  puzzle: '最少 {v} 步',
-};
-
 const getScoreText = (gameId: string): string => {
   const progress = gameStore.getProgress(gameId);
   const highScore = progress?.highScore || 0;
   if (!highScore) return '';
-  const tpl = SCORE_LABELS[gameId];
-  return tpl ? tpl.replace('{v}', String(highScore)) : '';
+  return formatScore(gameId, highScore);
 };
 
-const goToUser = () => {
-  if (!userStore.isLoggedIn()) {
-    testLogin('小朋友');
-  } else {
-    router.push('/user');
-  }
+const goToProfiles = () => {
+  soundManager.playClick();
+  router.push('/profiles');
 };
 
 const goToGame = (gameId: string) => {
@@ -160,14 +163,7 @@ const goToGame = (gameId: string) => {
 
 onMounted(async () => {
   soundManager.init();
-  if (!userStore.isLoggedIn()) {
-    try {
-      await testLogin('小朋友');
-    } catch (e) {
-      console.log('游客登录失败（离线模式）', e);
-    }
-  }
-  // 刷新用户信息（星星/等级会随游戏进度变化，登录时的快照会过期）
+  // 路由守卫保证进入首页前已有角色；这里刷新星星/等级快照
   try {
     await getUserInfo();
   } catch (e) {
@@ -360,6 +356,32 @@ onMounted(async () => {
 .game-stars {
   display: flex;
   gap: 2px;
+}
+
+.card-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.board-btn {
+  border: none;
+  background: rgba(255, 255, 255, 0.3);
+  color: #fff;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 4px 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  touch-action: manipulation;
+}
+
+.board-btn:active {
+  transform: scale(0.92);
+  background: rgba(255, 255, 255, 0.45);
 }
 
 .star {

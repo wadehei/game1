@@ -7,6 +7,11 @@ const routes = [
     component: () => import('@/pages/index/index.vue'),
   },
   {
+    path: '/profiles',
+    name: 'Profiles',
+    component: () => import('@/pages/profiles/index.vue'),
+  },
+  {
     path: '/user',
     name: 'User',
     component: () => import('@/pages/user/index.vue'),
@@ -56,6 +61,14 @@ const routes = [
 const router = createRouter({
   history: createWebHashHistory(),
   routes,
+});
+
+// 未登录（没有角色凭证）时先去选角色页
+router.beforeEach((to) => {
+  const hasToken = !!localStorage.getItem('token');
+  if (to.path !== '/profiles' && !hasToken) {
+    return { path: '/profiles' };
+  }
 });
 
 export default router;

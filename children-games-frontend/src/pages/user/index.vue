@@ -2,7 +2,7 @@
   <div class="user-page">
     <!-- 用户信息卡片 -->
     <div class="user-card">
-      <img class="avatar" :src="userInfo?.avatar || defaultAvatar" alt="avatar" />
+      <PlayerAvatar :avatar="userInfo?.avatar" :size="70" />
       <div class="user-details">
         <div class="nickname">{{ userInfo?.nickname || '未登录' }}</div>
         <div class="level-info">
@@ -131,7 +131,7 @@ import { useUserStore } from '@/store/user';
 import { useGameStore } from '@/store/game';
 import { getAchievements, type AchievementInfo } from '@/api/game';
 import { getRestIntervalMinutes, getTodayPlaySeconds, resetTodayPlayTime } from '@/composables/usePlayTimeGuard';
-import defaultAvatar from '@/static/images/avatar.svg';
+import PlayerAvatar from '@/components/PlayerAvatar.vue';
 
 const router = useRouter();
 const userStore = useUserStore();

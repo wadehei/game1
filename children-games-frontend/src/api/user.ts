@@ -21,6 +21,28 @@ export const testLogin = async (nickname?: string): Promise<LoginResult> => {
   return result;
 };
 
+// 家庭角色登录：uid 登录已有成员；nickname+avatar 创建新成员
+export const familyLogin = async (data: { uid?: number; nickname?: string; avatar?: string }): Promise<LoginResult> => {
+  const result = await api.post<LoginResult>('/user/login/family', data);
+  const userStore = useUserStore();
+  userStore.setToken(result.token);
+  userStore.setUserInfo(result.userInfo);
+  return result;
+};
+
+export interface FamilyProfile {
+  id: number;
+  nickname: string;
+  avatar: string;
+  level: number;
+  totalStars: number;
+}
+
+// 家庭成员列表（按总星星排序）
+export const getProfiles = async (): Promise<FamilyProfile[]> => {
+  return api.get<FamilyProfile[]>('/user/profiles');
+};
+
 // 获取用户信息
 export const getUserInfo = async () => {
   const userStore = useUserStore();
