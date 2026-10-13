@@ -147,12 +147,8 @@ const levelConfig = ref<Record<string, any>>({
 
 const gridSize = computed(() => {
   const total = levelConfig.value.pairs * 2;
-  // 选能整除排列的列数，避免最后一行缺角（6 张 → 3×2，10 张 → 5×2）
-  let cols = Math.ceil(Math.sqrt(total));
-  while (cols < total && total % cols !== 0) {
-    cols++;
-  }
-  return cols;
+  // 一行最多 3 个（降低儿童视觉负荷，图标更大）；总张数为偶数，3 整除用 3 列、否则 2 列，无残行
+  return total % 3 === 0 ? 3 : 2;
 });
 
 const headerItems = computed(() => [
@@ -416,35 +412,37 @@ onUnmounted(() => {
 <style scoped>
 .memory-game {
   min-height: 100vh;
-  background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+  /* 低饱和蓝灰渐变：长时间注视不易视疲劳 */
+  background: linear-gradient(180deg, #bcc8de 0%, #97a8c8 100%);
   padding: 20px;
   position: relative;
 }
 
 .memory-header {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.45);
   margin-bottom: 12px;
 }
 
 :deep(.memory-header .label) {
-  color: rgba(255, 255, 255, 0.9);
+  color: #5a6a85;
 }
 
 :deep(.memory-header .value) {
-  color: #fff;
+  color: #2f3c55;
 }
 
 :deep(.memory-header .value.warning) {
-  color: #FFD700;
+  color: #d98e04;
 }
 
 :deep(.memory-header .sound-btn) {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.55);
+  color: #3d4a63;
 }
 
 :deep(.memory-header .back-btn) {
-  background: rgba(255, 255, 255, 0.2);
-  color: #fff;
+  background: rgba(255, 255, 255, 0.55);
+  color: #3d4a63;
 }
 
 .game-board {
@@ -472,9 +470,9 @@ onUnmounted(() => {
 }
 
 @keyframes matchGlow {
-  0% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7); }
-  50% { box-shadow: 0 0 20px 10px rgba(255, 215, 0, 0.3); }
-  100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
+  0% { box-shadow: 0 0 0 0 rgba(226, 178, 96, 0.55); }
+  50% { box-shadow: 0 0 16px 8px rgba(226, 178, 96, 0.25); }
+  100% { box-shadow: 0 0 0 0 rgba(226, 178, 96, 0); }
 }
 
 .card-inner {
@@ -502,25 +500,25 @@ onUnmounted(() => {
 }
 
 .card-front {
-  background: #fff;
+  background: #fdfcf8;
   transform: rotateY(180deg);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(47, 60, 85, 0.08);
 }
 
 .card-back {
-  /* 圆点纹理 + 渐变底：比纯色卡背更有"卡牌感" */
+  /* 柔和奶油色卡背：圆点纹理降低对比，护眼 */
   background-image:
-    radial-gradient(rgba(255, 255, 255, 0.4) 2.5px, transparent 2.5px),
-    linear-gradient(135deg, #FFB347 0%, #FF9A56 100%);
+    radial-gradient(rgba(255, 255, 255, 0.5) 2.5px, transparent 2.5px),
+    linear-gradient(135deg, #f4e3c8 0%, #ead0ab 100%);
   background-size: 18px 18px, 100% 100%;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(47, 60, 85, 0.12);
 }
 
 .card-back::after {
   content: '';
   position: absolute;
   inset: 5px;
-  border: 2px dashed rgba(255, 255, 255, 0.65);
+  border: 2px dashed rgba(255, 255, 255, 0.75);
   border-radius: 7px;
 }
 
