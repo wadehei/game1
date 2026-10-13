@@ -31,6 +31,9 @@
       @next="nextLevel"
     />
 
+    <!-- 暂停 -->
+    <PauseMenu :show="paused" @pause="pauseGame" @resume="resumeGame" @quit="quitGame" />
+
     <!-- 选关弹层 -->
     <LevelSelectModal
       :show="showLevelSelect"
@@ -56,6 +59,7 @@ import { defaultLevelConfig } from '@/utils/levelDefaults';
 import GameHeader from '@/components/GameHeader.vue';
 import ResultModal from '@/components/ResultModal.vue';
 import LevelSelectModal from '@/components/LevelSelectModal.vue';
+import PauseMenu from '@/components/PauseMenu.vue';
 import balloonRedSvg from '@/static/images/games/balloon/balloon-red.svg';
 import balloonTealSvg from '@/static/images/games/balloon/balloon-teal.svg';
 import balloonYellowSvg from '@/static/images/games/balloon/balloon-yellow.svg';
@@ -117,6 +121,7 @@ const showResult = ref(false);
 const gameWon = ref(false);
 const stars = ref(0);
 const showLevelSelect = ref(false);
+const paused = ref(false);
 let levelSelectPaused = false;
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
@@ -212,7 +217,25 @@ const handleRestPause = () => {
 };
 
 const handleRestResume = () => {
+  // 用户主动暂停期间不因休息结束而恢复
+  if (!paused.value) resumeLoop();
+};
+
+// ─── 手动暂停 ────────────────────────────────
+const pauseGame = () => {
+  if (gameEnded || paused.value) return;
+  paused.value = true;
+  pauseLoop();
+};
+
+const resumeGame = () => {
+  if (gameEnded || !paused.value) return;
+  paused.value = false;
   resumeLoop();
+};
+
+const quitGame = () => {
+  router.back();
 };
 
 const spawnBalloon = () => {
@@ -428,7 +451,7 @@ const render = () => {
 };
 
 const shoot = (e: any) => {
-  if (bullets.value <= 0) return;
+  if (paused.value || bullets.value <= 0) return;
   sounds.play('shoot');
 
   // 画布内坐标 = 视口坐标 - 画布偏移

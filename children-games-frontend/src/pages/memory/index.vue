@@ -44,20 +44,8 @@
       @next="nextLevel"
     />
 
-    <!-- 暂停按钮 -->
-    <div class="pause-btn" @click="pauseGame">
-      <span>⏸️</span>
-    </div>
-
-    <!-- 暂停弹层 -->
-    <div v-if="paused" class="pause-overlay">
-      <div class="pause-content">
-        <span class="pause-icon">⏸️</span>
-        <div class="pause-title">游戏暂停</div>
-        <button class="btn-resume" @click="resumeGame">继续游戏</button>
-        <button class="btn-quit" @click="quitGame">退出游戏</button>
-      </div>
-    </div>
+    <!-- 暂停 -->
+    <PauseMenu :show="paused" @pause="pauseGame" @resume="resumeGame" @quit="quitGame" />
 
     <!-- 选关弹层 -->
     <LevelSelectModal
@@ -83,6 +71,7 @@ import { defaultLevelConfig } from '@/utils/levelDefaults';
 import GameHeader from '@/components/GameHeader.vue';
 import ResultModal from '@/components/ResultModal.vue';
 import LevelSelectModal from '@/components/LevelSelectModal.vue';
+import PauseMenu from '@/components/PauseMenu.vue';
 
 import dogSvg from '@/static/images/games/memory/dog.svg';
 import catSvg from '@/static/images/games/memory/cat.svg';
@@ -226,6 +215,7 @@ const startTimer = () => {
 };
 
 const pauseGame = () => {
+  if (gameEnded) return;
   paused.value = true;
   stopTimer();
 };
@@ -545,115 +535,4 @@ onUnmounted(() => {
   filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.25));
 }
 
-.pause-btn {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 44px;
-  height: 44px;
-  background: rgba(255, 255, 255, 0.25);
-  backdrop-filter: blur(8px);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 20;
-  transition: all 0.2s ease;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-}
-
-.pause-btn:hover {
-  background: rgba(255, 255, 255, 0.4);
-  transform: scale(1.1);
-}
-
-.pause-btn:active {
-  transform: scale(0.95);
-}
-
-.pause-btn span {
-  font-size: 20px;
-  line-height: 1;
-}
-
-/* 暂停弹层 */
-.pause-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-  animation: pauseFadeIn 0.25s ease;
-}
-
-@keyframes pauseFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.pause-content {
-  background: #fff;
-  border-radius: 20px;
-  padding: 32px;
-  text-align: center;
-  width: 90%;
-  max-width: 300px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  animation: pauseBounceIn 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-}
-
-@keyframes pauseBounceIn {
-  from { transform: scale(0.5); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
-}
-
-.pause-icon {
-  font-size: 48px;
-  display: block;
-  margin-bottom: 8px;
-}
-
-.pause-title {
-  font-size: 20px;
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 20px;
-}
-
-.btn-resume,
-.btn-quit {
-  display: block;
-  width: 100%;
-  padding: 13px;
-  border-radius: 20px;
-  font-size: 15px;
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-resume {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #fff;
-  margin-bottom: 10px;
-}
-
-.btn-resume:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-}
-
-.btn-quit {
-  background: #f0f0f0;
-  color: #666;
-}
-
-.btn-quit:hover {
-  background: #e5e5e5;
-}
 </style>

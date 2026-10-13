@@ -43,6 +43,9 @@
       @next="nextLevel"
     />
 
+    <!-- 暂停 -->
+    <PauseMenu :show="paused" @pause="pauseGame" @resume="resumeGame" @quit="quitGame" />
+
     <!-- 选关弹层 -->
     <LevelSelectModal
       :show="showLevelSelect"
@@ -67,6 +70,7 @@ import { defaultLevelConfig } from '@/utils/levelDefaults';
 import GameHeader from '@/components/GameHeader.vue';
 import ResultModal from '@/components/ResultModal.vue';
 import LevelSelectModal from '@/components/LevelSelectModal.vue';
+import PauseMenu from '@/components/PauseMenu.vue';
 
 // 四个音块：颜色 + 音高（C5 / E5 / G5 / C6，五度上行，儿童音域友好）
 const PADS = [
@@ -92,6 +96,7 @@ const showResult = ref(false);
 const gameWon = ref(false);
 const stars = ref(0);
 const showLevelSelect = ref(false);
+const paused = ref(false);
 
 const levelConfig = ref<Record<string, any>>({ seqLength: 3, playbackMs: 595 });
 
@@ -175,7 +180,7 @@ const playSequence = () => {
 };
 
 const tapPad = (padId: number) => {
-  if (gameEnded || phase.value !== 'input') return;
+  if (gameEnded || paused.value || phase.value !== 'input') return;
 
   soundManager.playTone(PADS[padId].tone);
   litPad.value = padId;
@@ -294,9 +299,30 @@ const handleRestPause = () => {
 };
 
 const handleRestResume = () => {
-  if (!gameEnded && !showResult.value) {
+  // 用户主动暂停期间不因休息结束而恢复
+  if (!gameEnded && !showResult.value && !paused.value) {
     playSequence();
   }
+};
+
+// ─── 手动暂停：停播序列，恢复后从头重播 ──────────────
+const pauseGame = () => {
+  if (gameEnded || paused.value) return;
+  paused.value = true;
+  clearPlayback();
+  phase.value = 'ready';
+};
+
+const resumeGame = () => {
+  if (gameEnded || !paused.value) return;
+  paused.value = false;
+  if (!showResult.value) {
+    playSequence();
+  }
+};
+
+const quitGame = () => {
+  router.back();
 };
 
 onMounted(async () => {

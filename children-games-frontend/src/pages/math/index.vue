@@ -62,6 +62,9 @@
       @next="nextLevel"
     />
 
+    <!-- 暂停 -->
+    <PauseMenu :show="paused" @pause="pauseGame" @resume="resumeGame" @quit="quitGame" />
+
     <!-- 选关弹层 -->
     <LevelSelectModal
       :show="showLevelSelect"
@@ -79,11 +82,12 @@ import { useRouter } from 'vue-router';
 import { useGameSounds } from '@/composables/useGameSounds';
 import { useGameProgress } from '@/composables/useGameProgress';
 import { getLevelOverride } from '@/api/game';
-import { speak } from '@/utils/voice';
+import { speak, stopSpeaking } from '@/utils/voice';
 import { defaultLevelConfig } from '@/utils/levelDefaults';
 import GameHeader from '@/components/GameHeader.vue';
 import ResultModal from '@/components/ResultModal.vue';
 import LevelSelectModal from '@/components/LevelSelectModal.vue';
+import PauseMenu from '@/components/PauseMenu.vue';
 
 interface MathQuestion {
   mode: 'count' | 'add';
@@ -104,6 +108,7 @@ const monsterState = ref<'idle' | 'happy' | 'shake'>('idle');
 const showResult = ref(false);
 const stars = ref(0);
 const showLevelSelect = ref(false);
+const paused = ref(false);
 // 计时统计：通关用时是成绩（秒），进排行榜比快慢
 const timeCost = ref(0);
 const finalSeconds = ref(0);
@@ -116,6 +121,7 @@ const question = ref<MathQuestion>({ mode: 'count', countA: 1, countB: 0, answer
 let gameEnded = false;
 let hintTimer: ReturnType<typeof setTimeout> | null = null;
 let transitionTimer: ReturnType<typeof setTimeout> | null = null;
+let pausedAt = 0;
 
 const headerItems = computed(() => [
   { label: '关卡', value: currentLevel.value },
@@ -220,7 +226,7 @@ const clearTimers = () => {
 };
 
 const answerQuestion = (value: number) => {
-  if (gameEnded || monsterState.value !== 'idle') return;
+  if (gameEnded || paused.value || monsterState.value !== 'idle') return;
 
   if (value === question.value.answer) {
     correctCount.value++;
@@ -247,6 +253,34 @@ const answerQuestion = (value: number) => {
       monsterState.value = 'idle';
     }, 550);
   }
+};
+
+// ─── 手动暂停：冻结计时（成绩=用时，暂停不计数），禁止答题 ──────────────
+const pauseGame = () => {
+  if (gameEnded || paused.value) return;
+  paused.value = true;
+  pausedAt = Date.now();
+  if (timeTicker) {
+    clearInterval(timeTicker);
+    timeTicker = null;
+  }
+  stopSpeaking();
+};
+
+const resumeGame = () => {
+  if (gameEnded || !paused.value) return;
+  paused.value = false;
+  // 把暂停时长从计时里剔除
+  levelStartTs += Date.now() - pausedAt;
+  timeTicker = setInterval(() => {
+    if (!gameEnded && !paused.value) {
+      timeCost.value = Math.floor((Date.now() - levelStartTs) / 1000);
+    }
+  }, 1000);
+};
+
+const quitGame = () => {
+  router.back();
 };
 
 const initGame = () => {

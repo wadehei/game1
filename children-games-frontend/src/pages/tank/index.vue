@@ -66,6 +66,9 @@
       @next="nextLevel"
     />
 
+    <!-- 暂停 -->
+    <PauseMenu :show="paused" @pause="pauseGame" @resume="resumeGame" @quit="quitGame" />
+
     <!-- 选关弹层 -->
     <LevelSelectModal
       :show="showLevelSelect"
@@ -91,6 +94,7 @@ import { defaultLevelConfig } from '@/utils/levelDefaults';
 import GameHeader from '@/components/GameHeader.vue';
 import ResultModal from '@/components/ResultModal.vue';
 import LevelSelectModal from '@/components/LevelSelectModal.vue';
+import PauseMenu from '@/components/PauseMenu.vue';
 import tankPlayerSvg from '@/static/images/games/tank/tank-player.svg';
 import tankEnemySvg from '@/static/images/games/tank/tank-enemy.svg';
 import tankBossSvg from '@/static/images/games/tank/tank-boss.svg';
@@ -146,6 +150,7 @@ const showResult = ref(false);
 const gameWon = ref(false);
 const stars = ref(0);
 const showLevelSelect = ref(false);
+const paused = ref(false);
 let levelSelectPaused = false;
 let explosions: Explosion[] = [];
 const playerHitFlash = ref(0);
@@ -275,7 +280,25 @@ const handleRestPause = () => {
 };
 
 const handleRestResume = () => {
+  // 用户主动暂停期间不因休息结束而恢复
+  if (!paused.value) resumeLoop();
+};
+
+// ─── 手动暂停 ────────────────────────────────
+const pauseGame = () => {
+  if (gameEnded || paused.value) return;
+  paused.value = true;
+  pauseLoop();
+};
+
+const resumeGame = () => {
+  if (gameEnded || !paused.value) return;
+  paused.value = false;
   resumeLoop();
+};
+
+const quitGame = () => {
+  router.back();
 };
 
 const gameLoop = () => {
@@ -524,6 +547,7 @@ const enemyShoot = (enemy: Tank) => {
 };
 
 const fire = () => {
+  if (paused.value || gameEnded) return;
   const now = Date.now();
   if (now - player.lastFire < 300) return;
   sounds.play('shoot');
@@ -541,6 +565,7 @@ const fire = () => {
 };
 
 const moveLeft = () => {
+  if (paused.value) return;
   moveDirection = -1;
 };
 
@@ -561,6 +586,7 @@ const getCanvasX = (e: any): number => {
 };
 
 const startMove = (e: any) => {
+  if (paused.value) return;
   isPressed = true;
   moveDirection = getCanvasX(e) < canvasWidth.value / 2 ? -1 : 1;
 };
