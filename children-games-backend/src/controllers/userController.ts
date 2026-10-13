@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { Op } from 'sequelize';
 import jwt from 'jsonwebtoken';
-import { User } from '../models';
+import { User, UserPlaytime } from '../models';
 import { config } from '../config';
 import { AuthRequest } from '../middleware/auth';
 import { success, fail, asyncHandler } from '../utils/response';
@@ -145,6 +145,30 @@ export const getProfiles = asyncHandler(async (req: Request, res: Response) => {
     level: u.level,
     totalStars: u.totalStars,
   })));
+});
+
+// 上报游玩时长（客户端心跳，供后台看板统计）
+export const reportPlaytime = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const userId = req.userId!;
+  const seconds = Math.max(0, Math.min(parseInt(req.body?.seconds, 10) || 0, 180));
+  if (seconds === 0) {
+    success(res, { ok: true });
+    return;
+  }
+
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const date = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
+  const [row] = await UserPlaytime.findOrCreate({
+    where: { userId, date },
+    defaults: { userId, date, seconds },
+  });
+  if (row) {
+    row.seconds += seconds;
+    await row.save();
+  }
+  success(res, { ok: true });
 });
 
 // 获取用户信息

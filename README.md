@@ -131,9 +131,13 @@ npm run dev:mp-weixin
 - 排行榜
 
 ### 家长功能
+- **家长后台**（`/#/admin`，密码登录，PC/手机自适应）：
+  - 数据看板：家庭成员、总星星、今日游玩时长、最近游玩动态
+  - 角色管理：改名、换形象、重置进度、删除（含历史游客清理）
+  - 护眼策略：全局默认提醒间隔（服务端下发，全设备生效）
+  - 数据备份：一键导出全部业务数据为 .sql
 - 家长中心（两位数加法门禁，孩子进不去）
-- 护眼提醒：连续游玩 15/20/30 分钟后全屏休息 20 秒（可关闭）
-- 今日游玩时长统计
+- 护眼提醒：连续游玩后全屏休息 20 秒（间隔可在后台调整）
 - 支持添加到手机主屏幕（PWA），游戏中屏幕不自动休眠
 
 ## 🎨 游戏设计原则
@@ -173,6 +177,15 @@ npm run dev:mp-weixin
 - `POST /api/user/login/test` - 测试登录（开发环境）
 - `GET /api/user/info` - 获取用户信息
 - `PUT /api/user/info` - 更新用户信息
+- `POST /api/user/playtime` - 游玩时长心跳上报
+
+### 后台管理（需 ADMIN_PASSWORD 登录）
+- `POST /api/admin/login` - 管理员登录
+- `GET /api/admin/overview` - 数据看板
+- `GET /api/admin/users` / `PUT /api/admin/users/:id` / `DELETE /api/admin/users/:id` - 角色管理
+- `POST /api/admin/users/:id/reset` - 重置进度
+- `GET /api/admin/settings` / `PUT /api/admin/settings` - 护眼策略
+- `GET /api/admin/backup` - 导出数据备份
 
 ### 游戏相关
 - `GET /api/game/progress` - 获取所有游戏进度

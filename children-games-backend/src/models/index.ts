@@ -2,12 +2,16 @@ export { User } from './User';
 export { GameProgress } from './GameProgress';
 export { LevelConfig } from './LevelConfig';
 export { DailyTask } from './DailyTask';
+export { AppSetting } from './AppSetting';
+export { UserPlaytime } from './UserPlaytime';
 
 import { sequelize } from '../config/database';
 import { User } from './User';
 import { GameProgress } from './GameProgress';
 import { LevelConfig } from './LevelConfig';
 import { DailyTask } from './DailyTask';
+import { AppSetting } from './AppSetting';
+import { UserPlaytime } from './UserPlaytime';
 
 // 定义模型关联关系
 User.hasMany(GameProgress, { foreignKey: 'userId', as: 'gameProgress' });
@@ -22,11 +26,15 @@ export const initModels = async (): Promise<void> => {
     await GameProgress.sync();
     await LevelConfig.sync();
     await DailyTask.sync();
+    await AppSetting.sync();
+    await UserPlaytime.sync();
     // sync 不会给旧表补列，逐一对比真实表结构补齐缺失列（防表结构漂移）
     await syncMissingColumns(User);
     await syncMissingColumns(GameProgress);
     await syncMissingColumns(LevelConfig);
     await syncMissingColumns(DailyTask);
+    await syncMissingColumns(AppSetting);
+    await syncMissingColumns(UserPlaytime);
     console.log('✅ 数据表同步成功');
   } catch (error) {
     console.error('❌ 数据表同步失败:', error);

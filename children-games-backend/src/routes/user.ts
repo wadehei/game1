@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { wxLogin, testLogin, familyLogin, getProfiles, getUserInfo, updateUserInfo } from '../controllers/userController';
+import { wxLogin, testLogin, familyLogin, getProfiles, getUserInfo, updateUserInfo, reportPlaytime } from '../controllers/userController';
 import { authMiddleware } from '../middleware/auth';
 
 const router = Router();
@@ -15,5 +15,7 @@ router.get('/profiles', getProfiles);
 // 用户信息接口（需要认证）
 router.get('/info', authMiddleware, getUserInfo);
 router.put('/info', authMiddleware, updateUserInfo);
+// 游玩时长心跳上报（需要认证）
+router.post('/playtime', authMiddleware, reportPlaytime);
 
 export default router;

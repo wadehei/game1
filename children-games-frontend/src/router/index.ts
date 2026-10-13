@@ -12,6 +12,16 @@ const routes = [
     component: () => import('@/pages/profiles/index.vue'),
   },
   {
+    path: '/admin',
+    name: 'Admin',
+    component: () => import('@/pages/admin/index.vue'),
+  },
+  {
+    path: '/admin/login',
+    name: 'AdminLogin',
+    component: () => import('@/pages/admin/AdminLogin.vue'),
+  },
+  {
     path: '/user',
     name: 'User',
     component: () => import('@/pages/user/index.vue'),
@@ -63,10 +73,16 @@ const router = createRouter({
   routes,
 });
 
-// 未登录（没有角色凭证）时先去选角色页
+// 未登录（没有角色凭证）时先去选角色页；后台管理走独立的密码体系
 router.beforeEach((to) => {
+  if (to.path === '/admin' && !localStorage.getItem('admin_token')) {
+    return { path: '/admin/login' };
+  }
+  if (to.path.startsWith('/admin') || to.path === '/profiles') {
+    return true;
+  }
   const hasToken = !!localStorage.getItem('token');
-  if (to.path !== '/profiles' && !hasToken) {
+  if (!hasToken) {
     return { path: '/profiles' };
   }
 });
