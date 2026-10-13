@@ -76,7 +76,7 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useUserStore } from '@/store/user';
 import { useGameStore } from '@/store/game';
-import { testLogin } from '@/api/user';
+import { testLogin, getUserInfo } from '@/api/user';
 import { getAllProgress, getDailyTask, type DailyTaskInfo } from '@/api/game';
 import { soundManager } from '@/utils/sound';
 import iconMemorySvg from '@/static/images/games/lobby/icon-memory.svg';
@@ -166,6 +166,12 @@ onMounted(async () => {
     } catch (e) {
       console.log('游客登录失败（离线模式）', e);
     }
+  }
+  // 刷新用户信息（星星/等级会随游戏进度变化，登录时的快照会过期）
+  try {
+    await getUserInfo();
+  } catch (e) {
+    console.log('刷新用户信息失败', e);
   }
   try {
     await getAllProgress();

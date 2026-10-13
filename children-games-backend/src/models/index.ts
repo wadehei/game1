@@ -22,8 +22,11 @@ export const initModels = async (): Promise<void> => {
     await GameProgress.sync();
     await LevelConfig.sync();
     await DailyTask.sync();
-    await ensureColumn('game_progress', 'levelStars', 'TEXT NULL COMMENT \'每关最佳星级JSON对象\'');
-    await ensureColumn('users', 'achievements', 'TEXT NULL COMMENT \'已解锁成就ID JSON数组\'');
+    // sync 不会给旧表补列，逐一对比真实表结构补齐缺失列（防表结构漂移）
+    await syncMissingColumns(User);
+    await syncMissingColumns(GameProgress);
+    await syncMissingColumns(LevelConfig);
+    await syncMissingColumns(DailyTask);
     console.log('✅ 数据表同步成功');
   } catch (error) {
     console.error('❌ 数据表同步失败:', error);
@@ -31,15 +34,17 @@ export const initModels = async (): Promise<void> => {
   }
 };
 
-/** 幂等加列：已存在时忽略 MySQL 1060 错误（sync 不会给旧表补列） */
-const ensureColumn = async (table: string, column: string, definition: string): Promise<void> => {
-  try {
-    await sequelize.query(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`);
-    console.log(`✅ 已补充数据列: ${table}.${column}`);
-  } catch (error: any) {
-    const isDuplicateColumn = error?.original?.errno === 1060 || error?.original?.code === 'ER_DUP_FIELDNAME';
-    if (!isDuplicateColumn) {
-      throw error;
+/** 对比模型定义与数据库实际列，自动补齐缺失列 */
+const syncMissingColumns = async (model: any): Promise<void> => {
+  const queryInterface = sequelize.getQueryInterface();
+  const tableName = model.getTableName() as string;
+  const described = await queryInterface.describeTable(tableName);
+  for (const [name, attr] of Object.entries<any>(model.rawAttributes)) {
+    const field = attr.field || name;
+    if (described[field]) {
+      continue;
     }
+    await queryInterface.addColumn(tableName, field, attr);
+    console.log(`✅ 已补充数据列: ${tableName}.${field}`);
   }
 };

@@ -48,6 +48,9 @@ const showNext = () => {
   left: 50%;
   transform: translateX(-50%);
   z-index: 400;
+  /* fixed + left:50% 会按剩余空间收缩，显式按内容取宽，避免文字被挤成竖排 */
+  width: max-content;
+  max-width: 86vw;
 }
 
 .toast-body {

@@ -52,7 +52,7 @@ const evaluateAchievements = async (userId: number): Promise<AchievementDef[]> =
 
   const rewardRows = await DailyTask.findAll({
     where: { userId },
-    attributes: [[sequelize.fn('SUM', sequelize.col('task_reward')), 'rewardTotal']],
+    attributes: [[sequelize.fn('SUM', sequelize.col('taskReward')), 'rewardTotal']],
     raw: true,
   });
   const dailyRewardClaimed = (parseInt((rewardRows[0] as any)?.rewardTotal, 10) || 0) > 0;
@@ -228,7 +228,7 @@ export const updateGameProgress = asyncHandler(async (req: AuthRequest, res: Res
     // 历史累计的每日任务奖励，避免重算时被覆盖
     const rewardRows = await DailyTask.findAll({
       where: { userId },
-      attributes: [[sequelize.fn('SUM', sequelize.col('task_reward')), 'rewardTotal']],
+      attributes: [[sequelize.fn('SUM', sequelize.col('taskReward')), 'rewardTotal']],
       raw: true,
     });
     const rewardTotal = parseInt((rewardRows[0] as any)?.rewardTotal, 10) || 0;
