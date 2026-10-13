@@ -262,6 +262,22 @@ export const getMyCareer = asyncHandler(async (req: AuthRequest, res: Response) 
   const totalPlayCount = progresses.reduce((sum, p) => sum + (p.playCount || 0), 0);
   const totalWinCount = progresses.reduce((sum, p) => sum + (p.winCount || 0), 0);
 
+  // 最近 7 天游玩时长（含今天），趋势图用
+  const secondsByDate = new Map(timeRows.map((r) => [r.date, r.seconds]));
+  const last7 = [] as { date: string; label: string; seconds: number }[];
+  const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const key = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    last7.push({
+      date: key,
+      label: `周${dayNames[d.getDay()]}`,
+      seconds: secondsByDate.get(key) || 0,
+    });
+  }
+
   success(res, {
     user: {
       id: user.id,
@@ -279,6 +295,7 @@ export const getMyCareer = asyncHandler(async (req: AuthRequest, res: Response) 
       achievementCount: achievements.length,
       rewardStars,
     },
+    last7,
     games: progresses
       .map((p) => ({
         gameId: p.gameId,

@@ -138,6 +138,13 @@ export const speak = (text: string): void => {
         }
         utter.rate = 0.9;
         utter.pitch = 1.0;
+        // 与音效共用音量设置
+        try {
+          const v = parseFloat(localStorage.getItem('games_volume') || '');
+          if (Number.isFinite(v)) utter.volume = Math.max(0, Math.min(1, v));
+        } catch {
+          // ignore
+        }
         synth.speak(utter);
       }
     };

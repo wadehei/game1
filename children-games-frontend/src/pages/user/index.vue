@@ -37,6 +37,19 @@
     <div class="career-section card">
       <div class="section-title">🏁 我的生涯</div>
 
+      <!-- 最近 7 天游玩趋势 -->
+      <div v-if="career && trendMax > 0" class="trend-block">
+        <div class="trend-title">📈 最近 7 天</div>
+        <div class="trend-bars">
+          <div v-for="d in career.last7" :key="d.date" class="trend-col" :title="`${d.label} ${Math.round(d.seconds / 60)} 分钟`">
+            <div class="trend-bar-wrap">
+              <div class="trend-bar" :style="{ height: trendBarHeight(d.seconds) }" />
+            </div>
+            <span class="trend-label">{{ d.label }}</span>
+          </div>
+        </div>
+      </div>
+
       <!-- 生涯总览 -->
       <div v-if="career" class="career-overview">
         <div class="ov-item">
@@ -109,6 +122,18 @@
       <div class="edit-row">
         <span class="edit-label">昵称</span>
         <input v-model="editNickname" class="edit-input" maxlength="12" />
+      </div>
+      <div class="edit-row">
+        <span class="edit-label">音量</span>
+        <input
+          class="volume-slider"
+          type="range"
+          min="0"
+          max="100"
+          :value="volume"
+          @input="onVolumeChange"
+        />
+        <span class="volume-num">{{ Math.round(volume * 100) }}%</span>
       </div>
       <div class="edit-row">
         <span class="edit-label">形象</span>
@@ -221,6 +246,7 @@ import { useGameStore } from '@/store/game';
 import { getAchievements, type AchievementInfo } from '@/api/game';
 import { updateUserInfo, updateMyPin, getMyCareer, type MyCareer, type CareerGame } from '@/api/user';
 import { uploadPhotoAvatar } from '@/utils/avatarUpload';
+import { soundManager } from '@/utils/sound';
 import { getGameMeta, formatScore } from '@/utils/gameMeta';
 import { getRestIntervalMinutes, getTodayPlaySeconds, resetTodayPlayTime } from '@/composables/usePlayTimeGuard';
 import PlayerAvatar from '@/components/PlayerAvatar.vue';
@@ -268,6 +294,12 @@ const winRateText = computed(() => {
   if (!t || t.playCount === 0) return '-';
   return `${Math.round((t.winCount / t.playCount) * 100)}%`;
 });
+
+const trendMax = computed(() => Math.max(...(career.value?.last7?.map((d) => d.seconds) || [0]), 1));
+const trendBarHeight = (seconds: number): string => {
+  const pct = Math.max((seconds / trendMax.value) * 100, 4);
+  return `${pct}%`;
+};
 
 const gameName = (id: string): string => getGameMeta(id)?.name || id;
 const gameIcon = (id: string): string => games.find((g) => g.id === id)?.icon || '🎮';
@@ -356,6 +388,15 @@ const saveProfile = async () => {
 };
 
 const hasPin = ref(false);
+const volume = ref(soundManager.getVolume());
+
+const onVolumeChange = (event: Event) => {
+  // 滑杆 0~100 → 音量 0~1
+  const v = parseFloat((event.target as HTMLInputElement).value) / 100;
+  volume.value = v;
+  soundManager.setVolume(v);
+  soundManager.playClick();
+};
 const pinOld = ref('');
 const pinNew = ref('');
 const savingPin = ref(false);
@@ -754,6 +795,56 @@ onMounted(async () => {
 }
 
 /* 我的生涯 */
+.trend-block {
+  margin-bottom: 16px;
+}
+
+.trend-title {
+  font-size: 13px;
+  color: #888;
+  margin-bottom: 8px;
+}
+
+.trend-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 90px;
+}
+
+.trend-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+}
+
+.trend-bar-wrap {
+  flex: 1;
+  width: 100%;
+  max-width: 36px;
+  display: flex;
+  align-items: flex-end;
+  background: #f4f6f9;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.trend-bar {
+  width: 100%;
+  background: linear-gradient(180deg, #8fb4e8 0%, #5b8def 100%);
+  border-radius: 8px 8px 0 0;
+  min-height: 4px;
+  transition: height 0.4s ease;
+}
+
+.trend-label {
+  font-size: 10px;
+  color: #aaa;
+  margin-top: 4px;
+}
+
 .career-overview {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -825,6 +916,19 @@ onMounted(async () => {
 }
 
 /* 我的资料 + 口令 */
+.volume-slider {
+  flex: 1;
+  accent-color: #667eea;
+}
+
+.volume-num {
+  width: 44px;
+  text-align: right;
+  font-size: 13px;
+  color: #666;
+  flex-shrink: 0;
+}
+
 .avatar-tools {
   display: flex;
   align-items: center;

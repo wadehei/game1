@@ -14,6 +14,7 @@ export interface GameProgress {
 
 export interface DailyTaskInfo {
   completedGames: number;
+  playedGames?: string[];
   taskGoal: number;
   rewardStars: number;
   claimed: boolean;

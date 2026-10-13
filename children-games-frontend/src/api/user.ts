@@ -89,6 +89,7 @@ export interface MyCareer {
     achievementCount: number;
     rewardStars: number;
   };
+  last7?: { date: string; label: string; seconds: number }[];
   games: CareerGame[];
 }
 

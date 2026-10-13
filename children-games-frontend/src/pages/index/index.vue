@@ -70,7 +70,7 @@
         <span class="task-desc">今天完成 {{ dailyTask.taskGoal }} 个不同的游戏</span>
         <div class="task-reward">
           <template v-if="dailyTask.claimed">
-            <span class="reward-claimed">✅ 已领取</span>
+            <span class="reward-claimed">✅ 已完成</span>
           </template>
           <template v-else>
             <span>奖励: </span>
@@ -78,6 +78,10 @@
           </template>
         </div>
       </div>
+      <!-- 智能引导：任务未完成时，直接跳到今天还没玩过的游戏 -->
+      <button v-if="!dailyTask.claimed && nextTaskGame" class="task-go-btn" @click="goToGame(nextTaskGame.id)">
+        ▶ 去玩「{{ nextTaskGame.name }}」
+      </button>
     </div>
   </div>
 </template>
@@ -107,7 +111,13 @@ const userStore = useUserStore();
 const gameStore = useGameStore();
 
 const userInfo = computed(() => userStore.userInfo);
-const dailyTask = ref<DailyTaskInfo>({ completedGames: 0, taskGoal: 3, rewardStars: 10, claimed: false });
+const dailyTask = ref<DailyTaskInfo>({ completedGames: 0, playedGames: [], taskGoal: 3, rewardStars: 10, claimed: false });
+
+// 任务未完成时，推荐今天还没玩过的第一个游戏
+const nextTaskGame = computed(() => {
+  const played = new Set(dailyTask.value.playedGames || []);
+  return games.find((g) => !played.has(g.id)) || null;
+});
 const starPulse = ref(false);
 const boardGame = ref<{ id: string; name: string } | null>(null);
 
@@ -440,6 +450,24 @@ onMounted(async () => {
 .task-desc {
   font-size: 14px;
   color: #666;
+}
+
+.task-go-btn {
+  margin-top: 10px;
+  width: 100%;
+  padding: 9px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.task-go-btn:active {
+  transform: scale(0.97);
 }
 
 .task-reward {

@@ -315,6 +315,7 @@ export const getDailyTask = asyncHandler(async (req: AuthRequest, res: Response)
 
   success(res, {
     completedGames: playedGames.size,
+    playedGames: [...playedGames],
     taskGoal: DAILY_TASK_GOAL,
     rewardStars: DAILY_TASK_REWARD,
     claimed: (dailyTask?.taskReward || 0) > 0,

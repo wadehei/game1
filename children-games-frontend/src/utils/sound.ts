@@ -5,6 +5,7 @@
 class SoundManager {
   private ctx: AudioContext | null = null;
   private muted: boolean = false;
+  private masterGain: GainNode | null = null;
 
   /** 初始化 AudioContext（必须在用户交互后调用） */
   init(): void {
@@ -14,6 +15,9 @@ class SoundManager {
     }
     try {
       this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      this.masterGain = this.ctx.createGain();
+      this.masterGain.gain.value = this.volumeFromStorage();
+      this.masterGain.connect(this.ctx.destination);
       // 移动端浏览器要求首次用户手势后才能出声
       const unlock = () => this.resume();
       document.addEventListener('pointerdown', unlock, { once: true });
@@ -39,6 +43,38 @@ class SoundManager {
     return this.muted;
   }
 
+  /** 所有音效统一经过主音量节点 */
+  private out(): AudioNode {
+    return this.masterGain ?? (this.ctx?.destination as AudioNode);
+  }
+
+  /** 音量（0~1），家长中心可调，localStorage 持久化 */
+  setVolume(volume: number): void {
+    const v = Math.max(0, Math.min(1, volume));
+    try {
+      localStorage.setItem('games_volume', String(v));
+    } catch {
+      // ignore
+    }
+    if (this.masterGain) {
+      this.masterGain.gain.value = v;
+    }
+  }
+
+  getVolume(): number {
+    try {
+      const v = parseFloat(localStorage.getItem('games_volume') || '');
+      if (Number.isFinite(v) && v >= 0 && v <= 1) return v;
+    } catch {
+      // ignore
+    }
+    return 0.8;
+  }
+
+  private volumeFromStorage(): number {
+    return this.getVolume();
+  }
+
   // ─── 预定义游戏音效 ────────────────────────────────
 
   /** 短促 UI 点击音 — 440Hz sine, 50ms, 快速衰减 */
@@ -54,7 +90,7 @@ class SoundManager {
     gain.gain.setValueAtTime(0.3, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
 
-    osc.connect(gain).connect(this.ctx.destination);
+    osc.connect(gain).connect(this.out());
     osc.start(t);
     osc.stop(t + 0.05);
   }
@@ -149,7 +185,7 @@ class SoundManager {
     gain.gain.setValueAtTime(0.3, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
 
-    source.connect(gain).connect(this.ctx.destination);
+    source.connect(gain).connect(this.out());
     source.start(t);
   }
 
@@ -167,7 +203,7 @@ class SoundManager {
     gain.gain.setValueAtTime(0.15, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
 
-    osc.connect(gain).connect(this.ctx.destination);
+    osc.connect(gain).connect(this.out());
     osc.start(t);
     osc.stop(t + 0.1);
   }
@@ -188,7 +224,7 @@ class SoundManager {
     gain.gain.setValueAtTime(0.3, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
 
-    osc.connect(gain).connect(this.ctx.destination);
+    osc.connect(gain).connect(this.out());
     osc.start(t);
     osc.stop(t + 0.3);
 
@@ -211,7 +247,7 @@ class SoundManager {
     noiseGain.gain.setValueAtTime(0.2, t);
     noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
 
-    noiseSource.connect(filter).connect(noiseGain).connect(this.ctx.destination);
+    noiseSource.connect(filter).connect(noiseGain).connect(this.out());
     noiseSource.start(t);
   }
 
@@ -254,7 +290,7 @@ class SoundManager {
     gain.gain.setValueAtTime(0.25, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
 
-    osc.connect(gain).connect(this.ctx.destination);
+    osc.connect(gain).connect(this.out());
     osc.start(t);
     osc.stop(t + 0.1);
   }
@@ -273,7 +309,7 @@ class SoundManager {
     gain.gain.linearRampToValueAtTime(0.28, t + 0.02);
     gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
 
-    osc.connect(gain).connect(this.ctx.destination);
+    osc.connect(gain).connect(this.out());
     osc.start(t);
     osc.stop(t + duration);
   }

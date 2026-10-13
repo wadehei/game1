@@ -1,4 +1,6 @@
 import { Request, Response } from 'express';
+import fs from 'fs';
+import path from 'path';
 import { Op } from 'sequelize';
 import jwt from 'jsonwebtoken';
 import { config } from '../config';
@@ -173,6 +175,14 @@ export const deleteUser = asyncHandler(async (req: AdminRequest, res: Response) 
   if (!user) {
     fail(res, '用户不存在', 404);
     return;
+  }
+
+  // 清理其上传的照片头像文件
+  const avatar = String(user.avatar || '');
+  const avMatch = avatar.match(/^\/api\/avatars\/([A-Za-z0-9_-]+\.(?:jpg|png|webp|gif))$/);
+  if (avMatch) {
+    const p = path.resolve(process.cwd(), 'uploads', 'avatars', avMatch[1]);
+    fs.existsSync(p) && fs.unlinkSync(p);
   }
 
   await GameProgress.destroy({ where: { userId } });
