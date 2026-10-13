@@ -60,6 +60,8 @@ html, body {
   overscroll-behavior: none;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  /* hover 缩放动效超出视口的横向部分直接裁掉，避免出现横向滚动条 */
+  overflow-x: hidden;
 }
 
 #app {
