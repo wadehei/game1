@@ -1,0 +1,3 @@
+users: [{"id":1,"nickname":"ssh","openid":"family_1791862438014","totalStars":3},{"id":2,"nickname":"mhc","openid":"family_1791862669965","totalStars":37},{"id":3,"nickname":"sg","openid":"family_1791862787442","totalStars":3},{"id":4,"nickname":"llz","openid":"family_1791863067434","totalStars":15},{"id":5,"nickname":"sg","openid":"family_1791863168472","totalStars":0},{"id":6,"nickname":"lyf","openid":"family_1791864747691","totalStars":3}]
+playtime rows: 2
+progress rows: 7

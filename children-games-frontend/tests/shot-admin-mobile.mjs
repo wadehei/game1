@@ -1,3 +1,4 @@
+import { ADMIN_PASSWORD } from './helpers.mjs';
 // 手机端后台截图（布局修复验证）
 import puppeteer from 'puppeteer';
 
@@ -6,7 +7,7 @@ const page = await browser.newPage();
 await page.setViewport({ width: 390, height: 844 });
 await page.goto('http://localhost:8080/#/admin/login', { waitUntil: 'networkidle2' });
 await new Promise((r) => setTimeout(r, 800));
-await page.type('.login-input', 'family-admin-2026');
+await page.type('.login-input', ADMIN_PASSWORD);
 await page.click('.login-btn');
 await new Promise((r) => setTimeout(r, 1500));
 await page.screenshot({ path: 'test-results/admin-mobile-fixed.png' });

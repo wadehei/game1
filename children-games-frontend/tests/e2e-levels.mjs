@@ -1,3 +1,4 @@
+import { ADMIN_PASSWORD } from './helpers.mjs';
 // 关卡配置 E2E：后台设覆盖 → 游戏页生效 → 删除恢复默认 + 后台面板截图
 import puppeteer from 'puppeteer';
 
@@ -31,7 +32,7 @@ const adminApi = (method, path, body) => page.evaluate(async ({ method, path, bo
 // ═══ 0. 管理员登录（走 UI，覆盖登录流程） ═══
 await page.goto(`${BASE}/#/admin/login`, { waitUntil: 'networkidle2' });
 await sleep(800);
-await page.type('.login-input', 'family-admin-2026');
+await page.type('.login-input', ADMIN_PASSWORD);
 await page.click('.login-btn');
 await sleep(1200);
 check('管理员登录进入后台', !!(await page.$('.admin-body')));

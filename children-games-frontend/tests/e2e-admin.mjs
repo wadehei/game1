@@ -1,8 +1,9 @@
+import { ADMIN_PASSWORD } from './helpers.mjs';
 // 管理后台 E2E：密码登录 → 看板 → 角色编辑 → 护眼策略 → 备份 → 双端截图
 import puppeteer from 'puppeteer';
 
 const BASE = 'http://localhost:8080';
-const PASSWORD = 'family-admin-2026';
+const PASSWORD = ADMIN_PASSWORD;
 const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'] });
 const page = await browser.newPage();
 await page.setViewport({ width: 1280, height: 800 });
