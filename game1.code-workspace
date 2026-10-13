@@ -1,0 +1,16 @@
+{
+	"folders": [
+		{
+			"name": "🎮 前端",
+			"path": "children-games-frontend"
+		},
+		{
+			"name": "⚙️ 后端",
+			"path": "children-games-backend"
+		}
+	],
+	"settings": {
+		"npm.autoDetect": "on",
+		"npm.packageManager": "npm"
+	}
+}
