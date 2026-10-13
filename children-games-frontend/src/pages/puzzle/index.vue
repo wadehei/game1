@@ -31,9 +31,9 @@
           class="piece-image"
           :src="piece.image"
           :style="{
-            width: pieceWidth * gridSize + 'px',
-            height: pieceHeight * gridSize + 'px',
-            transform: `translate(-${piece.offsetX}px, -${piece.offsetY}px)`
+            width: gridSize * 100 + '%',
+            height: gridSize * 100 + '%',
+            transform: `translate(${-(piece.correctPosition % gridSize) * (100 / gridSize)}%, ${-Math.floor(piece.correctPosition / gridSize) * (100 / gridSize)}%)`
           }"
         />
       </div>
@@ -87,8 +87,6 @@ interface PuzzlePiece {
   id: number;
   isEmpty: boolean;
   image: string;
-  offsetX: number;
-  offsetY: number;
   correctPosition: number;
 }
 
@@ -139,8 +137,6 @@ const applyLevelConfig = async (level: number) => {
   // 后台难度覆盖优先（离线/未配置时用内置公式）
   levelOverride.value = await getLevelOverride('puzzle', level);
 };
-const pieceWidth = computed(() => 300 / gridSize.value);
-const pieceHeight = computed(() => 300 / gridSize.value);
 const currentImage = computed(() => images[(currentLevel.value - 1) % images.length]);
 
 const adjacentToEmpty = computed(() => {
@@ -171,17 +167,13 @@ const initGame = () => {
   const size = gridSize.value;
   const total = size * size;
 
-  // 创建拼图块
+  // 创建拼图块（切片窗口在模板里按百分比定位，与实际渲染尺寸无关）
   const newPieces: PuzzlePiece[] = [];
   for (let i = 0; i < total - 1; i++) {
-    const row = Math.floor(i / size);
-    const col = i % size;
     newPieces.push({
       id: i,
       isEmpty: false,
       image: currentImage.value,
-      offsetX: col * pieceWidth.value,
-      offsetY: row * pieceHeight.value,
       correctPosition: i,
     });
   }
@@ -191,8 +183,6 @@ const initGame = () => {
     id: total - 1,
     isEmpty: true,
     image: '',
-    offsetX: 0,
-    offsetY: 0,
     correctPosition: total - 1,
   });
 
