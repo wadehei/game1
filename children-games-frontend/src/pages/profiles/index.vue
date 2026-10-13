@@ -11,6 +11,7 @@
         <div class="profile-name">{{ p.nickname }}</div>
         <div class="profile-stats">Lv.{{ p.level }} · ⭐{{ p.totalStars }}</div>
         <span v-if="p.hasPin" class="lock-badge">🔒</span>
+        <span v-if="p.id === lastUsedId" class="last-used-badge">上次是你</span>
       </div>
 
       <div class="profile-card create-card" @click="openCreate">
@@ -69,7 +70,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { familyLogin, getProfiles, type FamilyProfile } from '@/api/user';
+import { familyLogin, getProfiles, getLastProfileId, type FamilyProfile } from '@/api/user';
 import { useUserStore } from '@/store/user';
 import { uploadPhotoAvatar } from '@/utils/avatarUpload';
 import PlayerAvatar from '@/components/PlayerAvatar.vue';
@@ -89,6 +90,7 @@ const photoUrl = ref('');
 const uploading = ref(false);
 const canCreate = computed(() => !!nickname.value.trim() && (!!pickedEmoji.value || !!photoUrl.value));
 const myUserId = computed(() => userStore.userInfo?.id);
+const lastUsedId = computed(() => getLastProfileId());
 
 const onPhotoPick = async (event: Event) => {
   const input = event.target as HTMLInputElement;
@@ -233,6 +235,17 @@ onMounted(loadProfiles);
   top: 8px;
   right: 10px;
   font-size: 14px;
+}
+
+.last-used-badge {
+  position: absolute;
+  bottom: 6px;
+  right: 8px;
+  font-size: 10px;
+  color: #667eea;
+  background: rgba(102, 126, 234, 0.12);
+  padding: 2px 8px;
+  border-radius: 8px;
 }
 
 .profile-name {

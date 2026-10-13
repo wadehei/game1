@@ -27,7 +27,23 @@ export const familyLogin = async (data: { uid?: number; pin?: string; nickname?:
   const userStore = useUserStore();
   userStore.setToken(result.token);
   userStore.setUserInfo(result.userInfo);
+  // 记住"上次是谁"：token 失效后选角色页能标记/自动重登
+  try {
+    localStorage.setItem('last_profile_id', String(result.userInfo.id));
+  } catch {
+    // ignore
+  }
   return result;
+};
+
+/** 上次使用的角色 id（登录时记录，登出不删除——重新打开应用可无感恢复） */
+export const getLastProfileId = (): number | null => {
+  try {
+    const v = parseInt(localStorage.getItem('last_profile_id') || '', 10);
+    return Number.isFinite(v) && v > 0 ? v : null;
+  } catch {
+    return null;
+  }
 };
 
 export interface FamilyProfile {

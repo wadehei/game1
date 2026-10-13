@@ -74,17 +74,28 @@ const router = createRouter({
 });
 
 // 未登录（没有角色凭证）时先去选角色页；后台管理走独立的密码体系
-router.beforeEach((to) => {
+// 记住了"上次是谁"（last_profile_id）且该角色未设口令时，静默重登无感恢复
+router.beforeEach(async (to) => {
   if (to.path === '/admin' && !localStorage.getItem('admin_token')) {
     return { path: '/admin/login' };
   }
   if (to.path.startsWith('/admin') || to.path === '/profiles') {
     return true;
   }
-  const hasToken = !!localStorage.getItem('token');
-  if (!hasToken) {
-    return { path: '/profiles' };
+  if (localStorage.getItem('token')) {
+    return true;
   }
+  const lastId = localStorage.getItem('last_profile_id');
+  if (lastId) {
+    try {
+      const { familyLogin } = await import('@/api/user');
+      await familyLogin({ uid: Number(lastId) });
+      return true;
+    } catch {
+      // 口令角色无法静默重登（需 pin），或成员已被删除 → 去选角色页
+    }
+  }
+  return { path: '/profiles' };
 });
 
 export default router;

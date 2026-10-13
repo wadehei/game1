@@ -166,7 +166,14 @@ onMounted(async () => {
   // 路由守卫保证进入首页前已有角色；这里刷新星星/等级快照
   try {
     await getUserInfo();
-  } catch (e) {
+  } catch (e: any) {
+    // 401/404 = 凭证失效或角色已不存在（如还原数据库），清掉坏档案引导重选
+    const status = e?.response?.status;
+    if (status === 401 || status === 404) {
+      userStore.logout();
+      router.replace('/profiles');
+      return;
+    }
     console.log('刷新用户信息失败', e);
   }
   try {

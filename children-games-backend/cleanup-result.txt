@@ -1,0 +1,15 @@
+待清理: 21:甲测试, 22:乙测试, 23:甲测试, 24:乙测试, 25:乙调试, 26:甲测试861869, 27:乙测试861869, 28:甲测试883490, 29:乙测试883490, 30:甲测试955109, 31:乙测试955109, 32:甲测试019181, 33:乙测试019181
+DELETE 21 → 200 {"code":200,"message":"success","data":{"id":21}}
+DELETE 22 → 200 {"code":200,"message":"success","data":{"id":22}}
+DELETE 23 → 200 {"code":200,"message":"success","data":{"id":23}}
+DELETE 24 → 200 {"code":200,"message":"success","data":{"id":24}}
+DELETE 25 → 200 {"code":200,"message":"success","data":{"id":25}}
+DELETE 26 → 200 {"code":200,"message":"success","data":{"id":26}}
+DELETE 27 → 200 {"code":200,"message":"success","data":{"id":27}}
+DELETE 28 → 200 {"code":200,"message":"success","data":{"id":28}}
+DELETE 29 → 200 {"code":200,"message":"success","data":{"id":29}}
+DELETE 30 → 200 {"code":200,"message":"success","data":{"id":30}}
+DELETE 31 → 200 {"code":200,"message":"success","data":{"id":31}}
+DELETE 32 → 200 {"code":200,"message":"success","data":{"id":32}}
+DELETE 33 → 200 {"code":200,"message":"success","data":{"id":33}}
+剩余: 1:ssh, 2:mhc, 3:sg, 4:llz, 5:sg, 6:lyf, 12:冒烟测试
