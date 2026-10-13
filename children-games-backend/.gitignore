@@ -42,3 +42,5 @@ pw-check*
 
 # 家长录音
 uploads/
+cleanup-result.txt
+users-dump.txt
