@@ -72,6 +72,8 @@ import { useGameSounds } from '@/composables/useGameSounds';
 import { useGameProgress } from '@/composables/useGameProgress';
 import { GAME_PAUSE_EVENT, GAME_RESUME_EVENT } from '@/utils/gameEvents';
 import { getLevelOverride } from '@/api/game';
+import { speak } from '@/utils/voice';
+import { useAdaptiveAssist } from '@/composables/useAdaptiveAssist';
 import GameHeader from '@/components/GameHeader.vue';
 import ResultModal from '@/components/ResultModal.vue';
 import LevelSelectModal from '@/components/LevelSelectModal.vue';
@@ -86,6 +88,7 @@ interface Hole {
 const router = useRouter();
 const sounds = useGameSounds();
 const { loadStartLevel, saveProgress: saveGameProgress } = useGameProgress('mole');
+const assist = useAdaptiveAssist('mole');
 
 const currentLevel = ref(1);
 const hits = ref(0);
@@ -126,13 +129,14 @@ const headerItems = computed(() => [
 ]);
 
 const applyLevelConfig = async (level: number) => {
+  const a = assist.level();
   levelConfig.value = {
     spawnInterval: Math.max(900 - level * 35, 350),
-    upDuration: Math.max(1300 - level * 50, 600),
+    upDuration: Math.max(1300 - level * 50, 600) + 120 * a,
     // 第4关起出现小兔子：练"忍住不打"，是这游戏的核心认知训练
     bunnyChance: level >= 4 ? Math.min(0.12 + (level - 4) * 0.03, 0.35) : 0,
     timeLimit: 60,
-    targetHits: 12 + level * 3,
+    targetHits: Math.max(5, 12 + level * 3 - 2 * a),
   };
   // 后台难度覆盖优先（离线/未配置时用内置公式）
   const override = await getLevelOverride('mole', level);
@@ -341,9 +345,11 @@ const endGame = (won: boolean) => {
   if (won) {
     sounds.play('success');
     stars.value = hearts.value >= 3 ? 3 : hearts.value === 2 ? 2 : 1;
+    assist.record(true);
     saveProgress();
   } else {
     sounds.play('fail');
+    assist.record(false);
   }
 
   showResult.value = true;
@@ -378,6 +384,7 @@ onMounted(async () => {
   document.addEventListener(GAME_PAUSE_EVENT, handleRestPause);
   document.addEventListener(GAME_RESUME_EVENT, handleRestResume);
   initGame();
+  speak('打地鼠咯！小兔子是好朋友，不能打哦');
 });
 
 onUnmounted(() => {

@@ -50,6 +50,8 @@ import { useGameCanvas } from '@/composables/useGameCanvas';
 import { useGameProgress } from '@/composables/useGameProgress';
 import { GAME_PAUSE_EVENT, GAME_RESUME_EVENT } from '@/utils/gameEvents';
 import { getLevelOverride } from '@/api/game';
+import { speak } from '@/utils/voice';
+import { useAdaptiveAssist } from '@/composables/useAdaptiveAssist';
 import GameHeader from '@/components/GameHeader.vue';
 import ResultModal from '@/components/ResultModal.vue';
 import LevelSelectModal from '@/components/LevelSelectModal.vue';
@@ -121,6 +123,7 @@ const gameCanvas = useGameCanvas();
 const canvasWidth = gameCanvas.canvasWidth;
 const canvasHeight = gameCanvas.canvasHeight;
 const { loadStartLevel, saveProgress: saveGameProgress } = useGameProgress('balloon');
+const assist = useAdaptiveAssist('balloon');
 let ctx: CanvasRenderingContext2D | null = null;
 let animationId: number | null = null;
 let spawnTimer: ReturnType<typeof setInterval> | null = null;
@@ -454,9 +457,11 @@ const endGame = (won: boolean) => {
     } else {
       stars.value = 1;
     }
+    assist.record(true);
     saveProgress();
   } else {
     sounds.play('fail');
+    assist.record(false);
   }
 
   showResult.value = true;
@@ -496,11 +501,12 @@ const chooseLevel = async (level: number) => {
 };
 
 const applyLevelConfig = async (level: number) => {
+  const a = assist.level();
   levelConfig.value = {
     spawnRate: Math.max(1200 - level * 25, 400),
     moveSpeed: 1 + level * 0.08,
-    targetScore: 100 + level * 25,
-    bullets: 30 + (level - 1) * 5,
+    targetScore: Math.round((100 + level * 25) * (1 - 0.15 * a)),
+    bullets: 30 + (level - 1) * 5 + 5 * a,
   };
   // 后台难度覆盖优先（离线/未配置时用内置公式）
   const override = await getLevelOverride('balloon', level);
@@ -531,6 +537,7 @@ onMounted(async () => {
   currentLevel.value = await loadStartLevel();
   await applyLevelConfig(currentLevel.value);
   initGame();
+  speak('点一点屏幕，把气球打爆吧');
 });
 
 onUnmounted(() => {

@@ -11,9 +11,13 @@ import { useRoute } from 'vue-router';
 import RestOverlay from '@/components/RestOverlay.vue';
 import AchievementToast from '@/components/AchievementToast.vue';
 import { usePlayTimeGuard } from '@/composables/usePlayTimeGuard';
+import { initVoice } from '@/utils/voice';
 
 const route = useRoute();
 const { restShow, restCountdown, skipRest } = usePlayTimeGuard(() => route.path);
+
+// 预热语音引擎（首次手势后可朗读引导语）
+initVoice();
 
 // 游戏过程中防止屏幕休眠（支持 WakeLock 的浏览器）
 let wakeLock: any = null;

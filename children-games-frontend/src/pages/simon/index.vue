@@ -62,6 +62,7 @@ import { useGameProgress } from '@/composables/useGameProgress';
 import { soundManager } from '@/utils/sound';
 import { GAME_PAUSE_EVENT, GAME_RESUME_EVENT } from '@/utils/gameEvents';
 import { getLevelOverride } from '@/api/game';
+import { speak } from '@/utils/voice';
 import GameHeader from '@/components/GameHeader.vue';
 import ResultModal from '@/components/ResultModal.vue';
 import LevelSelectModal from '@/components/LevelSelectModal.vue';
@@ -218,7 +219,8 @@ const initGame = () => {
 
   sequence = generateSequence(levelConfig.value.seqLength);
   phase.value = 'ready';
-  addTimeout(() => playSequence(), 800);
+  // 首播留出语音引导时间
+  addTimeout(() => playSequence(), 2400);
 };
 
 const endGame = (won: boolean) => {
@@ -306,6 +308,7 @@ onMounted(async () => {
   document.addEventListener(GAME_PAUSE_EVENT, handleRestPause);
   document.addEventListener(GAME_RESUME_EVENT, handleRestResume);
   initGame();
+  speak('记住闪光的顺序，然后跟着点');
 });
 
 onUnmounted(() => {

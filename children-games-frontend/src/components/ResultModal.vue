@@ -1,6 +1,6 @@
 <template>
   <div v-if="show" class="result-modal">
-    <div class="result-content">
+    <div ref="contentRef" class="result-content">
       <span class="result-icon">{{ icon }}</span>
       <span class="result-title">{{ title }}</span>
       <div class="result-stars">
@@ -16,7 +16,11 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{
+import { nextTick, ref, watch } from 'vue';
+import { speak, stopSpeaking } from '@/utils/voice';
+import { createStarRain } from '@/utils/animations';
+
+const props = defineProps<{
   show: boolean;
   won: boolean;
   stars: number;
@@ -29,6 +33,26 @@ defineEmits<{
   retry: [];
   next: [];
 }>();
+
+const contentRef = ref<HTMLElement | null>(null);
+
+// 弹出时语音鼓励；赢了来一场星星雨
+watch(() => props.show, (visible) => {
+  if (!visible) {
+    stopSpeaking();
+    return;
+  }
+  nextTick(() => {
+    if (props.won) {
+      speak('恭喜你，通关啦！你真棒！');
+      if (contentRef.value) {
+        createStarRain(contentRef.value);
+      }
+    } else {
+      speak('没关系，再试一次，你可以的！');
+    }
+  });
+});
 </script>
 
 <style scoped>
@@ -53,6 +77,7 @@ defineEmits<{
 }
 
 .result-content {
+  position: relative;
   background: #fff;
   border-radius: 20px;
   padding: 32px;
@@ -61,6 +86,7 @@ defineEmits<{
   max-width: 320px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  overflow: hidden;
 }
 
 @keyframes bounceIn {

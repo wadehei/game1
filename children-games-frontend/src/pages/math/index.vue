@@ -79,6 +79,7 @@ import { useRouter } from 'vue-router';
 import { useGameSounds } from '@/composables/useGameSounds';
 import { useGameProgress } from '@/composables/useGameProgress';
 import { getLevelOverride } from '@/api/game';
+import { speak } from '@/utils/voice';
 import GameHeader from '@/components/GameHeader.vue';
 import ResultModal from '@/components/ResultModal.vue';
 import LevelSelectModal from '@/components/LevelSelectModal.vue';
@@ -182,8 +183,17 @@ const generateQuestion = (): MathQuestion => {
   return { mode, countA, countB, answer, options: optionList };
 };
 
+// 数字读成中文（数学题语音读题）
+const CN_NUM = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
+
 const nextQuestion = () => {
   question.value = generateQuestion();
+  const q = question.value;
+  if (q.mode === 'count') {
+    speak('一共有几个苹果呀？');
+  } else {
+    speak(`${CN_NUM[q.countA]} 加 ${CN_NUM[q.countB]}，等于几？`);
+  }
 };
 
 const clearTimers = () => {
@@ -204,6 +214,7 @@ const answerQuestion = (value: number) => {
     correctCount.value++;
     monsterState.value = 'happy';
     sounds.play('collect');
+    speak('答对啦！');
 
     transitionTimer = setTimeout(() => {
       monsterState.value = 'idle';
@@ -212,12 +223,13 @@ const answerQuestion = (value: number) => {
       } else {
         nextQuestion();
       }
-    }, 700);
+    }, 1000);
   } else {
     // 答错不惩罚，怪兽想一想，同一题再试
     wrongCount.value++;
     monsterState.value = 'shake';
     sounds.play('bounce');
+    speak('再想一想哦');
 
     hintTimer = setTimeout(() => {
       monsterState.value = 'idle';

@@ -83,6 +83,8 @@ import { useGameSounds } from '@/composables/useGameSounds';
 import { useGameProgress } from '@/composables/useGameProgress';
 import { GAME_PAUSE_EVENT, GAME_RESUME_EVENT } from '@/utils/gameEvents';
 import { getLevelOverride } from '@/api/game';
+import { speak } from '@/utils/voice';
+import { useAdaptiveAssist } from '@/composables/useAdaptiveAssist';
 import GameHeader from '@/components/GameHeader.vue';
 import ResultModal from '@/components/ResultModal.vue';
 import LevelSelectModal from '@/components/LevelSelectModal.vue';
@@ -117,6 +119,7 @@ const paused = ref(false);
 const showLevelSelect = ref(false);
 let levelSelectPaused = false;
 const { loadStartLevel, saveProgress: saveGameProgress } = useGameProgress('puzzle');
+const assist = useAdaptiveAssist('puzzle');
 let timer: ReturnType<typeof setInterval> | null = null;
 let gameEnded = false;
 let autoPausedByHidden = false;
@@ -139,7 +142,7 @@ const levelTimeLimit = computed(() => {
   if (typeof fromOverride === 'number') {
     return Math.max(Math.round(fromOverride), 10);
   }
-  return Math.max(180 - currentLevel.value * 2, 60);
+  return Math.round(Math.max(180 - currentLevel.value * 2, 60) * (1 + 0.3 * assist.level()));
 });
 
 const applyLevelConfig = async (level: number) => {
@@ -395,9 +398,11 @@ const endGame = (won: boolean) => {
     } else {
       stars.value = 1;
     }
+    assist.record(true);
     saveProgress();
   } else {
     sounds.play('fail');
+    assist.record(false);
   }
 
   showResult.value = true;
@@ -432,6 +437,7 @@ onMounted(async () => {
   document.addEventListener(GAME_PAUSE_EVENT, handleRestPause);
   document.addEventListener(GAME_RESUME_EVENT, handleRestResume);
   initGame();
+  speak('点一点小方块，把图片拼回原样');
 });
 
 onUnmounted(() => {

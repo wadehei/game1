@@ -77,6 +77,8 @@ import { useGameSounds } from '@/composables/useGameSounds';
 import { useGameProgress } from '@/composables/useGameProgress';
 import { GAME_PAUSE_EVENT, GAME_RESUME_EVENT } from '@/utils/gameEvents';
 import { getLevelOverride } from '@/api/game';
+import { speak } from '@/utils/voice';
+import { useAdaptiveAssist } from '@/composables/useAdaptiveAssist';
 import GameHeader from '@/components/GameHeader.vue';
 import ResultModal from '@/components/ResultModal.vue';
 import LevelSelectModal from '@/components/LevelSelectModal.vue';
@@ -142,6 +144,7 @@ const paused = ref(false);
 const showLevelSelect = ref(false);
 let levelSelectPaused = false;
 const { loadStartLevel, saveProgress: saveGameProgress } = useGameProgress('memory');
+const assist = useAdaptiveAssist('memory');
 let timer: ReturnType<typeof setInterval> | null = null;
 let gameEnded = false;
 let autoPausedByHidden = false;
@@ -353,10 +356,12 @@ const endGame = (won: boolean) => {
       stars.value = 1;
     }
 
+    assist.record(true);
     // 保存进度
     saveProgress();
   } else {
     sounds.play('fail');
+    assist.record(false);
   }
 
   showResult.value = true;
@@ -375,9 +380,10 @@ const restartGame = () => {
 };
 
 const applyLevelConfig = async (level: number) => {
+  const a = assist.level();
   levelConfig.value = {
     pairs: Math.min(2 + Math.floor((level - 1) / 2), 8),
-    timeLimit: Math.max(90 - (level - 1) * 3, 30),
+    timeLimit: Math.round(Math.max(90 - (level - 1) * 3, 30) * (1 + 0.3 * a)),
   };
   // 后台难度覆盖优先（离线/未配置时用内置公式）
   const override = await getLevelOverride('memory', level);
@@ -404,6 +410,7 @@ onMounted(async () => {
   document.addEventListener(GAME_PAUSE_EVENT, handleRestPause);
   document.addEventListener(GAME_RESUME_EVENT, handleRestResume);
   initGame();
+  speak('翻一翻卡片，找出两个一样的图案');
 });
 
 onUnmounted(() => {
