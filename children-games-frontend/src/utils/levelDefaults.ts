@@ -11,47 +11,54 @@ export type LevelConfigMap = Record<string, LevelConfigValue>;
 
 type Formula = (level: number) => LevelConfigMap;
 
+// 难度设计原则：每一关都要有孩子能感知的变化（步长足够大），避免"连着几关一模一样"
 const FORMULAS: Record<string, Formula> = {
+  // 记忆翻牌：对数每关 +1（2→8 对封顶），限时每关 -4s
   memory: (level) => ({
-    pairs: Math.min(2 + Math.floor((level - 1) / 2), 8),
-    timeLimit: Math.max(90 - (level - 1) * 3, 30),
+    pairs: Math.min(1 + level, 8),
+    timeLimit: Math.max(96 - (level - 1) * 4, 40),
   }),
+  // 接水果：生成间隔每关 -70ms，下落速度每关 +0.5，炸弹概率每关 +3%
   fruit: (level) => ({
-    spawnRate: Math.max(1000 - level * 30, 400),
-    fallSpeed: 2 + level * 0.2,
-    bombChance: Math.min(0.15 + level * 0.02, 0.35),
-    targetScore: 100 + level * 30,
+    spawnRate: Math.max(1000 - (level - 1) * 70, 380),
+    fallSpeed: Math.min(2 + (level - 1) * 0.5, 9),
+    bombChance: Math.min(0.12 + (level - 1) * 0.03, 0.4),
+    targetScore: 100 + (level - 1) * 50,
     lives: 3,
   }),
+  // 拼图：格子每 4 关升一档，限时每关 -12s（同格子内也有紧迫感差异）
   puzzle: (level) => ({
-    gridSize: Math.min(3 + Math.floor(level / 5), 5),
-    timeLimit: Math.max(180 - level * 2, 60),
+    gridSize: Math.min(3 + Math.floor((level - 1) / 4), 5),
+    timeLimit: Math.max(180 - (level - 1) * 12, 50),
   }),
+  // 打气球：生成间隔每关 -70ms，飘速每关 +0.25，限时分数每关 +40
   balloon: (level) => ({
-    spawnRate: Math.max(1200 - level * 25, 400),
-    moveSpeed: 1 + level * 0.08,
-    targetScore: 100 + level * 25,
-    bullets: 30 + (level - 1) * 5,
+    spawnRate: Math.max(1200 - (level - 1) * 70, 420),
+    moveSpeed: Math.min(1 + (level - 1) * 0.25, 6),
+    targetScore: 100 + (level - 1) * 40,
+    bullets: 30 + (level - 1) * 4,
     rainbowChance: 0.05,
     goldenChance: 0.1,
   }),
+  // 坦克：敌人数量每关 +1（封顶 9），速度每关 +0.3，射速每关 +5%
   tank: (level) => ({
-    enemyCount: Math.max(2, 3 + Math.floor(level * 0.8)),
-    enemySpeed: 1 + level * 0.1,
-    enemyFireRate: Math.min(0.3 + level * 0.02, 0.8),
+    enemyCount: Math.min(2 + (level - 1), 9),
+    enemySpeed: Math.min(1 + (level - 1) * 0.3, 6),
+    enemyFireRate: Math.min(0.25 + (level - 1) * 0.05, 0.9),
     bossLevel: level % 5 === 0,
-    bossHP: 10 + level,
+    bossHP: 10 + level * 2,
     playerSpeed: 3,
     autoFireInterval: 500,
     enemyBulletSpeed: 5,
     playerBulletSpeed: 8,
   }),
+  // 打地鼠：生成间隔每关 -50ms，停留时间每关 -70ms，目标命中每关 +4
   mole: (level) => ({
-    spawnInterval: Math.max(900 - level * 35, 350),
-    upDuration: Math.max(1300 - level * 50, 600),
+    spawnInterval: Math.max(900 - (level - 1) * 50, 300),
+    upDuration: Math.max(1300 - (level - 1) * 70, 500),
     bunnyChance: level >= 4 ? Math.min(0.12 + (level - 4) * 0.03, 0.35) : 0,
     timeLimit: 60,
-    targetHits: 12 + level * 3,
+    targetHits: 12 + (level - 1) * 4,
   }),
   simon: (level) => ({
     seqLength: Math.min(2 + level, 12),
