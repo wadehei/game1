@@ -3,6 +3,7 @@
 import WebSocket from 'ws';
 
 const BASE = process.env.BASE || 'http://localhost:3002';
+const WS_BASE = process.env.WS_BASE || 'ws://localhost:3002';
 let pass = 0;
 let failCount = 0;
 const check = (label, cond) => {
@@ -37,7 +38,7 @@ class Client {
   }
   connect(roomId) {
     return new Promise((resolve, reject) => {
-      this.ws = new WebSocket(`ws://localhost:3002/ws?token=${this.token}&roomId=${roomId}`);
+      this.ws = new WebSocket(`${WS_BASE}/ws?token=${this.token}&roomId=${roomId}`);
       const timeout = setTimeout(() => reject(new Error('连接超时')), 5000);
       this.ws.on('message', (d) => {
         const msg = JSON.parse(d.toString());
