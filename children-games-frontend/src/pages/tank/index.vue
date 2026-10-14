@@ -244,6 +244,13 @@ const createEnemies = () => {
   enemyCount.value = enemies.length;
 };
 
+const stopAutoFire = () => {
+  if (autoFireInterval) {
+    clearInterval(autoFireInterval);
+    autoFireInterval = null;
+  }
+};
+
 const pauseLoop = () => {
   if (animationId) {
     cancelAnimationFrame(animationId);
