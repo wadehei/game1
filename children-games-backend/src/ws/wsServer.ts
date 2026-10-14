@@ -1,5 +1,6 @@
 // WebSocket 服务：挂载在现有 HTTP server 的 /ws 路径
-// 鉴权：连接时 query 带 token（复用角色登录 JWT）；房间加入用 query 的 roomId，断线重连同一路径自动回到原房间
+// 鉴权：连接时 query 带 token（复用角色登录 JWT）；roomId 相同的连接自动进/回房间
+// 游戏逻辑全部路由到 games/ 下的 GameHandler，本文件只管房间生命周期与消息分发
 import { Server } from 'http';
 import jwt from 'jsonwebtoken';
 import { WebSocketServer, WebSocket } from 'ws';
@@ -13,15 +14,17 @@ import {
   getRoom,
   isHost,
   joinRoom,
-  MAX_MEMBERS,
   memberList,
   removeMember,
   Room,
   sweepIdle,
+  TOTAL_MEMBER_LIMIT,
+  clearRoomTimers,
   type ChatMsg,
   type Member,
 } from './roomManager';
-import { BLACK, BOARD_SIZE, placeStone, WHITE } from './gomoku';
+import { getHandler, gameHandlers } from './games/registry';
+import { setRoomBus } from './bus';
 
 interface Ctx {
   userId: number;
@@ -34,61 +37,101 @@ const send = (ws: WebSocket, obj: Record<string, unknown>): void => {
   if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
 };
 
-const broadcast = (room: Room, obj: Record<string, unknown>, exceptWs?: WebSocket): void => {
+const broadcast = (room: Room, msg: Record<string, unknown>, exceptWs?: WebSocket): void => {
   for (const m of room.members.values()) {
-    if (m.ws && m.ws !== exceptWs) send(m.ws, obj);
+    if (m.ws && m.ws !== exceptWs) send(m.ws, msg);
   }
 };
 
-/** 全量房间快照（含最近50条聊天），重连/状态变化时发 */
-const snapshot = (room: Room) => ({
+/** 快照：game 段按观看者序列化（私发信息的地基） */
+const snapshotFor = (room: Room, viewer: Member): Record<string, unknown> => ({
   roomId: room.id,
   gameType: room.gameType,
   hostUserId: room.hostUserId,
   phase: room.phase,
   members: memberList(room),
-  game: {
-    board: room.game.board,
-    turn: room.game.turn,
-    winner: room.game.winner,
-    winLine: room.game.winLine,
-    lastMove: room.game.lastMove,
-  },
+  game: getHandler(room.gameType).serializeFor(room, viewer),
   chat: room.chat.slice(-50),
 });
 
+const broadcastSnapshot = (room: Room, exceptWs?: WebSocket): void => {
+  for (const m of room.members.values()) {
+    if (m.ws && m.ws !== exceptWs) send(m.ws, { t: 'snapshot', ...snapshotFor(room, m) });
+  }
+};
+
+const busBroadcast = (room: Room, msg: Record<string, unknown>, exceptUserId?: number): void => {
+  for (const m of room.members.values()) {
+    if (m.ws && m.userId !== exceptUserId) send(m.ws, msg);
+  }
+};
+
+const busSendToUser = (room: Room, userId: number, msg: Record<string, unknown>): void => {
+  const m = room.members.get(userId);
+  if (m?.ws) send(m.ws, msg);
+};
+
 const startGame = (room: Room): void => {
   room.phase = 'playing';
+  const handler = getHandler(room.gameType);
   for (const m of room.members.values()) {
     m.ready = false;
     m.rematch = false;
   }
+  const result = handler.start?.(room);
+  if (result?.broadcast) result.broadcast.forEach((msg) => busBroadcast(room, msg));
+  if (result?.toMember) result.toMember.forEach(({ userId, msg }) => busSendToUser(room, userId, msg));
+  if (result?.error) logError('ws', `${room.gameType} start 异常: ${result.error}`);
   broadcast(room, { t: 'game_start', phase: room.phase });
 };
 
 const endGame = (room: Room, winnerSeat: number, reason: string): void => {
   room.phase = 'ended';
-  room.game.winner = winnerSeat === 0 ? 1 : winnerSeat === 1 ? 2 : 3;
+  clearRoomTimers(room);
   broadcast(room, { t: 'game_over', winnerSeat, reason });
 };
 
+/** 通用重开：重置游戏状态，必要时交换座位；由 rematch 表决触发 */
+const restartGame = (room: Room): void => {
+  const handler = getHandler(room.gameType);
+  if (handler.rematchSwapSeats) {
+    for (const m of room.members.values()) {
+      if (m.seat === 0) m.seat = 1;
+      else if (m.seat === 1) m.seat = 0;
+    }
+  }
+  room.game = handler.create();
+  room.phase = 'playing';
+  for (const m of room.members.values()) {
+    m.ready = false;
+    m.rematch = false;
+  }
+  const result = handler.start?.(room);
+  if (result?.broadcast) result.broadcast.forEach((msg) => busBroadcast(room, msg));
+  if (result?.toMember) result.toMember.forEach(({ userId, msg }) => busSendToUser(room, userId, msg));
+  broadcast(room, { t: 'game_restart', phase: room.phase });
+};
+
 const handleLeave = (room: Room, userId: number): void => {
+  const quitter = room.members.get(userId);
   const result = removeMember(room, userId);
   if (result === 'empty') {
     disbandRoom(room); // 人走光→房间销毁，聊天语音一并清空
     return;
   }
-  if (result === 'resign') {
-    const quitter = userId;
-    const winnerSeat = [...room.members.values()].find((m) => m.seat >= 0 && m.userId !== quitter)?.seat ?? -1;
-    endGame(room, winnerSeat, '对方退出了对局');
+  if (result === 'resign' && quitter) {
+    const quitResult = getHandler(room.gameType).onPlayerQuit?.(room, quitter);
+    const ended = quitResult?.ended;
+    endGame(room, ended ? ended.winnerSeat : -1, ended ? ended.reason : '对方退出了对局');
   }
   broadcast(room, { t: 'member_left', userId });
-  broadcast(room, { t: 'snapshot', ...snapshot(room) });
+  broadcastSnapshot(room);
 };
 
 export const initWsServer = (server: Server): void => {
   const wss = new WebSocketServer({ server, path: '/ws' });
+
+  setRoomBus({ broadcast: busBroadcast, sendToUser: busSendToUser });
 
   wss.on('connection', async (ws: WebSocket, req: import('http').IncomingMessage) => {
     let userId = 0;
@@ -119,11 +162,12 @@ export const initWsServer = (server: Server): void => {
         send(ws, { t: 'error', message: '房间不存在或已解散' });
         return;
       }
-      let member: Member;
-      if (!room.members.has(userId) && room.members.size >= MAX_MEMBERS) {
-        send(ws, { t: 'error', message: '房间人满了（最多 8 人）' });
+      const handler = getHandler(room.gameType);
+      if (!room.members.has(userId) && room.members.size >= TOTAL_MEMBER_LIMIT) {
+        send(ws, { t: 'error', message: `房间人满（最多 ${TOTAL_MEMBER_LIMIT} 人）` });
         return;
       }
+      let member: Member;
       try {
         member = joinRoom(room, { userId, nickname: user.nickname, avatar: user.avatar });
       } catch {
@@ -132,7 +176,7 @@ export const initWsServer = (server: Server): void => {
       }
       member.ws = ws;
       clients.set(ws, { userId, roomId: room.id });
-      send(ws, { t: 'joined', yourSeat: member.seat, ...snapshot(room) });
+      send(ws, { t: 'joined', yourSeat: member.seat, gameTitle: handler.title, ...snapshotFor(room, member) });
       broadcast(room, { t: 'member_update', members: memberList(room) }, ws);
     }
 
@@ -161,47 +205,15 @@ export const initWsServer = (server: Server): void => {
 
         case 'ready': {
           if (room.phase !== 'waiting' || me.seat < 0) return;
+          const handler = getHandler(room.gameType);
           me.ready = !me.ready;
           const players = [...room.members.values()].filter((m) => m.seat >= 0);
-          if (players.length === 2 && players.every((m) => m.ready)) {
+          if (players.length >= handler.minPlayers && players.every((m) => m.ready)) {
             startGame(room);
-          }
-          broadcast(room, { t: 'member_update', members: memberList(room) });
-          broadcast(room, { t: 'snapshot', ...snapshot(room) });
-          break;
-        }
-
-        case 'move': {
-          if (room.phase !== 'playing' || me.seat < 0) return;
-          const color = me.seat === 0 ? BLACK : WHITE;
-          const err = placeStone(room.game, color, Number(msg.x), Number(msg.y));
-          if (err) {
-            send(ws, { t: 'error', message: err });
+            broadcastSnapshot(room);
             return;
           }
-          broadcast(room, {
-            t: 'move',
-            x: Number(msg.x),
-            y: Number(msg.y),
-            color,
-            userId: me.userId,
-            turn: room.game.turn,
-            lastMove: room.game.lastMove,
-            winner: room.game.winner,
-            winLine: room.game.winLine,
-          });
-          if (room.game.winner !== 0) {
-            room.phase = 'ended';
-            const winnerSeat = room.game.winner === 1 ? 0 : room.game.winner === 2 ? 1 : -1;
-            broadcast(room, { t: 'game_over', winnerSeat, reason: room.game.winner === 3 ? '棋盘已满' : '五连成线' });
-          }
-          break;
-        }
-
-        case 'resign': {
-          if (room.phase !== 'playing' || me.seat < 0) return;
-          const winnerSeat = me.seat === 0 ? 1 : 0;
-          endGame(room, winnerSeat, '对方认输');
+          broadcast(room, { t: 'member_update', members: memberList(room) });
           break;
         }
 
@@ -209,20 +221,12 @@ export const initWsServer = (server: Server): void => {
           if (room.phase !== 'ended' || me.seat < 0) return;
           me.rematch = true;
           const players = [...room.members.values()].filter((m) => m.seat >= 0);
-          if (players.length === 2 && players.every((m) => m.rematch)) {
-            // 重开：交换黑白
-            for (const m of room.members.values()) {
-              if (m.seat === 0) m.seat = 1;
-              else if (m.seat === 1) m.seat = 0;
-            }
-            room.game = { ...room.game, board: Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(0)), turn: BLACK, winner: 0, winLine: [], moveCount: 0, lastMove: null };
-            room.phase = 'playing';
-            for (const m of room.members.values()) m.rematch = false;
-            broadcast(room, { t: 'game_restart', phase: room.phase });
+          if (players.length >= 2 && players.every((m) => m.rematch)) {
+            restartGame(room);
           } else {
             broadcast(room, { t: 'rematch_vote', userIds: players.filter((m) => m.rematch).map((m) => m.userId) });
           }
-          broadcast(room, { t: 'snapshot', ...snapshot(room) });
+          broadcastSnapshot(room);
           break;
         }
 
@@ -230,8 +234,7 @@ export const initWsServer = (server: Server): void => {
           const kind = ['text', 'emoji', 'quick'].includes(msg.kind) ? msg.kind : 'text';
           const content = String(msg.content || '').trim().slice(0, 200);
           if (!content) return;
-          // 轻量限流：同一人 300ms 内只收一条
-          if (me.lastChatAt && Date.now() - me.lastChatAt < 300) return;
+          if (me.lastChatAt && Date.now() - me.lastChatAt < 300) return; // 防刷屏
           me.lastChatAt = Date.now();
           const chat: ChatMsg = { userId: me.userId, nickname: me.nickname, kind, content, ts: Date.now() };
           addChat(room, chat);
@@ -256,8 +259,22 @@ export const initWsServer = (server: Server): void => {
           break;
         }
 
-        default:
+        default: {
+          // 游戏动作：路由到对应 handler
+          const handler = getHandler(room.gameType);
+          const result = handler.onAction(room, me, msg.t, msg);
+          if (result.error) {
+            send(ws, { t: 'error', message: result.error });
+            return;
+          }
+          if (result.broadcast) result.broadcast.forEach((m) => broadcast(room, m));
+          if (result.toMember) result.toMember.forEach(({ userId: uid, msg: m }) => busSendToUser(room, uid, m));
+          if (result.ended) {
+            endGame(room, result.ended.winnerSeat, result.ended.reason);
+            broadcastSnapshot(room);
+          }
           break;
+        }
       }
     });
 
@@ -269,7 +286,7 @@ export const initWsServer = (server: Server): void => {
       if (!room) return;
       const me = room.members.get(ctx.userId);
       if (!me) return;
-      // 断线不立刻踢：保留成员 60 秒等重连；对局中超时按认输处理
+      // 断线不立刻踢：保留成员 60 秒等重连；对局中超时按游戏规则处置（五子棋判负）
       me.online = false;
       me.ws = null;
       me.offlineAt = Date.now();
@@ -279,7 +296,7 @@ export const initWsServer = (server: Server): void => {
         const m = r?.members.get(ctx.userId);
         if (r && m && !m.online) {
           handleLeave(r, ctx.userId);
-          if (getRoom(room.id)) broadcast(r, { t: 'snapshot', ...snapshot(r) });
+          if (getRoom(room.id)) broadcastSnapshot(r);
         }
       }, 60_000);
       timer.unref?.();
@@ -299,3 +316,14 @@ export const initWsServer = (server: Server): void => {
     }
   }, 5 * 60 * 1000).unref();
 };
+
+// 供大厅展示的游戏列表
+export const listGameTypes = () =>
+  Object.values(gameHandlers).map((h) => ({
+    type: h.type,
+    title: h.title,
+    emoji: h.emoji,
+    desc: h.desc,
+    minPlayers: h.minPlayers,
+    maxPlayers: h.maxPlayers,
+  }));

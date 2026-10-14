@@ -43,26 +43,14 @@
       </template>
     </div>
 
-    <!-- 棋盘 -->
-    <div class="board-wrap">
-      <div class="board">
-        <template v-for="y in BOARD_SIZE" :key="`r${y}`">
-          <div
-            v-for="x in BOARD_SIZE"
-            :key="`c${x}`"
-            class="cell"
-            :class="{ win: isWinCell(x - 1, y - 1) }"
-            @click="tapCell(x - 1, y - 1)"
-          >
-            <span
-              v-if="stoneAt(x - 1, y - 1)"
-              class="stone"
-              :class="[stoneAt(x - 1, y - 1) === 1 ? 'black' : 'white', { last: isLast(x - 1, y - 1) }]"
-            />
-          </div>
-        </template>
-      </div>
-    </div>
+    <!-- 游戏区 -->
+    <GamePanel
+      :game-type="gameType"
+      :game-state="game"
+      :phase="phase"
+      :my-seat="mySeat"
+      @action="onGameAction"
+    />
 
     <!-- 操作区 -->
     <div class="actions">
@@ -168,8 +156,9 @@ import { useRecorder } from '@/composables/useRecorder';
 import { fetchRoomVoice, uploadRoomVoice } from '@/api/room';
 import { QUICK_PHRASES, ROOM_EMOJIS } from '@/utils/quickChat';
 import { soundManager } from '@/utils/sound';
+import GamePanel from '@/components/battle/GamePanel.vue';
 
-const BOARD_SIZE = 15;
+
 const BLACK = 1;
 const WHITE = 2;
 
@@ -204,12 +193,13 @@ interface VoiceItem {
 }
 
 const wsStatus = ref<'connecting' | 'open' | 'closed'>('closed');
+const gameType = ref('gomoku');
 const members = ref<MemberInfo[]>([]);
 const phase = ref<'waiting' | 'playing' | 'ended'>('waiting');
 const hostUserId = ref(0);
 const mySeat = ref(-1);
-const board = ref<number[][]>(Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(0)));
-const game = ref({ turn: BLACK, winner: 0, winLine: [] as [number, number][], lastMove: null as { x: number; y: number } | null });
+const board = ref<number[][]>(Array.from({ length: 15 }, () => Array(15).fill(0)));
+const game = ref<any>({ board, turn: 1, winner: 0, winLine: [] as [number, number][], lastMove: null });
 const chatList = ref<ChatItem[]>([]);
 const voiceList = ref<VoiceItem[]>([]);
 const overReason = ref('');
@@ -261,16 +251,13 @@ const overText = computed(() => {
   return `${who}获胜！（${overReason.value}）`;
 });
 
-const stoneAt = (x: number, y: number): number => board.value[y]?.[x] || 0;
-const isLast = (x: number, y: number): boolean => !!game.value.lastMove && game.value.lastMove.x === x && game.value.lastMove.y === y;
-const isWinCell = (x: number, y: number): boolean => game.value.winLine.some(([wx, wy]) => wx === x && wy === y);
-
 const scrollChat = () => nextTick(() => chatListEl.value?.scrollTo({ top: chatListEl.value.scrollHeight }));
 
 const applySnapshot = (s: any) => {
   members.value = s.members || [];
   phase.value = s.phase;
   hostUserId.value = s.hostUserId;
+  if (s.gameType) gameType.value = s.gameType;
   board.value = s.game?.board || board.value;
   game.value = {
     turn: s.game?.turn ?? BLACK,
@@ -286,12 +273,9 @@ const applySnapshot = (s: any) => {
 
 const send = (obj: Record<string, unknown>) => ws.send(obj);
 
-const tapCell = (x: number, y: number) => {
-  if (phase.value !== 'playing' || mySeat.value < 0) return;
-  if (game.value.turn !== myColor.value) return;
-  if (stoneAt(x, y)) return;
+const onGameAction = (action: Record<string, unknown>) => {
   soundManager.playClick();
-  send({ t: 'move', x, y });
+  send(action);
 };
 
 const sendText = () => {
@@ -424,17 +408,18 @@ onMounted(() => {
   });
   ws.on('game_start', (m: any) => {
     phase.value = m.phase;
-    board.value = Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(0));
-    game.value = { turn: BLACK, winner: 0, winLine: [], lastMove: null };
+    board.value = Array.from({ length: 15 }, () => Array(15).fill(0));
+    game.value = { board: board.value, turn: 1, winner: 0, winLine: [], lastMove: null };
   });
   ws.on('game_restart', (m: any) => {
     phase.value = m.phase;
-    board.value = Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(0));
-    game.value = { turn: BLACK, winner: 0, winLine: [], lastMove: null };
+    board.value = Array.from({ length: 15 }, () => Array(15).fill(0));
+    game.value = { board: board.value, turn: 1, winner: 0, winLine: [], lastMove: null };
   });
   ws.on('game_over', (m: any) => {
     phase.value = 'ended';
     overReason.value = m.reason || '';
+    game.value.winner = m.winnerSeat === 0 ? 1 : m.winnerSeat === 1 ? 2 : 3;
     rematchVotes.value = [];
   });
   ws.on('rematch_vote', (m: any) => {
@@ -610,84 +595,6 @@ onMounted(() => {
   font-size: 13px;
   color: #555;
   padding: 4px 0 8px;
-}
-
-/* 棋盘 */
-.board-wrap {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 10px;
-}
-
-.board {
-  display: grid;
-  grid-template-columns: repeat(15, 1fr);
-  gap: 0;
-  background: linear-gradient(135deg, #f5deb3 0%, #e8c88f 100%);
-  padding: 4px;
-  border-radius: 10px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
-  touch-action: manipulation;
-  width: 100%;
-  max-width: 380px;
-  aspect-ratio: 1;
-}
-
-.cell {
-  position: relative;
-  border-right: 1px solid rgba(120, 80, 30, 0.35);
-  border-bottom: 1px solid rgba(120, 80, 30, 0.35);
-  cursor: pointer;
-}
-
-.cell:nth-child(15n) {
-  border-right: none;
-}
-
-.cell:nth-last-child(-n + 15) {
-  border-bottom: none;
-}
-
-.cell.win {
-  background: rgba(230, 126, 34, 0.35);
-}
-
-.stone {
-  position: absolute;
-  inset: 8%;
-  border-radius: 50%;
-  animation: drop 0.15s ease;
-}
-
-.stone.black {
-  background: radial-gradient(circle at 35% 35%, #555, #111);
-}
-
-.stone.white {
-  background: radial-gradient(circle at 35% 35%, #fff, #c9c9c9);
-}
-
-.stone.last::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 22%;
-  height: 22%;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background: #e74c3c;
-}
-
-@keyframes drop {
-  from {
-    transform: scale(0.6);
-    opacity: 0.4;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
 }
 
 /* 操作 */

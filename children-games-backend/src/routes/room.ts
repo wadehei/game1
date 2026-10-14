@@ -4,7 +4,8 @@ import { Router, Request, Response } from 'express';
 import express from 'express';
 import { authMiddleware } from '../middleware/auth';
 import { success, fail, asyncHandler } from '../utils/response';
-import { createRoom, getRoom, getVoice, storeVoice, type GameType, type RoomVoice } from '../ws/roomManager';
+import { createRoom, getRoom, getVoice, storeVoice, type RoomVoice } from '../ws/roomManager';
+import type { GameType } from '../ws/games/types';
 
 const router = Router();
 

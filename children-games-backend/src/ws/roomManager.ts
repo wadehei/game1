@@ -1,7 +1,7 @@
 // 房间管理：纯内存实现。房间解散（人走光/超时/房主解散）即整对象销毁——聊天与语音随之清空，符合"不永久保留"的需求
-import { createGomoku, GomokuState } from './gomoku';
+import { getHandler } from './games/registry';
+import type { GameType } from './games/types';
 
-export type GameType = 'gomoku';
 export type Phase = 'waiting' | 'playing' | 'ended';
 export type Seat = 0 | 1 | -1; // -1=观战
 
@@ -41,9 +41,10 @@ export interface Room {
   hostUserId: number;
   members: Map<number, Member>;
   phase: Phase;
-  game: GomokuState;
+  game: any; // 由对应 GameHandler 创建与管理
   chat: ChatMsg[]; // 上限 100 条，环形截断
   voices: Map<string, RoomVoice>;
+  timers: NodeJS.Timeout[]; // 游戏定时器（题目推进/回合倒计时等），解散时统一清除
   createdAt: number;
   lastActiveAt: number;
 }
@@ -70,9 +71,10 @@ export const createRoom = (user: { userId: number; nickname: string; avatar: str
     hostUserId: user.userId,
     members: new Map(),
     phase: 'waiting',
-    game: createGomoku(),
+    game: getHandler(gameType).create(),
     chat: [],
     voices: new Map(),
+    timers: [],
     createdAt: Date.now(),
     lastActiveAt: Date.now(),
   };
@@ -89,7 +91,14 @@ export const joinRoom = (room: Room, user: { userId: number; nickname: string; a
     return existing;
   }
   const taken = new Set([...room.members.values()].map((m) => m.seat));
-  const seat: Seat = !taken.has(0) ? 0 : !taken.has(1) ? 1 : -1;
+  const maxSeats = getHandler(room.gameType).maxPlayers;
+  let seat: Seat = -1;
+  for (let i = 0; i < maxSeats; i += 1) {
+    if (!taken.has(i as Seat)) {
+      seat = i as Seat;
+      break;
+    }
+  }
   const member: Member = {
     userId: user.userId,
     nickname: user.nickname,
@@ -125,10 +134,25 @@ export const removeMember = (room: Room, userId: number): 'empty' | 'resign' | '
 
 export const disbandRoom = (room: Room): void => {
   rooms.delete(room.id);
+  room.timers.forEach(clearTimeout);
+  room.timers = [];
   room.chat = [];
   room.voices.clear();
   room.members.clear();
 };
+
+/** 游戏定时器登记：解散房间时统一清除，防止销毁后仍触发 */
+export const addTimer = (room: Room, timer: NodeJS.Timeout): void => {
+  room.timers.push(timer);
+  timer.unref?.();
+};
+
+export const clearRoomTimers = (room: Room): void => {
+  room.timers.forEach(clearTimeout);
+  room.timers = [];
+};
+
+export const TOTAL_MEMBER_LIMIT = 12; // 成员总数上限（含观战）
 
 export const addChat = (room: Room, msg: ChatMsg): void => {
   room.chat.push(msg);
