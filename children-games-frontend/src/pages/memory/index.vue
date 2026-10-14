@@ -468,9 +468,8 @@ onUnmounted(() => {
   flex: 1;
   min-height: 0;
   display: grid;
-  gap: 8px;
-  padding: 10px;
-  max-width: 400px;
+  gap: 6px;
+  padding: 8px;
   width: 100%;
   margin: 0 auto;
   box-sizing: border-box;
@@ -547,14 +546,13 @@ onUnmounted(() => {
 }
 
 .card-image {
-  width: 88%;
-  height: 88%;
-  min-height: 0;
+  width: 96%;
+  height: 96%;
   object-fit: contain;
 }
 
 .card-question {
-  font-size: clamp(24px, 9vmin, 44px);
+  font-size: clamp(28px, 12vmin, 56px);
   filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.25));
 }
 
