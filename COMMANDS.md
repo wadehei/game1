@@ -22,9 +22,11 @@ http://49.232.231.35:8888/tencentcloud
 ./deploy.sh
 ```
 
-脚本做的事：本地构建前端+后端 → tar 管道经 SSH 上传（前端 dist 清空后解压、后端 dist 覆盖）→ `pm2 restart children-games-api`。部署完访问 `http://49.232.231.35:90`。
+脚本做的事：本地构建前端+后端 → tar 管道经 SSH 上传（前端 dist 清空后解压、后端 dist 覆盖）→ `pm2 restart children-games-api`。部署完访问 **http://game.985211.icu:90**（或 http://49.232.231.35:90）。
 
 > ⚠️ `deploy.sh` 含服务器账号，**已加 .gitignore 不入库**（公开仓库）；换电脑时按下述配置重建即可，脚本仅 30 行。
+
+> ⚠️ **80/443 端口被腾讯云未备案拦截**（域名访问会跳 DNSPod webblock 页），正式入口只有 **90 端口**。nginx 里 90 的入口和 /api 反代是独立文件：`/www/server/panel/vhost/nginx/game_port90.conf`（90 端口 server 块）和 `/www/server/panel/vhost/nginx/extension/game.985211.icu/api-proxy.conf`（/api → 127.0.0.1:3001，宝塔 extension 机制加载进主站点配置）——删了或宝塔重置配置后网站会 404/接口全挂，按这两个文件内容重建即可。
 
 **首次使用：配置 root 的 SSH 免密登录（一次性）**
 
