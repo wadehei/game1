@@ -24,16 +24,21 @@
     <div class="visual-area">
       <template v-if="question.mode === 'count'">
         <div class="apple-group">
-          <span v-for="n in question.countA" :key="n" class="apple">🍎</span>
+          <span v-for="n in question.countA" :key="n" class="apple">{{ question.icon }}</span>
         </div>
       </template>
       <template v-else>
         <div class="apple-group">
-          <span v-for="n in question.countA" :key="'a' + n" class="apple">🍎</span>
+          <span v-for="n in question.countA" :key="'a' + n" class="apple">{{ question.icon }}</span>
         </div>
-        <span class="math-sign">+</span>
+        <span class="math-sign">{{ question.subtract ? '-' : '+' }}</span>
         <div class="apple-group">
-          <span v-for="n in question.countB" :key="'b' + n" class="apple">🍎</span>
+          <span
+            v-for="n in question.countB"
+            :key="'b' + n"
+            class="apple"
+            :style="question.subtract && n <= question.countB ? 'opacity:0.25' : ''"
+          >{{ question.icon }}</span>
         </div>
       </template>
     </div>
@@ -95,6 +100,8 @@ interface MathQuestion {
   countB: number;
   answer: number;
   options: number[];
+  subtract?: boolean;
+  icon?: string;
 }
 
 const router = useRouter();
@@ -131,10 +138,11 @@ const headerItems = computed(() => [
 ]);
 
 const hintText = computed(() => {
-  if (question.value.mode === 'count') {
-    return '一共有几颗苹果呀？';
+  const q = question.value;
+  if (q.mode === 'count') {
+    return `一共有几${ICON_NAMES[q.icon || '🍎'] || '个'}呀？`;
   }
-  return '两盘合起来是多少呀？';
+  return (q as any).subtract ? '拿走了一部分，还剩几个呀？' : '两盘合起来是多少呀？';
 });
 
 const applyLevelConfig = async (level: number) => {
@@ -148,7 +156,10 @@ const applyLevelConfig = async (level: number) => {
   }
 };
 
-// 按关卡出题：数数(1-5) → 数数(4-10) → 5以内加法 → 10以内加法
+// 数数用的演示物件：每题随机一种（不再是只有苹果）
+const COUNT_ICONS = ['🍎', '🍌', '🍇', '🍊', '🍓', '🌟', '🎈', '🐥', '🐟', '🧁'];
+
+// 按关卡出题：数数(1-5) → 数数(4-10) → 5以内加法 → 10以内加法 → 15以内加法 → 20以内加减混合
 // 后台可强制题目模式（forceMode）并指定数数/加法上限
 const generateQuestion = (): MathQuestion => {
   const level = currentLevel.value;
@@ -156,6 +167,7 @@ const generateQuestion = (): MathQuestion => {
   let mode: 'count' | 'add';
   let countA: number;
   let countB = 0;
+  let subtract = false; // 高关卡引入减法
 
   if (forceMode === 1) {
     mode = 'count';
@@ -176,19 +188,33 @@ const generateQuestion = (): MathQuestion => {
     mode = 'add';
     countA = 1 + Math.floor(Math.random() * 4);
     countB = 1 + Math.floor(Math.random() * (5 - countA));
-  } else {
+  } else if (level <= 14) {
+    // 10~15 以内加法
     mode = 'add';
-    countA = 1 + Math.floor(Math.random() * 9);
-    countB = 1 + Math.floor(Math.random() * (10 - countA));
+    const max = 10 + Math.min(5, level - 10);
+    countA = 1 + Math.floor(Math.random() * (max - 2));
+    countB = 1 + Math.floor(Math.random() * (max - countA));
+  } else {
+    // 20 以内加减混合：一半加法一半减法
+    mode = 'add';
+    subtract = Math.random() < 0.5;
+    const max = 20;
+    countA = 2 + Math.floor(Math.random() * (max - 3));
+    if (subtract) {
+      countB = 1 + Math.floor(Math.random() * (countA - 1));
+    } else {
+      countB = 1 + Math.floor(Math.random() * (max - countA));
+    }
   }
 
-  const answer = mode === 'count' ? countA : countA + countB;
+  const answer = mode === 'count' ? countA : subtract ? countA - countB : countA + countB;
 
-  // 三个选项：正确答案 + 两个邻近数
+  // 三个选项：正确答案 + 邻近数（范围随答案放大到 20）
+  const optMax = Math.max(12, answer + 3);
   const options = new Set<number>([answer]);
   while (options.size < 3) {
-    const candidate = answer + Math.floor(Math.random() * 5) - 2;
-    if (candidate >= 1 && candidate <= 12) {
+    const candidate = answer + Math.floor(Math.random() * 7) - 3;
+    if (candidate >= 1 && candidate <= optMax) {
       options.add(candidate);
     }
   }
@@ -198,17 +224,26 @@ const generateQuestion = (): MathQuestion => {
     [optionList[i], optionList[j]] = [optionList[j], optionList[i]];
   }
 
-  return { mode, countA, countB, answer, options: optionList };
+  return { mode, countA, countB, answer, options: optionList, subtract, icon: COUNT_ICONS[Math.floor(Math.random() * COUNT_ICONS.length)] };
 };
 
 // 数字读成中文（数学题语音读题）
 const CN_NUM = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
 
+// 物件中文名（语音读题用）
+const ICON_NAMES: Record<string, string> = {
+  '🍎': '苹果', '🍌': '香蕉', '🍇': '葡萄', '🍊': '橘子', '🍓': '草莓',
+  '🌟': '星星', '🎈': '气球', '🐥': '小鸡', '🐟': '小鱼', '🧁': '蛋糕',
+};
+
 const nextQuestion = () => {
   question.value = generateQuestion();
   const q = question.value;
+  const iconName = ICON_NAMES[q.icon || '🍎'] || '苹果';
   if (q.mode === 'count') {
-    speak('一共有几个苹果呀？');
+    speak(`一共有几个${iconName}呀？`);
+  } else if ((q as any).subtract) {
+    speak(`${CN_NUM[q.countA]} 减 ${CN_NUM[q.countB]}，等于几？`);
   } else {
     speak(`${CN_NUM[q.countA]} 加 ${CN_NUM[q.countB]}，等于几？`);
   }

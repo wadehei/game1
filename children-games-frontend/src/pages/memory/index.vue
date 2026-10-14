@@ -412,16 +412,21 @@ onUnmounted(() => {
 
 <style scoped>
 .memory-game {
-  min-height: 100vh;
+  height: 100vh;
   /* 低饱和蓝灰渐变：长时间注视不易视疲劳 */
   background: linear-gradient(180deg, #bcc8de 0%, #97a8c8 100%);
   padding: 20px;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .memory-header {
   background: rgba(255, 255, 255, 0.45);
   margin-bottom: 12px;
+  flex-shrink: 0;
 }
 
 :deep(.memory-header .label) {
@@ -447,18 +452,24 @@ onUnmounted(() => {
 }
 
 .game-board {
+  flex: 1;
+  min-height: 0;
   display: grid;
+  grid-auto-rows: 1fr;
   gap: 10px;
   padding: 12px;
   max-width: 400px;
+  width: 100%;
   margin: 0 auto;
+  box-sizing: border-box;
 }
 
 .card {
-  aspect-ratio: 1;
   perspective: 1000px;
   cursor: pointer;
   animation: cardAppear 0.3s ease backwards;
+  min-height: 0;
+  overflow: hidden;
 }
 
 @keyframes cardAppear {
@@ -526,11 +537,12 @@ onUnmounted(() => {
 .card-image {
   width: 70%;
   height: 70%;
+  min-height: 0;
   object-fit: contain;
 }
 
 .card-question {
-  font-size: 30px;
+  font-size: clamp(18px, 6vmin, 30px);
   filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.25));
 }
 
