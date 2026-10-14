@@ -60,7 +60,11 @@ const creating = ref(false);
 const joinCode = ref('');
 const errMsg = ref('');
 
-const goBack = () => router.back();
+const goBack = () => {
+  const pos = Number(window.history.state?.position ?? 0);
+  if (pos > 0) router.back();
+  else router.replace('/');
+};
 
 const create = async () => {
   if (creating.value) return;

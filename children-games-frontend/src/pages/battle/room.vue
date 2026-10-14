@@ -346,10 +346,18 @@ const playVoice = async (v: VoiceItem) => {
 };
 
 // ── 退出/解散 ──
+// 返回大厅：优先弹掉房间这条历史（go(-1)），避免 replace 产生两条连续 /battle 导致要按两次返回
+// 直接输网址进入房间（无上一页）时才 replace 兜底
+const leaveToLobby = () => {
+  const pos = Number(window.history.state?.position ?? 0);
+  if (pos > 0) router.go(-1);
+  else router.replace('/battle');
+};
+
 const doExit = () => {
   send({ t: 'leave' });
   ws.close();
-  router.replace('/battle');
+  leaveToLobby();
 };
 
 const askExit = () => {
@@ -372,7 +380,7 @@ const askDisband = () => {
     ok: () => {
       send({ t: 'disband' });
       ws.close();
-      router.replace('/battle');
+      leaveToLobby();
     },
   };
 };
@@ -444,13 +452,13 @@ onMounted(() => {
   ws.on('closed', (m: any) => {
     alert(m.reason || '房间已解散');
     ws.close();
-    router.replace('/battle');
+    leaveToLobby();
   });
   ws.on('error', (m: any) => {
     if (m.message?.includes('房间不存在')) {
       alert(m.message);
       ws.close();
-      router.replace('/battle');
+      leaveToLobby();
     }
   });
   ws.on('disconnected', () => {
