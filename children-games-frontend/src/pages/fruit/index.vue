@@ -234,7 +234,7 @@ const spawnFruit = () => {
     fruits.push({
       x: Math.random() * (canvasWidth.value - 40) + 20,
       y: -30,
-      size: 30,
+      size: 44,
       speed: levelConfig.value.fallSpeed + Math.random() * 0.5,
       type: 'bomb',
       emoji: '💣',
@@ -245,7 +245,7 @@ const spawnFruit = () => {
     fruits.push({
       x: Math.random() * (canvasWidth.value - 40) + 20,
       y: -30,
-      size: 28,
+      size: 40,
       speed: levelConfig.value.fallSpeed + Math.random() * 0.5,
       type: fruitType.type,
       emoji: fruitType.emoji,

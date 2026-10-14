@@ -12,7 +12,7 @@
     />
 
     <!-- 游戏画布 -->
-    <div class="game-board" :style="{ gridTemplateColumns: `repeat(${gridSize}, 1fr)` }">
+    <div class="game-board" :style="{ gridTemplateColumns: `repeat(${gridSize}, 1fr)`, gridTemplateRows: `repeat(${Math.ceil(totalCards / gridSize)}, 1fr)` }">
       <div
         v-for="(card, index) in cards"
         :key="index"
@@ -147,9 +147,22 @@ const levelConfig = ref<Record<string, any>>({
 
 const gridSize = computed(() => {
   const total = levelConfig.value.pairs * 2;
-  // 一行最多 3 个（降低儿童视觉负荷，图标更大）；总张数为偶数，3 整除用 3 列、否则 2 列，无残行
-  return total % 3 === 0 ? 3 : 2;
+  // 在 2~4 列里选能整除、且最接近方形（略竖）的布局——卡片尽可能大，无残行
+  let best = 2;
+  let bestScore = Infinity;
+  for (const cols of [4, 3, 2]) {
+    if (total % cols !== 0) continue;
+    const rows = total / cols;
+    const score = Math.abs(rows / cols - 1.4);
+    if (score < bestScore) {
+      bestScore = score;
+      best = cols;
+    }
+  }
+  return best;
 });
+
+const totalCards = computed(() => levelConfig.value.pairs * 2);
 
 const headerItems = computed(() => [
   { label: '关卡', value: currentLevel.value },
@@ -455,9 +468,8 @@ onUnmounted(() => {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-auto-rows: 1fr;
-  gap: 10px;
-  padding: 12px;
+  gap: 8px;
+  padding: 10px;
   max-width: 400px;
   width: 100%;
   margin: 0 auto;
@@ -535,14 +547,14 @@ onUnmounted(() => {
 }
 
 .card-image {
-  width: 70%;
-  height: 70%;
+  width: 88%;
+  height: 88%;
   min-height: 0;
   object-fit: contain;
 }
 
 .card-question {
-  font-size: clamp(18px, 6vmin, 30px);
+  font-size: clamp(24px, 9vmin, 44px);
   filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.25));
 }
 
