@@ -505,6 +505,23 @@ onMounted(() => {
     gameEvents.final = m;
     phase.value = 'ended';
   });
+  ws.on('uno_state', (m: any) => {
+    gameEvents.uno_state = m;
+    gameEvents.turn = { seat: m.turnSeat, seq: Date.now() };
+  });
+  ws.on('uno_turn', (m: any) => {
+    gameEvents.turn = { ...m, seq: Date.now() };
+  });
+  ws.on('uno_drew', (m: any) => {
+    gameEvents.drew = { ...m, seq: Date.now() };
+  });
+  ws.on('uno_played', (m: any) => {
+    gameEvents.uno_played = m;
+  });
+  ws.on('uno_final', (m: any) => {
+    gameEvents.final = m;
+    phase.value = 'ended';
+  });
   ws.on('error', (m: any) => {
     lastWsError.value = m.message || '';
     setTimeout(() => (lastWsError.value = ''), 2500);
