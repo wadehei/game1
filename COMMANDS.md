@@ -19,10 +19,12 @@ http://49.232.231.35:8888/tencentcloud
 替代「宝塔手动拖文件 + SSH 重启」的旧流程，在项目根目录 Git Bash 中一条命令完成：
 
 ```bash
-./deploy.sh
+./deploy.sh          # 前后端全部部署（默认）
+./deploy.sh front    # 只部署前端（静态文件即时生效，无需重启服务）
+./deploy.sh back     # 只部署后端（含服务器依赖安装 + pm2 重启）
 ```
 
-脚本做的事：本地构建前端+后端 → tar 管道经 SSH 上传（前端 dist 清空后解压、后端 dist 覆盖）→ `pm2 restart children-games-api`。部署完访问 **http://game.985211.icu:90**（或 http://49.232.231.35:90）。
+脚本做的事：本地构建 → tar 管道经 SSH 上传（前端 dist 清空后解压、后端 dist 覆盖）→ 后端部署时同步 package.json 并 `npm install` → `pm2 restart children-games-api`。部署完访问 **http://game.985211.icu**（备案过渡期也可用 http://49.232.231.35 或 :90 端口）。
 
 > ⚠️ `deploy.sh` 含服务器账号，**已加 .gitignore 不入库**（公开仓库）；换电脑时按下述配置重建即可，脚本仅 30 行。
 
