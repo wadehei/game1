@@ -62,6 +62,18 @@
     </button>
     <div v-if="msg" class="msg" :class="{ err: isErr }">{{ msg }}</div>
 
+    <!-- 角色口令 -->
+    <div class="section card switch-role" @click="$router.push('/user')">
+      <div class="switch-row">
+        <span class="switch-icon">🔑</span>
+        <div class="switch-main">
+          <div class="switch-title">角色口令</div>
+          <div class="switch-desc">设置 4 位数字口令保护你的档案</div>
+        </div>
+        <span class="pe-arrow">›</span>
+      </div>
+    </div>
+
     <!-- 切换角色 -->
     <div class="section card switch-role" @click="$router.push('/profiles')">
       <div class="switch-row">
