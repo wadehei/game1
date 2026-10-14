@@ -66,9 +66,10 @@
 
     <!-- 操作区 -->
     <div class="actions">
-      <button v-if="phase === 'waiting' && mySeat >= 0 && !myReady" class="act ready" @click="send({ t: 'ready' })">
-        准备
-      </button>
+      <template v-if="phase === 'waiting' && mySeat >= 0">
+        <button v-if="!myReady" class="act ready" @click="send({ t: 'ready' })">准备</button>
+        <button v-else class="act cancel-ready" @click="send({ t: 'ready' })">取消准备</button>
+      </template>
       <template v-if="phase === 'playing' && mySeat >= 0">
         <button class="act resign" @click="askResign">认输</button>
       </template>
@@ -709,6 +710,12 @@ onMounted(() => {
 .act.ready {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: #fff;
+}
+
+.act.cancel-ready {
+  background: #fff;
+  color: #888;
+  border: 1px solid #dfe3ea;
 }
 
 .act.resign {
