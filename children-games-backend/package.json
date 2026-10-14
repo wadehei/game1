@@ -22,11 +22,13 @@
     "jsonwebtoken": "^9.0.3",
     "mysql2": "^3.24.5",
     "nodemon": "^3.1.14",
-    "sequelize": "^6.37.8"
+    "sequelize": "^6.37.8",
+    "ws": "^8.22.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/ws": "^8.18.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5"
   }

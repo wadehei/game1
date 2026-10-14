@@ -32,6 +32,16 @@ const routes = [
     component: () => import('@/pages/feedback/index.vue'),
   },
   {
+    path: '/battle',
+    name: 'Battle',
+    component: () => import('@/pages/battle/index.vue'),
+  },
+  {
+    path: '/battle/room/:roomId',
+    name: 'BattleRoom',
+    component: () => import('@/pages/battle/room.vue'),
+  },
+  {
     path: '/memory',
     name: 'Memory',
     component: () => import('@/pages/memory/index.vue'),

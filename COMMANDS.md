@@ -46,8 +46,26 @@ ssh root@49.232.231.35 "echo ok"
 
 - **后端 PM2 进程是 root 启动的，必须用 root 部署重启**（`pm2 restart` 用别的用户会另起一套进程）；脚本 `SERVER` 已按 `root@` 配置
 - 目标目录在前端：`/home/songshaohui/children-games/frontend`、后端：`/home/songshaohui/children-games/backend`（变动时改脚本顶部变量）
-- 后端只上传编译产物 `dist/`；若 `package.json` 依赖有变，需手动上服务器 `npm install` 后再重启
+- 后端只上传编译产物 `dist/`；依赖清单（package.json）会自动同步并在服务器执行 `npm install --omit=dev`，新增依赖无需手动操作
 - 前端上传前会清空目标目录（避免旧版 hash 文件堆积），Nginx 读静态文件无需重载
+
+**好友对战 WebSocket（一次性 nginx 配置）**
+
+`/ws` 路径走 WebSocket，需要 upgrade 头。在宝塔「网站 → game.985211.icu → 配置文件」的 `location /api/` 块后面加（或直接把 game_port90.conf 和 extension 的 api-proxy.conf 里各加一段）：
+
+```nginx
+location /ws {
+    proxy_pass http://127.0.0.1:3001;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_read_timeout 3600s;
+    proxy_send_timeout 3600s;
+}
+```
+
+改完 `/www/server/nginx/sbin/nginx -t && /www/server/nginx/sbin/nginx -s reload`。
 
 ---
 

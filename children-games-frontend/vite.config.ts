@@ -16,6 +16,12 @@ export default defineConfig({
         target: 'http://localhost:3002',
         changeOrigin: true,
       },
+      // 对战房间 WebSocket
+      '/ws': {
+        target: 'http://localhost:3002',
+        ws: true,
+        changeOrigin: true,
+      },
     },
   },
 });

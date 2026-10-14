@@ -6,6 +6,7 @@ import { sequelize, testConnection } from './config/database';
 import { initModels } from './models';
 import routes from './routes';
 import avatarRoutes from './routes/avatar';
+import { initWsServer } from './ws/wsServer';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { logError, initLogger } from './utils/logger';
 
@@ -45,14 +46,15 @@ const startServer = async () => {
     // 同步数据模型
     await initModels();
 
-    // 启动 HTTP 服务器
-    app.listen(config.port, () => {
+    // WebSocket（对战房间），挂在同一个 HTTP server 的 /ws 路径
+    const server = app.listen(config.port, () => {
       console.log(`
 🚀 服务器已启动
 📍 地址: http://localhost:${config.port}
 🌍 环境: ${config.nodeEnv}
       `);
     });
+    initWsServer(server);
   } catch (error) {
     console.error('启动服务器失败:', error);
     process.exit(1);

@@ -17,6 +17,16 @@
       </div>
     </div>
 
+    <!-- 好友对战入口 -->
+    <div class="battle-entry" @click="goBattle">
+      <span class="battle-icon">♟️</span>
+      <div class="battle-text">
+        <div class="battle-title">好友对战</div>
+        <div class="battle-desc">和朋友实时连线，聊天开黑</div>
+      </div>
+      <span class="battle-arrow">›</span>
+    </div>
+
     <!-- 游戏列表 -->
     <div class="game-list">
       <div
@@ -257,6 +267,11 @@ const goToGame = (gameId: string) => {
 const goFeedback = () => {
   soundManager.playClick();
   router.push("/feedback");
+};
+
+const goBattle = () => {
+  soundManager.playClick();
+  router.push("/battle");
 };
 
 onMounted(async () => {
@@ -600,6 +615,43 @@ onMounted(async () => {
 .reward-claimed {
   color: #43a047;
   font-weight: bold;
+}
+
+.battle-entry {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, #1a1a2e 0%, #5f27cd 100%);
+  border-radius: 16px;
+  margin-bottom: 16px;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(95, 39, 205, 0.35);
+}
+
+.battle-icon {
+  font-size: 28px;
+}
+
+.battle-text {
+  flex: 1;
+}
+
+.battle-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #fff;
+}
+
+.battle-desc {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+  margin-top: 2px;
+}
+
+.battle-arrow {
+  font-size: 22px;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .feedback-entry {

@@ -6,6 +6,7 @@ import adminRoutes from './admin';
 import logsRoutes from './logs';
 import voiceRoutes from './voice';
 import feedbackRoutes from './feedback';
+import roomRoutes from './room';
 import { getPublicSettings } from '../controllers/adminController';
 
 const router = Router();
@@ -17,6 +18,7 @@ router.use('/admin', adminRoutes);
 router.use('/logs', logsRoutes);
 router.use('/voice', voiceRoutes);
 router.use('/feedback', feedbackRoutes);
+router.use('/room', roomRoutes);
 
 // 公开全局设置（客户端护眼守卫读取默认间隔）
 router.get('/settings/public', getPublicSettings);
