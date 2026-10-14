@@ -63,7 +63,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 const BOARD_SIZE = 15;
 const BLACK = 1;
@@ -94,11 +94,11 @@ const STAR_POINTS: [number, number][] = [
 const isLast = (x: number, y: number): boolean =>
   !!props.state.lastMove && props.state.lastMove.x === x && props.state.lastMove.y === y;
 
-const myColor = props.mySeat === 0 ? BLACK : props.mySeat === 1 ? 2 : 0;
+const myColor = computed(() => (props.mySeat === 0 ? BLACK : props.mySeat === 1 ? 2 : 0));
 
 const tap = (e: PointerEvent) => {
   if (props.phase !== 'playing' || props.mySeat < 0) return;
-  if (props.state.turn !== myColor) return;
+  if (props.state.turn !== myColor.value) return;
   const svg = svgEl.value;
   if (!svg) return;
   // 屏幕坐标 → SVG 逻辑坐标，取最近交点
