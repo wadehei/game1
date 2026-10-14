@@ -1,0 +1,702 @@
+[
+  {
+    "word": "熊猫",
+    "category": "动物",
+    "difficulty": 1
+  },
+  {
+    "word": "长颈鹿",
+    "category": "动物",
+    "difficulty": 1
+  },
+  {
+    "word": "企鹅",
+    "category": "动物",
+    "difficulty": 1
+  },
+  {
+    "word": "大象",
+    "category": "动物",
+    "difficulty": 1
+  },
+  {
+    "word": "蝴蝶",
+    "category": "动物",
+    "difficulty": 1
+  },
+  {
+    "word": "章鱼",
+    "category": "动物",
+    "difficulty": 2
+  },
+  {
+    "word": "刺猬",
+    "category": "动物",
+    "difficulty": 2
+  },
+  {
+    "word": "孔雀",
+    "category": "动物",
+    "difficulty": 2
+  },
+  {
+    "word": "鳄鱼",
+    "category": "动物",
+    "difficulty": 1
+  },
+  {
+    "word": "蜗牛",
+    "category": "动物",
+    "difficulty": 1
+  },
+  {
+    "word": "袋鼠",
+    "category": "动物",
+    "difficulty": 1
+  },
+  {
+    "word": "骆驼",
+    "category": "动物",
+    "difficulty": 2
+  },
+  {
+    "word": "萤火虫",
+    "category": "动物",
+    "difficulty": 2
+  },
+  {
+    "word": "海豚",
+    "category": "动物",
+    "difficulty": 1
+  },
+  {
+    "word": "猫头鹰",
+    "category": "动物",
+    "difficulty": 2
+  },
+  {
+    "word": "螳螂",
+    "category": "动物",
+    "difficulty": 3
+  },
+  {
+    "word": "河马",
+    "category": "动物",
+    "difficulty": 1
+  },
+  {
+    "word": "蜈蚣",
+    "category": "动物",
+    "difficulty": 3
+  },
+  {
+    "word": "北极熊",
+    "category": "动物",
+    "difficulty": 1
+  },
+  {
+    "word": "变色龙",
+    "category": "动物",
+    "difficulty": 2
+  },
+  {
+    "word": "西瓜",
+    "category": "食物",
+    "difficulty": 1
+  },
+  {
+    "word": "冰淇淋",
+    "category": "食物",
+    "difficulty": 1
+  },
+  {
+    "word": "汉堡包",
+    "category": "食物",
+    "difficulty": 1
+  },
+  {
+    "word": "饺子",
+    "category": "食物",
+    "difficulty": 1
+  },
+  {
+    "word": "烧烤",
+    "category": "食物",
+    "difficulty": 1
+  },
+  {
+    "word": "火锅",
+    "category": "食物",
+    "difficulty": 1
+  },
+  {
+    "word": "寿司",
+    "category": "食物",
+    "difficulty": 1
+  },
+  {
+    "word": "爆米花",
+    "category": "食物",
+    "difficulty": 1
+  },
+  {
+    "word": "棒棒糖",
+    "category": "食物",
+    "difficulty": 1
+  },
+  {
+    "word": "油条",
+    "category": "食物",
+    "difficulty": 2
+  },
+  {
+    "word": "菠萝",
+    "category": "食物",
+    "difficulty": 1
+  },
+  {
+    "word": "辣椒",
+    "category": "食物",
+    "difficulty": 1
+  },
+  {
+    "word": "月饼",
+    "category": "食物",
+    "difficulty": 1
+  },
+  {
+    "word": "方便面",
+    "category": "食物",
+    "difficulty": 1
+  },
+  {
+    "word": "棉花糖",
+    "category": "食物",
+    "difficulty": 1
+  },
+  {
+    "word": "臭豆腐",
+    "category": "食物",
+    "difficulty": 2
+  },
+  {
+    "word": "热狗",
+    "category": "食物",
+    "difficulty": 2
+  },
+  {
+    "word": "奶茶",
+    "category": "食物",
+    "difficulty": 1
+  },
+  {
+    "word": "煎饼果子",
+    "category": "食物",
+    "difficulty": 2
+  },
+  {
+    "word": "冰糖葫芦",
+    "category": "食物",
+    "difficulty": 2
+  },
+  {
+    "word": "雨伞",
+    "category": "物品",
+    "difficulty": 1
+  },
+  {
+    "word": "眼镜",
+    "category": "物品",
+    "difficulty": 1
+  },
+  {
+    "word": "牙刷",
+    "category": "物品",
+    "difficulty": 1
+  },
+  {
+    "word": "剪刀",
+    "category": "物品",
+    "difficulty": 1
+  },
+  {
+    "word": "台灯",
+    "category": "物品",
+    "difficulty": 1
+  },
+  {
+    "word": "吉他",
+    "category": "物品",
+    "difficulty": 1
+  },
+  {
+    "word": "气球",
+    "category": "物品",
+    "difficulty": 1
+  },
+  {
+    "word": "风筝",
+    "category": "物品",
+    "difficulty": 1
+  },
+  {
+    "word": "口罩",
+    "category": "物品",
+    "difficulty": 1
+  },
+  {
+    "word": "闹钟",
+    "category": "物品",
+    "difficulty": 1
+  },
+  {
+    "word": "梯子",
+    "category": "物品",
+    "difficulty": 1
+  },
+  {
+    "word": "望远镜",
+    "category": "物品",
+    "difficulty": 2
+  },
+  {
+    "word": "灭火器",
+    "category": "物品",
+    "difficulty": 2
+  },
+  {
+    "word": "口红",
+    "category": "物品",
+    "difficulty": 1
+  },
+  {
+    "word": "哑铃",
+    "category": "物品",
+    "difficulty": 2
+  },
+  {
+    "word": "乒乓球拍",
+    "category": "物品",
+    "difficulty": 2
+  },
+  {
+    "word": "救生圈",
+    "category": "物品",
+    "difficulty": 2
+  },
+  {
+    "word": "指南针",
+    "category": "物品",
+    "difficulty": 2
+  },
+  {
+    "word": "放大镜",
+    "category": "物品",
+    "difficulty": 1
+  },
+  {
+    "word": "充电宝",
+    "category": "物品",
+    "difficulty": 2
+  },
+  {
+    "word": "跑步",
+    "category": "动作",
+    "difficulty": 1
+  },
+  {
+    "word": "游泳",
+    "category": "动作",
+    "difficulty": 1
+  },
+  {
+    "word": "睡觉",
+    "category": "动作",
+    "difficulty": 1
+  },
+  {
+    "word": "刷牙",
+    "category": "动作",
+    "difficulty": 1
+  },
+  {
+    "word": "钓鱼",
+    "category": "动作",
+    "difficulty": 1
+  },
+  {
+    "word": "跳绳",
+    "category": "动作",
+    "difficulty": 1
+  },
+  {
+    "word": "举重",
+    "category": "动作",
+    "difficulty": 1
+  },
+  {
+    "word": "拍照",
+    "category": "动作",
+    "difficulty": 1
+  },
+  {
+    "word": "滑冰",
+    "category": "动作",
+    "difficulty": 1
+  },
+  {
+    "word": "理发",
+    "category": "动作",
+    "difficulty": 1
+  },
+  {
+    "word": "打太极",
+    "category": "动作",
+    "difficulty": 2
+  },
+  {
+    "word": "敷面膜",
+    "category": "动作",
+    "difficulty": 2
+  },
+  {
+    "word": "拔河",
+    "category": "动作",
+    "difficulty": 1
+  },
+  {
+    "word": "射箭",
+    "category": "动作",
+    "difficulty": 1
+  },
+  {
+    "word": "蹦极",
+    "category": "动作",
+    "difficulty": 2
+  },
+  {
+    "word": "瑜伽",
+    "category": "动作",
+    "difficulty": 1
+  },
+  {
+    "word": "广场舞",
+    "category": "动作",
+    "difficulty": 2
+  },
+  {
+    "word": "思考",
+    "category": "动作",
+    "difficulty": 3
+  },
+  {
+    "word": "打喷嚏",
+    "category": "动作",
+    "difficulty": 2
+  },
+  {
+    "word": "缝衣服",
+    "category": "动作",
+    "difficulty": 2
+  },
+  {
+    "word": "长城",
+    "category": "地点",
+    "difficulty": 1
+  },
+  {
+    "word": "金字塔",
+    "category": "地点",
+    "difficulty": 1
+  },
+  {
+    "word": "埃菲尔铁塔",
+    "category": "地点",
+    "difficulty": 2
+  },
+  {
+    "word": "天安门",
+    "category": "地点",
+    "difficulty": 1
+  },
+  {
+    "word": "游乐园",
+    "category": "地点",
+    "difficulty": 1
+  },
+  {
+    "word": "动物园",
+    "category": "地点",
+    "difficulty": 1
+  },
+  {
+    "word": "海滩",
+    "category": "地点",
+    "difficulty": 1
+  },
+  {
+    "word": "医院",
+    "category": "地点",
+    "difficulty": 1
+  },
+  {
+    "word": "图书馆",
+    "category": "地点",
+    "difficulty": 1
+  },
+  {
+    "word": "电影院",
+    "category": "地点",
+    "difficulty": 1
+  },
+  {
+    "word": "学校操场",
+    "category": "地点",
+    "difficulty": 1
+  },
+  {
+    "word": "地铁站",
+    "category": "地点",
+    "difficulty": 1
+  },
+  {
+    "word": "健身房",
+    "category": "地点",
+    "difficulty": 1
+  },
+  {
+    "word": "火山",
+    "category": "地点",
+    "difficulty": 1
+  },
+  {
+    "word": "沙漠",
+    "category": "地点",
+    "difficulty": 1
+  },
+  {
+    "word": "瀑布",
+    "category": "地点",
+    "difficulty": 1
+  },
+  {
+    "word": "太空",
+    "category": "地点",
+    "difficulty": 1
+  },
+  {
+    "word": "海底世界",
+    "category": "地点",
+    "difficulty": 2
+  },
+  {
+    "word": "农村稻田",
+    "category": "地点",
+    "difficulty": 2
+  },
+  {
+    "word": "奥运会",
+    "category": "成语/其他",
+    "difficulty": 1
+  },
+  {
+    "word": "春节",
+    "category": "成语/其他",
+    "difficulty": 1
+  },
+  {
+    "word": "生日蛋糕",
+    "category": "成语/其他",
+    "difficulty": 1
+  },
+  {
+    "word": "婚礼",
+    "category": "成语/其他",
+    "difficulty": 1
+  },
+  {
+    "word": "守株待兔",
+    "category": "成语/其他",
+    "difficulty": 2
+  },
+  {
+    "word": "画蛇添足",
+    "category": "成语/其他",
+    "difficulty": 2
+  },
+  {
+    "word": "亡羊补牢",
+    "category": "成语/其他",
+    "difficulty": 2
+  },
+  {
+    "word": "对牛弹琴",
+    "category": "成语/其他",
+    "difficulty": 2
+  },
+  {
+    "word": "狐假虎威",
+    "category": "成语/其他",
+    "difficulty": 2
+  },
+  {
+    "word": "掩耳盗铃",
+    "category": "成语/其他",
+    "difficulty": 2
+  },
+  {
+    "word": "井底之蛙",
+    "category": "成语/其他",
+    "difficulty": 2
+  },
+  {
+    "word": "三头六臂",
+    "category": "成语/其他",
+    "difficulty": 3
+  },
+  {
+    "word": "飞檐走壁",
+    "category": "成语/其他",
+    "difficulty": 3
+  },
+  {
+    "word": "狼吞虎咽",
+    "category": "成语/其他",
+    "difficulty": 2
+  },
+  {
+    "word": "日出",
+    "category": "成语/其他",
+    "difficulty": 1
+  },
+  {
+    "word": "彩虹",
+    "category": "成语/其他",
+    "difficulty": 1
+  },
+  {
+    "word": "闪电",
+    "category": "成语/其他",
+    "difficulty": 1
+  },
+  {
+    "word": "龙卷风",
+    "category": "成语/其他",
+    "difficulty": 1
+  },
+  {
+    "word": "机器人",
+    "category": "成语/其他",
+    "difficulty": 1
+  },
+  {
+    "word": "火箭发射",
+    "category": "成语/其他",
+    "difficulty": 1
+  },
+  {
+    "word": "网购快递",
+    "category": "成语/其他",
+    "difficulty": 2
+  },
+  {
+    "word": "直播带货",
+    "category": "成语/其他",
+    "difficulty": 2
+  },
+  {
+    "word": "自拍",
+    "category": "成语/其他",
+    "difficulty": 1
+  },
+  {
+    "word": "堵车",
+    "category": "成语/其他",
+    "difficulty": 1
+  },
+  {
+    "word": "世界杯",
+    "category": "成语/其他",
+    "difficulty": 1
+  },
+  {
+    "word": "京剧脸谱",
+    "category": "成语/其他",
+    "difficulty": 3
+  },
+  {
+    "word": "舞龙舞狮",
+    "category": "成语/其他",
+    "difficulty": 2
+  },
+  {
+    "word": "摩天轮",
+    "category": "地点",
+    "difficulty": 1
+  },
+  {
+    "word": "蜡烛",
+    "category": "物品",
+    "difficulty": 1
+  },
+  {
+    "word": "存钱罐",
+    "category": "物品",
+    "difficulty": 2
+  },
+  {
+    "word": "拖把",
+    "category": "物品",
+    "difficulty": 2
+  },
+  {
+    "word": "订书机",
+    "category": "物品",
+    "difficulty": 2
+  },
+  {
+    "word": "奖杯",
+    "category": "物品",
+    "difficulty": 1
+  },
+  {
+    "word": "秋千",
+    "category": "物品",
+    "difficulty": 1
+  },
+  {
+    "word": "滑梯",
+    "category": "物品",
+    "difficulty": 1
+  },
+  {
+    "word": "打鼓",
+    "category": "动作",
+    "difficulty": 1
+  },
+  {
+    "word": "弹钢琴",
+    "category": "动作",
+    "difficulty": 1
+  },
+  {
+    "word": "骑自行车",
+    "category": "动作",
+    "difficulty": 1
+  },
+  {
+    "word": "倒垃圾",
+    "category": "动作",
+    "difficulty": 1
+  },
+  {
+    "word": "浇花",
+    "category": "动作",
+    "difficulty": 1
+  },
+  {
+    "word": "喂猫",
+    "category": "动作",
+    "difficulty": 1
+  }
+]

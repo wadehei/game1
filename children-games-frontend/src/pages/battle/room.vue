@@ -50,7 +50,8 @@
       :game-state="game"
       :phase="phase"
       :my-seat="mySeat"
-      :events="quizEvents"
+      :events="gameType === 'draw' ? drawEvents : quizEvents"
+      :members="members"
       @action="onGameAction"
     />
 
@@ -119,7 +120,7 @@
           v-model="chatInput"
           class="chat-input"
           maxlength="100"
-          placeholder="说点什么…"
+          :placeholder="gameType === 'draw' && phase === 'playing' ? '在这里输入你猜的词…' : '说点什么…'"
           @keyup.enter="sendText"
         />
         <button
@@ -222,6 +223,7 @@ const mySeatHasPlayer = computed(() => mySeat.value >= 0);
 const myReady = computed(() => members.value.find((m) => m.userId === myId.value)?.ready || false);
 const rematchVotes = ref<number[]>([]);
 const quizEvents = reactive({ question: null as any, result: null as any, final: null as any });
+const drawEvents = reactive({ round: null as any, stroke: null as any, undo: null as any, clear: null as any, guessResult: null as any, roundEnd: null as any, final: null as any });
 const lastWsError = ref('');
 const myRematch = computed(() => rematchVotes.value.includes(myId.value));
 const spectatorCount = computed(() => members.value.filter((m) => m.seat < 0).length);
@@ -288,7 +290,11 @@ const onGameAction = (action: Record<string, unknown>) => {
 const sendText = () => {
   const text = chatInput.value.trim();
   if (!text) return;
-  send({ t: 'chat', kind: 'text', content: text });
+  if (gameType.value === 'draw' && phase.value === 'playing') {
+    send({ t: 'guess', content: text });
+  } else {
+    send({ t: 'chat', kind: 'text', content: text });
+  }
   chatInput.value = '';
 };
 
@@ -445,6 +451,30 @@ onMounted(() => {
   });
   ws.on('quiz_final', (m: any) => {
     quizEvents.final = m;
+  });
+  ws.on('draw_round', (m: any) => {
+    drawEvents.round = { ...m, ts: Date.now() };
+    drawEvents.stroke = null;
+    drawEvents.final = null;
+  });
+  ws.on('draw_stroke', (m: any) => {
+    drawEvents.stroke = m;
+  });
+  ws.on('draw_undo', () => {
+    drawEvents.undo = { ts: Date.now() };
+  });
+  ws.on('draw_clear', () => {
+    drawEvents.clear = { ts: Date.now() };
+  });
+  ws.on('guess_result', (m: any) => {
+    drawEvents.guessResult = m;
+  });
+  ws.on('draw_round_end', (m: any) => {
+    drawEvents.roundEnd = m;
+  });
+  ws.on('draw_final', (m: any) => {
+    drawEvents.final = m;
+    phase.value = 'ended';
   });
   ws.on('error', (m: any) => {
     lastWsError.value = m.message || '';

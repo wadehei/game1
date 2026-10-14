@@ -73,6 +73,7 @@ const props = defineProps<{
   question: any; // quiz_question 事件 / 快照拼装
   result: any; // quiz_result 事件
   final: any; // quiz_final 事件
+  members: Array<{ userId: number; nickname: string }>;
   phase: string;
   mySeat: number;
 }>();
@@ -93,7 +94,7 @@ const locked = computed(() => myChoice.value !== null || revealed.value || props
 const scores = computed<any[]>(() => props.question?.scores || props.final?.ranking?.map((r: any) => ({ userId: r.userId, total: r.total })) || []);
 const nameOf = (userId: number): string => {
   if (userId === myId.value) return '我';
-  return props.question?.members?.find((m: any) => m.userId === userId)?.nickname || `角色${userId}`;
+  return props.members?.find((m) => m.userId === userId)?.nickname || `角色${userId}`;
 };
 
 const startTick = () => {

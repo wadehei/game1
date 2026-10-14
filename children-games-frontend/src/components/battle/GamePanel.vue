@@ -11,24 +11,36 @@
     :question="events.question"
     :result="events.result"
     :final="events.final"
+    :members="members"
     :phase="phase"
     :my-seat="mySeat"
     @action="emit('action', $event)"
   />
-  <!-- 后续游戏组件在此按 gameType 挂载：draw / spy / uno -->
+  <DrawGame
+    v-else-if="gameType === 'draw'"
+    :state="gameState"
+    :events="events"
+    :members="members"
+    :phase="phase"
+    :my-seat="mySeat"
+    @action="emit('action', $event)"
+  />
+  <!-- 后续游戏组件在此按 gameType 挂载：spy / uno -->
   <div v-else class="game-placeholder">该游戏暂未开放</div>
 </template>
 
 <script setup lang="ts">
 import GomokuBoard from './GomokuBoard.vue';
 import QuizGame from './QuizGame.vue';
+import DrawGame from './DrawGame.vue';
 
 defineProps<{
   gameType: string;
   gameState: any;
   phase: string;
   mySeat: number;
-  events: { question: any; result: any; final: any };
+  members: Array<{ userId: number; nickname: string; avatar: string; seat: number; ready: boolean; online: boolean }>;
+  events: Record<string, any>;
 }>();
 
 const emit = defineEmits<{ (e: 'action', action: Record<string, unknown>): void }>();
