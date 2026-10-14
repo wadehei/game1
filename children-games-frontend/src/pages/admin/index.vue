@@ -41,6 +41,7 @@
       <main class="content">
         <DashboardPanel v-show="activeTab === 'dashboard'" />
         <MembersPanel v-show="activeTab === 'members'" />
+        <FeedbackPanel v-show="activeTab === 'feedback'" />
         <LevelConfigPanel v-show="activeTab === 'levels'" />
         <VoicePanel v-show="activeTab === 'voice'" />
         <SettingsPanel v-show="activeTab === 'settings'" />
@@ -57,6 +58,7 @@ import { useRouter } from 'vue-router';
 import { adminLogout } from '@/api/admin';
 import DashboardPanel from '@/components/admin/DashboardPanel.vue';
 import MembersPanel from '@/components/admin/MembersPanel.vue';
+import FeedbackPanel from '@/components/admin/FeedbackPanel.vue';
 import SettingsPanel from '@/components/admin/SettingsPanel.vue';
 import BackupPanel from '@/components/admin/BackupPanel.vue';
 import LevelConfigPanel from '@/components/admin/LevelConfigPanel.vue';
@@ -69,6 +71,7 @@ const activeTab = ref('dashboard');
 const TABS = [
   { key: 'dashboard', label: '数据看板', icon: '📊' },
   { key: 'members', label: '角色管理', icon: '👪' },
+  { key: 'feedback', label: '意见反馈', icon: '💬' },
   { key: 'levels', label: '难度配置', icon: '🎚️' },
   { key: 'voice', label: '语音配音', icon: '🎙️' },
   { key: 'settings', label: '护眼策略', icon: '⏰' },

@@ -181,3 +181,25 @@ export const downloadBackup = async (): Promise<void> => {
   link.click();
   URL.revokeObjectURL(url);
 };
+
+// ─── 意见反馈 ────────────────────────────────
+
+import { type FeedbackItem, type FeedbackStatus } from './feedback';
+
+// 反馈列表（管理员额外返回内部备注）
+export const adminGetFeedbacks = async (): Promise<FeedbackItem[]> => {
+  return client.get('/feedback') as unknown as Promise<FeedbackItem[]>;
+};
+
+// 更新反馈状态 / 备注
+export const adminUpdateFeedback = async (
+  id: number,
+  data: { status?: FeedbackStatus; adminNote?: string }
+): Promise<FeedbackItem> => {
+  return client.put(`/feedback/${id}`, data) as unknown as Promise<FeedbackItem>;
+};
+
+// 官方回复（所有用户可见）
+export const adminAddReply = async (id: number, content: string): Promise<void> => {
+  await client.post(`/feedback/${id}/reply`, { content });
+};

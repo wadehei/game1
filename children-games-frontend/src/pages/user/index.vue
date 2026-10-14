@@ -4,7 +4,7 @@
     <div class="user-card">
       <PlayerAvatar :avatar="userInfo?.avatar" :size="70" />
       <div class="user-details">
-        <div class="nickname">{{ userInfo?.nickname || '未登录' }}</div>
+        <div class="nickname">{{ userInfo?.nickname || "未登录" }}</div>
         <div class="level-info">
           <div class="level-badge">
             <span class="level-text">Lv.{{ userInfo?.level || 1 }}</span>
@@ -41,9 +41,17 @@
       <div v-if="career && trendMax > 0" class="trend-block">
         <div class="trend-title">📈 最近 7 天</div>
         <div class="trend-bars">
-          <div v-for="d in career.last7" :key="d.date" class="trend-col" :title="`${d.label} ${Math.round(d.seconds / 60)} 分钟`">
+          <div
+            v-for="d in career.last7"
+            :key="d.date"
+            class="trend-col"
+            :title="`${d.label} ${Math.round(d.seconds / 60)} 分钟`"
+          >
             <div class="trend-bar-wrap">
-              <div class="trend-bar" :style="{ height: trendBarHeight(d.seconds) }" />
+              <div
+                class="trend-bar"
+                :style="{ height: trendBarHeight(d.seconds) }"
+              />
             </div>
             <span class="trend-label">{{ d.label }}</span>
           </div>
@@ -88,17 +96,34 @@
               <span class="career-record">{{ recordText(g) }}</span>
             </div>
             <div class="progress-bar">
-              <div class="progress-fill" :style="{ width: `${Math.min((g.currentLevel / gameTotal(g.gameId)) * 100, 100)}%` }" />
+              <div
+                class="progress-fill"
+                :style="{
+                  width: `${Math.min((g.currentLevel / gameTotal(g.gameId)) * 100, 100)}%`,
+                }"
+              />
             </div>
             <div class="career-line2">
-              关卡 {{ g.currentLevel }}/{{ gameTotal(g.gameId) }} · ⭐{{ g.stars }}
-              <template v-if="g.playCount > 0"> · {{ g.winCount }}胜/{{ g.playCount }}局{{ g.playCount > 0 ? `（${Math.round((g.winCount / g.playCount) * 100)}%）` : '' }}</template>
-              <template v-if="g.lastPlayedAt"> · {{ timeAgo(g.lastPlayedAt) }}</template>
+              关卡 {{ g.currentLevel }}/{{ gameTotal(g.gameId) }} · ⭐{{
+                g.stars
+              }}
+              <template v-if="g.playCount > 0">
+                · {{ g.winCount }}胜/{{ g.playCount }}局{{
+                  g.playCount > 0
+                    ? `（${Math.round((g.winCount / g.playCount) * 100)}%）`
+                    : ""
+                }}</template
+              >
+              <template v-if="g.lastPlayedAt">
+                · {{ timeAgo(g.lastPlayedAt) }}</template
+              >
             </div>
           </div>
         </div>
       </div>
-      <div v-else class="career-empty">还没开始冒险，去玩一局点亮生涯吧！🚀</div>
+      <div v-else class="career-empty">
+        还没开始冒险，去玩一局点亮生涯吧！🚀
+      </div>
     </div>
 
     <!-- 成就展示 -->
@@ -107,7 +132,12 @@
     <div class="achievement-section card">
       <div class="section-title">🏆 成就徽章</div>
       <div class="achievement-list">
-        <div v-for="ach in achievements" :key="ach.id" class="achievement-item" :class="{ locked: !ach.unlocked }">
+        <div
+          v-for="ach in achievements"
+          :key="ach.id"
+          class="achievement-item"
+          :class="{ locked: !ach.unlocked }"
+        >
           <div class="ach-icon-wrapper">
             <span class="ach-icon">{{ ach.icon }}</span>
           </div>
@@ -139,9 +169,18 @@
         <span class="edit-label">形象</span>
         <div class="avatar-tools">
           <label class="me-photo-btn" :title="'上传照片'">
-            <PlayerAvatar v-if="isPhotoAvatar" :avatar="editAvatar" :size="44" />
+            <PlayerAvatar
+              v-if="isPhotoAvatar"
+              :avatar="editAvatar"
+              :size="44"
+            />
             <span v-else class="me-photo-icon">📷</span>
-            <input type="file" accept="image/*" class="photo-input" @change="onPhotoPick" />
+            <input
+              type="file"
+              accept="image/*"
+              class="photo-input"
+              @change="onPhotoPick"
+            />
           </label>
           <div class="edit-emojis">
             <span
@@ -150,35 +189,77 @@
               class="edit-emoji"
               :class="{ picked: editAvatar === e }"
               @click="editAvatar = e"
-            >{{ e }}</span>
+              >{{ e }}</span
+            >
           </div>
         </div>
       </div>
       <div v-if="uploadTip" class="upload-tip">{{ uploadTip }}</div>
-      <button class="save-profile-btn" :disabled="savingProfile" @click="saveProfile">
-        {{ savingProfile ? '保存中…' : '保存资料' }}
+      <button
+        class="save-profile-btn"
+        :disabled="savingProfile"
+        @click="saveProfile"
+      >
+        {{ savingProfile ? "保存中…" : "保存资料" }}
       </button>
 
       <div class="section-title pin-title">🔑 角色口令</div>
-      <div class="pin-desc">设置 4 位数字口令后，切换这个角色需要先输口令，别人就不能随便玩你的档案啦。</div>
+      <div class="pin-desc">
+        设置 4
+        位数字口令后，切换这个角色需要先输口令，别人就不能随便玩你的档案啦。
+      </div>
       <div class="pin-status">
-        <span :class="['pin-state', hasPin ? 'on' : '']">{{ hasPin ? '🔒 已设置口令' : '🔓 未设置' }}</span>
+        <span :class="['pin-state', hasPin ? 'on' : '']">{{
+          hasPin ? "🔒 已设置口令" : "🔓 未设置"
+        }}</span>
       </div>
       <template v-if="hasPin">
-        <input v-model="pinOld" class="pin-input" type="password" inputmode="numeric" maxlength="4" placeholder="当前口令" />
-        <input v-model="pinNew" class="pin-input" type="password" inputmode="numeric" maxlength="4" placeholder="新口令（4 位数字，留空=清除）" />
+        <input
+          v-model="pinOld"
+          class="pin-input"
+          type="password"
+          inputmode="numeric"
+          maxlength="4"
+          placeholder="当前口令"
+        />
+        <input
+          v-model="pinNew"
+          class="pin-input"
+          type="password"
+          inputmode="numeric"
+          maxlength="4"
+          placeholder="新口令（4 位数字，留空=清除）"
+        />
       </template>
       <template v-else>
-        <input v-model="pinNew" class="pin-input" type="password" inputmode="numeric" maxlength="4" placeholder="设置 4 位数字口令" />
+        <input
+          v-model="pinNew"
+          class="pin-input"
+          type="password"
+          inputmode="numeric"
+          maxlength="4"
+          placeholder="设置 4 位数字口令"
+        />
       </template>
-      <button class="save-profile-btn pin-btn" :disabled="savingPin" @click="savePin">
-        {{ savingPin ? '处理中…' : hasPin ? '修改 / 清除口令' : '设置口令' }}
+      <button
+        class="save-profile-btn pin-btn"
+        :disabled="savingPin"
+        @click="savePin"
+      >
+        {{ savingPin ? "处理中…" : hasPin ? "修改 / 清除口令" : "设置口令" }}
       </button>
-      <div v-if="pinMsg" class="pin-msg" :class="{ err: pinIsErr }">{{ pinMsg }}</div>
+      <div v-if="pinMsg" class="pin-msg" :class="{ err: pinIsErr }">
+        {{ pinMsg }}
+      </div>
     </div>
 
     <!-- 设置 -->
     <div class="settings-section card">
+      <div class="setting-item" @click="goFeedback">
+        <span class="setting-icon">💬</span>
+        <span class="setting-text">意见反馈</span>
+        <span class="setting-arrow">›</span>
+      </div>
       <div class="setting-item" @click="openParentGate">
         <span class="setting-icon">👪</span>
         <span class="setting-text">家长中心</span>
@@ -192,10 +273,16 @@
     </div>
 
     <!-- 家长验证弹层 -->
-    <div v-if="showParentGate" class="parent-overlay" @click.self="closeParentGate">
+    <div
+      v-if="showParentGate"
+      class="parent-overlay"
+      @click.self="closeParentGate"
+    >
       <div class="parent-content">
         <div class="parent-title">🔐 家长验证</div>
-        <div class="parent-question">{{ gateQuestion.a }} + {{ gateQuestion.b }} = ?</div>
+        <div class="parent-question">
+          {{ gateQuestion.a }} + {{ gateQuestion.b }} = ?
+        </div>
         <input
           v-model="gateAnswer"
           class="parent-input"
@@ -212,7 +299,11 @@
     </div>
 
     <!-- 家长中心面板 -->
-    <div v-if="showParentPanel" class="parent-overlay" @click.self="showParentPanel = false">
+    <div
+      v-if="showParentPanel"
+      class="parent-overlay"
+      @click.self="showParentPanel = false"
+    >
       <div class="parent-content">
         <div class="parent-title">👪 家长中心</div>
         <div class="panel-row">
@@ -229,27 +320,41 @@
               class="chip"
               :class="{ active: restInterval === opt.value }"
               @click="saveInterval(opt.value)"
-            >{{ opt.label }}</button>
+            >
+              {{ opt.label }}
+            </button>
           </div>
         </div>
-        <button class="p-btn-confirm full" @click="showParentPanel = false">完成</button>
+        <button class="p-btn-confirm full" @click="showParentPanel = false">
+          完成
+        </button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import { useUserStore } from '@/store/user';
-import { useGameStore } from '@/store/game';
-import { getAchievements, type AchievementInfo } from '@/api/game';
-import { updateUserInfo, updateMyPin, getMyCareer, type MyCareer, type CareerGame } from '@/api/user';
-import { uploadPhotoAvatar } from '@/utils/avatarUpload';
-import { soundManager } from '@/utils/sound';
-import { getGameMeta, formatScore } from '@/utils/gameMeta';
-import { getRestIntervalMinutes, getTodayPlaySeconds, resetTodayPlayTime } from '@/composables/usePlayTimeGuard';
-import PlayerAvatar from '@/components/PlayerAvatar.vue';
+import { computed, ref, onMounted } from "vue";
+import { useRouter } from "vue-router";
+import { useUserStore } from "@/store/user";
+import { useGameStore } from "@/store/game";
+import { getAchievements, type AchievementInfo } from "@/api/game";
+import {
+  updateUserInfo,
+  updateMyPin,
+  getMyCareer,
+  type MyCareer,
+  type CareerGame,
+} from "@/api/user";
+import { uploadPhotoAvatar } from "@/utils/avatarUpload";
+import { soundManager } from "@/utils/sound";
+import { getGameMeta, formatScore } from "@/utils/gameMeta";
+import {
+  getRestIntervalMinutes,
+  getTodayPlaySeconds,
+  resetTodayPlayTime,
+} from "@/composables/usePlayTimeGuard";
+import PlayerAvatar from "@/components/PlayerAvatar.vue";
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -257,27 +362,38 @@ const gameStore = useGameStore();
 
 const userInfo = computed(() => userStore.userInfo);
 const totalGamesPlayed = ref(0);
-const achievementCount = computed(() => achievements.value.filter((a) => a.unlocked).length);
+const achievementCount = computed(
+  () => achievements.value.filter((a) => a.unlocked).length,
+);
 
 const games = [
-  { id: 'memory', name: '记忆翻牌', totalLevels: 20, icon: '🧠' },
-  { id: 'fruit', name: '接水果', totalLevels: 30, icon: '🍎' },
-  { id: 'puzzle', name: '拼图游戏', totalLevels: 25, icon: '🧩' },
-  { id: 'balloon', name: '打气球', totalLevels: 30, icon: '🎈' },
-  { id: 'tank', name: '坦克大战', totalLevels: 25, icon: '🚀' },
-  { id: 'mole', name: '打地鼠', totalLevels: 20, icon: '🐹' },
-  { id: 'simon', name: '音乐记忆', totalLevels: 15, icon: '🎵' },
-  { id: 'math', name: '数学小怪兽', totalLevels: 20, icon: '👾' },
+  { id: "memory", name: "记忆翻牌", totalLevels: 20, icon: "🧠" },
+  { id: "fruit", name: "接水果", totalLevels: 30, icon: "🍎" },
+  { id: "puzzle", name: "拼图游戏", totalLevels: 25, icon: "🧩" },
+  { id: "balloon", name: "打气球", totalLevels: 30, icon: "🎈" },
+  { id: "tank", name: "坦克大战", totalLevels: 25, icon: "🚀" },
+  { id: "mole", name: "打地鼠", totalLevels: 20, icon: "🐹" },
+  { id: "simon", name: "音乐记忆", totalLevels: 15, icon: "🎵" },
+  { id: "math", name: "数学小怪兽", totalLevels: 20, icon: "👾" },
 ];
 
 const achievements = ref<AchievementInfo[]>([]);
+
+const goFeedback = () => {
+  router.push('/feedback');
+};
 
 // ─── 我的生涯 ────────────────────────────────
 const career = ref<MyCareer | null>(null);
 
 const joinedDays = computed(() => {
-  if (!career.value?.user.joinedAt) return '-';
-  return Math.max(1, Math.ceil((Date.now() - new Date(career.value.user.joinedAt).getTime()) / 86400000));
+  if (!career.value?.user.joinedAt) return "-";
+  return Math.max(
+    1,
+    Math.ceil(
+      (Date.now() - new Date(career.value.user.joinedAt).getTime()) / 86400000,
+    ),
+  );
 });
 
 const playTimeText = computed(() => {
@@ -291,28 +407,31 @@ const playTimeText = computed(() => {
 
 const winRateText = computed(() => {
   const t = career.value?.totals;
-  if (!t || t.playCount === 0) return '-';
+  if (!t || t.playCount === 0) return "-";
   return `${Math.round((t.winCount / t.playCount) * 100)}%`;
 });
 
-const trendMax = computed(() => Math.max(...(career.value?.last7?.map((d) => d.seconds) || [0]), 1));
+const trendMax = computed(() =>
+  Math.max(...(career.value?.last7?.map((d) => d.seconds) || [0]), 1),
+);
 const trendBarHeight = (seconds: number): string => {
   const pct = Math.max((seconds / trendMax.value) * 100, 4);
   return `${pct}%`;
 };
 
 const gameName = (id: string): string => getGameMeta(id)?.name || id;
-const gameIcon = (id: string): string => games.find((g) => g.id === id)?.icon || '🎮';
+const gameIcon = (id: string): string =>
+  games.find((g) => g.id === id)?.icon || "🎮";
 const gameTotal = (id: string): number => getGameMeta(id)?.totalLevels || 20;
 
 const recordText = (g: CareerGame): string => {
-  if (!g.highScore) return '';
+  if (!g.highScore) return "";
   return formatScore(g.gameId, g.highScore);
 };
 
 const timeAgo = (iso: string): string => {
   const min = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
-  if (min < 1) return '刚刚';
+  if (min < 1) return "刚刚";
   if (min < 60) return `${min}分钟前`;
   const h = Math.floor(min / 60);
   if (h < 24) return `${h}小时前`;
@@ -340,34 +459,49 @@ const getGameLevel = (gameId: string): number => {
 };
 
 const handleLogout = () => {
-  if (confirm('确定要退出登录吗？')) {
+  if (confirm("确定要退出登录吗？")) {
     userStore.logout();
-    router.push('/profiles');
+    router.push("/profiles");
   }
 };
 
 // ─── 我的资料 + 角色口令 ────────────────────────────────
-const AVATARS = ['🐰', '🐻', '🐼', '🦊', '🐸', '🐵', '🐯', '🦁', '🐷', '🐨', '👑', '🦄', '🌟', '🌸'];
-const editNickname = ref(userInfo.value?.nickname || '');
-const editAvatar = ref(userInfo.value?.avatar || '😊');
+const AVATARS = [
+  "🐰",
+  "🐻",
+  "🐼",
+  "🦊",
+  "🐸",
+  "🐵",
+  "🐯",
+  "🦁",
+  "🐷",
+  "🐨",
+  "👑",
+  "🦄",
+  "🌟",
+  "🌸",
+];
+const editNickname = ref(userInfo.value?.nickname || "");
+const editAvatar = ref(userInfo.value?.avatar || "😊");
 const savingProfile = ref(false);
-const uploadTip = ref('');
+const uploadTip = ref("");
 const isPhotoAvatar = computed(() => /^\//.test(editAvatar.value));
 
 const onPhotoPick = async (event: Event) => {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
   if (!file) return;
-  uploadTip.value = '照片上传中…';
+  uploadTip.value = "照片上传中…";
   try {
     editAvatar.value = await uploadPhotoAvatar(file);
-    uploadTip.value = '照片已上传，记得点「保存资料」生效';
+    uploadTip.value = "照片已上传，记得点「保存资料」生效";
   } catch (e) {
-    uploadTip.value = '上传失败，请换张图片试试';
+    uploadTip.value = "上传失败，请换张图片试试";
   } finally {
-    input.value = '';
+    input.value = "";
     setTimeout(() => {
-      uploadTip.value = '';
+      uploadTip.value = "";
     }, 4000);
   }
 };
@@ -376,9 +510,16 @@ const saveProfile = async () => {
   if (!editNickname.value.trim() || savingProfile.value) return;
   savingProfile.value = true;
   try {
-    await updateUserInfo({ nickname: editNickname.value.trim(), avatar: editAvatar.value });
+    await updateUserInfo({
+      nickname: editNickname.value.trim(),
+      avatar: editAvatar.value,
+    });
     if (userInfo.value) {
-      userStore.setUserInfo({ ...userInfo.value, nickname: editNickname.value.trim(), avatar: editAvatar.value });
+      userStore.setUserInfo({
+        ...userInfo.value,
+        nickname: editNickname.value.trim(),
+        avatar: editAvatar.value,
+      });
     }
   } catch {
     // 保存失败静默（下次进入重取）
@@ -397,28 +538,28 @@ const onVolumeChange = (event: Event) => {
   soundManager.setVolume(v);
   soundManager.playClick();
 };
-const pinOld = ref('');
-const pinNew = ref('');
+const pinOld = ref("");
+const pinNew = ref("");
 const savingPin = ref(false);
-const pinMsg = ref('');
+const pinMsg = ref("");
 const pinIsErr = ref(false);
 
 const flashPin = (text: string, isErr = false) => {
   pinMsg.value = text;
   pinIsErr.value = isErr;
   setTimeout(() => {
-    pinMsg.value = '';
+    pinMsg.value = "";
   }, 3000);
 };
 
 const savePin = async () => {
   if (savingPin.value) return;
   if (hasPin.value && !/^\d{4}$/.test(pinOld.value)) {
-    flashPin('请先输入当前口令（4 位数字）', true);
+    flashPin("请先输入当前口令（4 位数字）", true);
     return;
   }
   if (pinNew.value && !/^\d{4}$/.test(pinNew.value)) {
-    flashPin('新口令需为 4 位数字', true);
+    flashPin("新口令需为 4 位数字", true);
     return;
   }
   savingPin.value = true;
@@ -428,11 +569,11 @@ const savePin = async () => {
       newPin: pinNew.value,
     });
     hasPin.value = result.hasPin;
-    pinOld.value = '';
-    pinNew.value = '';
-    flashPin(result.hasPin ? '口令已设置 🔒' : '口令已清除 🔓');
+    pinOld.value = "";
+    pinNew.value = "";
+    flashPin(result.hasPin ? "口令已设置 🔒" : "口令已清除 🔓");
   } catch (e: any) {
-    flashPin(e?.message || '操作失败，请重试', true);
+    flashPin(e?.message || "操作失败，请重试", true);
   } finally {
     savingPin.value = false;
   }
@@ -442,15 +583,15 @@ const savePin = async () => {
 const showParentGate = ref(false);
 const showParentPanel = ref(false);
 const gateQuestion = ref({ a: 0, b: 0 });
-const gateAnswer = ref('');
+const gateAnswer = ref("");
 const gateError = ref(false);
 const todayMinutes = ref(Math.ceil(getTodayPlaySeconds() / 60));
 const restInterval = ref(getRestIntervalMinutes());
 const intervalOptions = [
-  { value: 15, label: '15 分钟' },
-  { value: 20, label: '20 分钟' },
-  { value: 30, label: '30 分钟' },
-  { value: 0, label: '关闭' },
+  { value: 15, label: "15 分钟" },
+  { value: 20, label: "20 分钟" },
+  { value: 30, label: "30 分钟" },
+  { value: 0, label: "关闭" },
 ];
 
 const openParentGate = () => {
@@ -458,7 +599,7 @@ const openParentGate = () => {
     a: 12 + Math.floor(Math.random() * 18),
     b: 12 + Math.floor(Math.random() * 18),
   };
-  gateAnswer.value = '';
+  gateAnswer.value = "";
   gateError.value = false;
   showParentGate.value = true;
 };
@@ -468,7 +609,10 @@ const closeParentGate = () => {
 };
 
 const confirmGate = () => {
-  if (parseInt(gateAnswer.value, 10) === gateQuestion.value.a + gateQuestion.value.b) {
+  if (
+    parseInt(gateAnswer.value, 10) ===
+    gateQuestion.value.a + gateQuestion.value.b
+  ) {
     showParentGate.value = false;
     todayMinutes.value = Math.ceil(getTodayPlaySeconds() / 60);
     restInterval.value = getRestIntervalMinutes();
@@ -486,7 +630,7 @@ const resetPlayTime = () => {
 const saveInterval = (value: number) => {
   restInterval.value = value;
   try {
-    localStorage.setItem('parent_rest_interval', String(value));
+    localStorage.setItem("parent_rest_interval", String(value));
   } catch {
     // ignore
   }
@@ -496,18 +640,20 @@ onMounted(async () => {
   try {
     achievements.value = await getAchievements();
   } catch (e) {
-    console.log('获取成就失败', e);
+    console.log("获取成就失败", e);
   }
   try {
     career.value = await getMyCareer();
   } catch (e) {
-    console.log('获取生涯失败', e);
+    console.log("获取生涯失败", e);
   }
   // 初始口令状态：探测一次（输错也算错，用设置接口无法探测——改由成员列表接口无此信息，
   // 这里用 profiles 公开列表查询自己是否带锁）
   try {
-    const profiles = await fetch('/api/user/profiles').then((r) => r.json());
-    const me = ((profiles.data || []) as { id: number; hasPin?: boolean }[]).find((p) => p.id === userStore.userInfo?.id);
+    const profiles = await fetch("/api/user/profiles").then((r) => r.json());
+    const me = (
+      (profiles.data || []) as { id: number; hasPin?: boolean }[]
+    ).find((p) => p.id === userStore.userInfo?.id);
     hasPin.value = !!me?.hasPin;
   } catch {
     // ignore
@@ -538,7 +684,7 @@ onMounted(async () => {
 }
 
 .user-card::before {
-  content: '';
+  content: "";
   position: absolute;
   top: -50%;
   right: -20%;
@@ -599,7 +745,7 @@ onMounted(async () => {
 
 .exp-fill {
   height: 100%;
-  background: linear-gradient(90deg, #FFE66D 0%, #FFB347 100%);
+  background: linear-gradient(90deg, #ffe66d 0%, #ffb347 100%);
   border-radius: 10px;
   transition: width 0.3s ease;
 }
@@ -1110,8 +1256,12 @@ onMounted(async () => {
 }
 
 @keyframes parentFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .parent-content {
@@ -1125,8 +1275,14 @@ onMounted(async () => {
 }
 
 @keyframes parentBounceIn {
-  from { transform: scale(0.6); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .parent-title {
@@ -1160,7 +1316,7 @@ onMounted(async () => {
 }
 
 .parent-error {
-  color: #FF6B6B;
+  color: #ff6b6b;
   font-size: 13px;
   text-align: center;
   margin-top: 8px;

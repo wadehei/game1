@@ -5,7 +5,7 @@
       <div class="user-info" @click="goToProfiles">
         <PlayerAvatar :avatar="userInfo?.avatar" :size="50" />
         <div class="user-details">
-          <div class="nickname">{{ userInfo?.nickname || '选个角色' }}</div>
+          <div class="nickname">{{ userInfo?.nickname || "选个角色" }}</div>
           <div class="level-badge">
             <span class="level-text">Lv.{{ userInfo?.level || 1 }}</span>
           </div>
@@ -33,21 +33,34 @@
           <div class="game-name">{{ game.name }}</div>
           <div class="game-progress">
             <span class="progress-text">
-              关卡 {{ getGameLevel(game.id) }}/{{ game.totalLevels }}<template v-if="getScoreText(game.id)"> · {{ getScoreText(game.id) }}</template>
+              关卡 {{ getGameLevel(game.id) }}/{{ game.totalLevels
+              }}<template v-if="getScoreText(game.id)">
+                · {{ getScoreText(game.id) }}</template
+              >
             </span>
             <div class="progress-bar">
               <div
                 class="progress-fill"
-                :style="{ width: `${Math.min((getGameLevel(game.id) / game.totalLevels) * 100, 100)}%` }"
+                :style="{
+                  width: `${Math.min((getGameLevel(game.id) / game.totalLevels) * 100, 100)}%`,
+                }"
               />
             </div>
           </div>
         </div>
         <div class="card-right">
           <div class="game-stars">
-            <span v-for="i in 3" :key="i" class="star" :class="{ active: i <= getGameStars(game.id) }">⭐</span>
+            <span
+              v-for="i in 3"
+              :key="i"
+              class="star"
+              :class="{ active: i <= getGameStars(game.id) }"
+              >⭐</span
+            >
           </div>
-          <button class="board-btn" @click.stop="openBoard(game.id, game.name)">🏆 排行</button>
+          <button class="board-btn" @click.stop="openBoard(game.id, game.name)">
+            🏆 排行
+          </button>
         </div>
       </div>
     </div>
@@ -64,10 +77,14 @@
     <div class="daily-task card">
       <div class="task-header">
         <span class="task-title">📋 每日任务</span>
-        <span class="task-progress">{{ dailyTask.completedGames }}/{{ dailyTask.taskGoal }}</span>
+        <span class="task-progress"
+          >{{ dailyTask.completedGames }}/{{ dailyTask.taskGoal }}</span
+        >
       </div>
       <div class="task-content">
-        <span class="task-desc">今天完成 {{ dailyTask.taskGoal }} 个不同的游戏</span>
+        <span class="task-desc"
+          >今天完成 {{ dailyTask.taskGoal }} 个不同的游戏</span
+        >
         <div class="task-reward">
           <template v-if="dailyTask.claimed">
             <span class="reward-claimed">✅ 已完成</span>
@@ -79,39 +96,52 @@
         </div>
       </div>
       <!-- 智能引导：任务未完成时，直接跳到今天还没玩过的游戏 -->
-      <button v-if="!dailyTask.claimed && nextTaskGame" class="task-go-btn" @click="goToGame(nextTaskGame.id)">
+      <button
+        v-if="!dailyTask.claimed && nextTaskGame"
+        class="task-go-btn"
+        @click="goToGame(nextTaskGame.id)"
+      >
         ▶ 去玩「{{ nextTaskGame.name }}」
       </button>
     </div>
+
+    <!-- 意见反馈入口 -->
+    <button class="feedback-entry" @click="goFeedback">💬 意见反馈</button>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
-import { useRouter } from 'vue-router';
-import { useUserStore } from '@/store/user';
-import { useGameStore } from '@/store/game';
-import { getUserInfo } from '@/api/user';
-import { getAllProgress, getDailyTask, type DailyTaskInfo } from '@/api/game';
-import { soundManager } from '@/utils/sound';
-import { formatScore } from '@/utils/gameMeta';
-import PlayerAvatar from '@/components/PlayerAvatar.vue';
-import LeaderboardModal from '@/components/LeaderboardModal.vue';
-import iconMemorySvg from '@/static/images/games/lobby/icon-memory.svg';
-import iconFruitSvg from '@/static/images/games/lobby/icon-fruit.svg';
-import iconPuzzleSvg from '@/static/images/games/lobby/icon-puzzle.svg';
-import iconBalloonSvg from '@/static/images/games/lobby/icon-balloon.svg';
-import iconTankSvg from '@/static/images/games/lobby/icon-tank.svg';
-import iconMoleSvg from '@/static/images/games/lobby/icon-mole.svg';
-import iconSimonSvg from '@/static/images/games/lobby/icon-simon.svg';
-import iconMathSvg from '@/static/images/games/lobby/icon-math.svg';
+import { ref, computed, onMounted, watch } from "vue";
+import { useRouter } from "vue-router";
+import { useUserStore } from "@/store/user";
+import { useGameStore } from "@/store/game";
+import { getUserInfo } from "@/api/user";
+import { getAllProgress, getDailyTask, type DailyTaskInfo } from "@/api/game";
+import { soundManager } from "@/utils/sound";
+import { formatScore } from "@/utils/gameMeta";
+import PlayerAvatar from "@/components/PlayerAvatar.vue";
+import LeaderboardModal from "@/components/LeaderboardModal.vue";
+import iconMemorySvg from "@/static/images/games/lobby/icon-memory.svg";
+import iconFruitSvg from "@/static/images/games/lobby/icon-fruit.svg";
+import iconPuzzleSvg from "@/static/images/games/lobby/icon-puzzle.svg";
+import iconBalloonSvg from "@/static/images/games/lobby/icon-balloon.svg";
+import iconTankSvg from "@/static/images/games/lobby/icon-tank.svg";
+import iconMoleSvg from "@/static/images/games/lobby/icon-mole.svg";
+import iconSimonSvg from "@/static/images/games/lobby/icon-simon.svg";
+import iconMathSvg from "@/static/images/games/lobby/icon-math.svg";
 
 const router = useRouter();
 const userStore = useUserStore();
 const gameStore = useGameStore();
 
 const userInfo = computed(() => userStore.userInfo);
-const dailyTask = ref<DailyTaskInfo>({ completedGames: 0, playedGames: [], taskGoal: 3, rewardStars: 10, claimed: false });
+const dailyTask = ref<DailyTaskInfo>({
+  completedGames: 0,
+  playedGames: [],
+  taskGoal: 3,
+  rewardStars: 10,
+  claimed: false,
+});
 
 // 任务未完成时，推荐今天还没玩过的第一个游戏
 const nextTaskGame = computed(() => {
@@ -126,20 +156,73 @@ const openBoard = (id: string, name: string) => {
 };
 
 // 星星数变化时触发脉冲动画
-watch(() => userInfo.value?.totalStars, () => {
-  starPulse.value = true;
-  setTimeout(() => { starPulse.value = false; }, 350);
-});
+watch(
+  () => userInfo.value?.totalStars,
+  () => {
+    starPulse.value = true;
+    setTimeout(() => {
+      starPulse.value = false;
+    }, 350);
+  },
+);
 
 const games = [
-  { id: 'memory', name: '记忆翻牌', totalLevels: 20, icon: iconMemorySvg, bgColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
-  { id: 'fruit', name: '接水果', totalLevels: 30, icon: iconFruitSvg, bgColor: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' },
-  { id: 'puzzle', name: '拼图游戏', totalLevels: 25, icon: iconPuzzleSvg, bgColor: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' },
-  { id: 'balloon', name: '打气球', totalLevels: 30, icon: iconBalloonSvg, bgColor: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)' },
-  { id: 'tank', name: '坦克大战', totalLevels: 25, icon: iconTankSvg, bgColor: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)' },
-  { id: 'mole', name: '打地鼠', totalLevels: 20, icon: iconMoleSvg, bgColor: 'linear-gradient(135deg, #a8e063 0%, #56ab2f 100%)' },
-  { id: 'simon', name: '音乐记忆', totalLevels: 15, icon: iconSimonSvg, bgColor: 'linear-gradient(135deg, #1a1a2e 0%, #5f27cd 100%)' },
-  { id: 'math', name: '数学小怪兽', totalLevels: 20, icon: iconMathSvg, bgColor: 'linear-gradient(135deg, #43C59E 0%, #2d9d7a 100%)' },
+  {
+    id: "memory",
+    name: "记忆翻牌",
+    totalLevels: 20,
+    icon: iconMemorySvg,
+    bgColor: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+  },
+  {
+    id: "fruit",
+    name: "接水果",
+    totalLevels: 30,
+    icon: iconFruitSvg,
+    bgColor: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+  },
+  {
+    id: "puzzle",
+    name: "拼图游戏",
+    totalLevels: 25,
+    icon: iconPuzzleSvg,
+    bgColor: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+  },
+  {
+    id: "balloon",
+    name: "打气球",
+    totalLevels: 30,
+    icon: iconBalloonSvg,
+    bgColor: "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
+  },
+  {
+    id: "tank",
+    name: "坦克大战",
+    totalLevels: 25,
+    icon: iconTankSvg,
+    bgColor: "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
+  },
+  {
+    id: "mole",
+    name: "打地鼠",
+    totalLevels: 20,
+    icon: iconMoleSvg,
+    bgColor: "linear-gradient(135deg, #a8e063 0%, #56ab2f 100%)",
+  },
+  {
+    id: "simon",
+    name: "音乐记忆",
+    totalLevels: 15,
+    icon: iconSimonSvg,
+    bgColor: "linear-gradient(135deg, #1a1a2e 0%, #5f27cd 100%)",
+  },
+  {
+    id: "math",
+    name: "数学小怪兽",
+    totalLevels: 20,
+    icon: iconMathSvg,
+    bgColor: "linear-gradient(135deg, #43C59E 0%, #2d9d7a 100%)",
+  },
 ];
 
 const getGameLevel = (gameId: string): number => {
@@ -157,18 +240,23 @@ const getGameStars = (gameId: string): number => {
 const getScoreText = (gameId: string): string => {
   const progress = gameStore.getProgress(gameId);
   const highScore = progress?.highScore || 0;
-  if (!highScore) return '';
+  if (!highScore) return "";
   return formatScore(gameId, highScore);
 };
 
 const goToProfiles = () => {
   soundManager.playClick();
-  router.push('/profiles');
+  router.push("/profiles");
 };
 
 const goToGame = (gameId: string) => {
   soundManager.playClick();
   router.push(`/${gameId}`);
+};
+
+const goFeedback = () => {
+  soundManager.playClick();
+  router.push("/feedback");
 };
 
 onMounted(async () => {
@@ -181,20 +269,20 @@ onMounted(async () => {
     const status = e?.response?.status;
     if (status === 401 || status === 404) {
       userStore.logout();
-      router.replace('/profiles');
+      router.replace("/profiles");
       return;
     }
-    console.log('刷新用户信息失败', e);
+    console.log("刷新用户信息失败", e);
   }
   try {
     await getAllProgress();
   } catch (e) {
-    console.log('获取进度失败', e);
+    console.log("获取进度失败", e);
   }
   try {
     dailyTask.value = await getDailyTask();
   } catch (e) {
-    console.log('获取每日任务失败', e);
+    console.log("获取每日任务失败", e);
   }
 });
 </script>
@@ -202,7 +290,7 @@ onMounted(async () => {
 <style scoped>
 .home-page {
   min-height: 100vh;
-  background: linear-gradient(180deg, #FFE5E5 0%, #F5F5F5 100%);
+  background: linear-gradient(180deg, #ffe5e5 0%, #f5f5f5 100%);
   padding: 20px;
 }
 
@@ -242,7 +330,7 @@ onMounted(async () => {
 }
 
 .level-badge {
-  background: linear-gradient(135deg, #FFE66D 0%, #FFB347 100%);
+  background: linear-gradient(135deg, #ffe66d 0%, #ffb347 100%);
   padding: 2px 10px;
   border-radius: 10px;
   margin-top: 4px;
@@ -257,7 +345,7 @@ onMounted(async () => {
 .star-count {
   display: flex;
   align-items: center;
-  background: #FFF9E6;
+  background: #fff9e6;
   padding: 8px 16px;
   border-radius: 16px;
 }
@@ -267,8 +355,13 @@ onMounted(async () => {
 }
 
 @keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.2); }
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
 }
 
 .star-icon {
@@ -279,7 +372,7 @@ onMounted(async () => {
 .star-num {
   font-size: 18px;
   font-weight: bold;
-  color: #FFB347;
+  color: #ffb347;
 }
 
 .game-list {
@@ -296,24 +389,43 @@ onMounted(async () => {
   border-radius: 16px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
   animation: slideInUp 0.5s ease backwards;
 }
 
-.game-card:nth-child(1) { animation-delay: 0.1s; }
-.game-card:nth-child(2) { animation-delay: 0.2s; }
-.game-card:nth-child(3) { animation-delay: 0.3s; }
-.game-card:nth-child(4) { animation-delay: 0.4s; }
-.game-card:nth-child(5) { animation-delay: 0.5s; }
+.game-card:nth-child(1) {
+  animation-delay: 0.1s;
+}
+.game-card:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.game-card:nth-child(3) {
+  animation-delay: 0.3s;
+}
+.game-card:nth-child(4) {
+  animation-delay: 0.4s;
+}
+.game-card:nth-child(5) {
+  animation-delay: 0.5s;
+}
 
-.game-card:hover, .game-card:active {
+.game-card:hover,
+.game-card:active {
   transform: scale(1.03);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
 }
 
 @keyframes slideInUp {
-  from { transform: translateY(30px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 .game-icon {
@@ -418,8 +530,13 @@ onMounted(async () => {
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-5px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
 }
 
 .task-header {
@@ -437,7 +554,7 @@ onMounted(async () => {
 
 .task-progress {
   font-size: 14px;
-  color: #FF6B6B;
+  color: #ff6b6b;
   font-weight: bold;
 }
 
@@ -476,12 +593,27 @@ onMounted(async () => {
 }
 
 .reward-num {
-  color: #FFB347;
+  color: #ffb347;
   font-weight: bold;
 }
 
 .reward-claimed {
   color: #43a047;
   font-weight: bold;
+}
+
+.feedback-entry {
+  display: block;
+  margin: 0 auto;
+  border: none;
+  background: transparent;
+  color: #999;
+  font-size: 13px;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+.feedback-entry:active {
+  color: #667eea;
 }
 </style>

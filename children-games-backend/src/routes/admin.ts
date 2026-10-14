@@ -16,6 +16,7 @@ import {
   clearErrorLogs,
   downloadBackup,
 } from '../controllers/adminController';
+import { listFeedbacks, updateFeedback, addFeedbackReply } from '../controllers/feedbackController';
 import { adminMiddleware } from '../middleware/adminAuth';
 
 const router = Router();
@@ -39,5 +40,11 @@ router.delete('/levels/:gameId/:level', deleteLevelOverride);
 router.get('/logs', getErrorLogs);
 router.delete('/logs', clearErrorLogs);
 router.get('/backup', downloadBackup);
+
+// 意见反馈（与 /api/feedback 共用列表控制器，管理员额外返回内部备注）
+router.get('/feedback', listFeedbacks);
+router.put('/feedback/:id', updateFeedback);
+// 官方回复（所有用户可见）
+router.post('/feedback/:id/reply', addFeedbackReply);
 
 export default router;

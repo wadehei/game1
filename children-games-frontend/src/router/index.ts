@@ -27,6 +27,11 @@ const routes = [
     component: () => import('@/pages/user/index.vue'),
   },
   {
+    path: '/feedback',
+    name: 'Feedback',
+    component: () => import('@/pages/feedback/index.vue'),
+  },
+  {
     path: '/memory',
     name: 'Memory',
     component: () => import('@/pages/memory/index.vue'),

@@ -4,6 +4,8 @@ export { LevelConfig } from './LevelConfig';
 export { DailyTask } from './DailyTask';
 export { AppSetting } from './AppSetting';
 export { UserPlaytime } from './UserPlaytime';
+export { Feedback } from './Feedback';
+export { FeedbackReply } from './FeedbackReply';
 
 import { sequelize } from '../config/database';
 import { User } from './User';
@@ -12,6 +14,8 @@ import { LevelConfig } from './LevelConfig';
 import { DailyTask } from './DailyTask';
 import { AppSetting } from './AppSetting';
 import { UserPlaytime } from './UserPlaytime';
+import { Feedback } from './Feedback';
+import { FeedbackReply } from './FeedbackReply';
 
 // 定义模型关联关系
 User.hasMany(GameProgress, { foreignKey: 'userId', as: 'gameProgress' });
@@ -19,6 +23,13 @@ GameProgress.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
 User.hasMany(DailyTask, { foreignKey: 'userId', as: 'dailyTasks' });
 DailyTask.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+User.hasMany(Feedback, { foreignKey: 'userId', as: 'feedbacks' });
+Feedback.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+Feedback.hasMany(FeedbackReply, { foreignKey: 'feedbackId', as: 'replies' });
+FeedbackReply.belongsTo(Feedback, { foreignKey: 'feedbackId', as: 'feedback' });
+FeedbackReply.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
 export const initModels = async (): Promise<void> => {
   try {
@@ -28,6 +39,8 @@ export const initModels = async (): Promise<void> => {
     await DailyTask.sync();
     await AppSetting.sync();
     await UserPlaytime.sync();
+    await Feedback.sync();
+    await FeedbackReply.sync();
     // sync 不会给旧表补列，逐一对比真实表结构补齐缺失列（防表结构漂移）
     await syncMissingColumns(User);
     await syncMissingColumns(GameProgress);
@@ -35,6 +48,8 @@ export const initModels = async (): Promise<void> => {
     await syncMissingColumns(DailyTask);
     await syncMissingColumns(AppSetting);
     await syncMissingColumns(UserPlaytime);
+    await syncMissingColumns(Feedback);
+    await syncMissingColumns(FeedbackReply);
     console.log('✅ 数据表同步成功');
   } catch (error) {
     console.error('❌ 数据表同步失败:', error);
