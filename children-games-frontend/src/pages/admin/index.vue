@@ -259,3 +259,45 @@ const logout = () => {
   }
 }
 </style>
+
+<!-- 非scoped：移动端把各面板的小字号整体调大一档（面板内是固定px，须用 !important 覆盖 scoped 样式） -->
+<style>
+@media (max-width: 768px) {
+  /* 原 10px、11px → 12px */
+  .admin-page .fb-reply-time,
+  .admin-page .guest-tag,
+  .admin-page .lv-badge,
+  .admin-page .ok-badge,
+  .admin-page .custom-mark,
+  .admin-page .fb-page,
+  .admin-page .fb-status,
+  .admin-page .fb-type-tag,
+  .admin-page .filter-btn,
+  .admin-page .filter-btn .count,
+  .admin-page .log-detail,
+  .admin-page .log-source,
+  .admin-page .mobile-tab,
+  .admin-page .st-btn {
+    font-size: 12px !important;
+  }
+
+  /* 原 12px → 13px */
+  .admin-page .act-btn,
+  .admin-page .act-time,
+  .admin-page .fb-reply,
+  .admin-page .fb-time,
+  .admin-page .form-tip,
+  .admin-page .line-scene,
+  .admin-page .log-time,
+  .admin-page .logout-link,
+  .admin-page .lv-config,
+  .admin-page .member-meta,
+  .admin-page .note-input,
+  .admin-page .reply-input,
+  .admin-page .reply-send,
+  .admin-page .stat-label,
+  .admin-page .voice-tip {
+    font-size: 13px !important;
+  }
+}
+</style>
