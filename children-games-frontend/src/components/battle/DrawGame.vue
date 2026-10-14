@@ -6,7 +6,8 @@
         <span class="df-title">🏁 你画我猜结束</span>
       </template>
       <template v-else-if="state?.phase === 'picking'">
-        <span>✏️ {{ nameOf(state?.drawerSeat) }} 正在选词…（第 {{ state?.round }}/{{ state?.totalRounds }} 回合）</span>
+        <span v-if="!(isDrawer && candidates.length)">✏️ {{ nameOf(state?.drawerSeat) }} 正在选词…（第 {{ state?.round }}/{{ state?.totalRounds }} 回合）</span>
+        <span v-else class="pick-tip">选一个词来画：</span>
       </template>
       <template v-else-if="state?.phase === 'drawing'">
         <span>
@@ -35,6 +36,13 @@
       <div v-if="isDrawer && state?.phase === 'drawing'" class="drawer-word">
         【{{ state?.word }}】
       </div>
+    </div>
+
+    <!-- 画家选词 -->
+    <div v-if="isDrawer && state?.phase === 'picking' && candidates.length" class="pick-row">
+      <button v-for="(w, i) in candidates" :key="w" class="pick-btn" @click="emit('action', { t: 'draw_pick', index: i })">
+        {{ w }}
+      </button>
     </div>
 
     <!-- 画家工具条 -->
@@ -124,6 +132,7 @@ const guessedNames = computed(() => {
 });
 
 const final = computed(() => props.events.final);
+const candidates = computed<any[]>(() => props.events.candidates || []);
 const remainSec = computed(() => Math.max(0, Math.ceil(((props.state?.deadline || 0) - Date.now()) / 1000)));
 
 const nameOf = (seat: number): string => {
@@ -479,5 +488,27 @@ watch(tick, () => {
   font-size: 12px;
   color: #999;
   margin-top: 6px;
+}
+.pick-tip {
+  color: #667eea;
+  font-weight: bold;
+}
+
+.pick-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.pick-btn {
+  flex: 1;
+  border: 2px solid #667eea;
+  background: #eef1fd;
+  color: #333;
+  font-size: 14px;
+  font-weight: bold;
+  padding: 10px;
+  border-radius: 10px;
+  cursor: pointer;
 }
 </style>

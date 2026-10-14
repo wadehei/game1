@@ -93,7 +93,11 @@ const emit = defineEmits<{ (e: 'action', action: Record<string, unknown>): void 
 const userStore = useUserStore();
 const myId = computed(() => userStore.userInfo?.id || 0);
 
-const myHand = computed<Card[]>(() => props.state?.myHand || []);
+const myHand = computed<Card[]>(() => {
+  const fromEvent = props.events?.uno_hand?.cards;
+  if (Array.isArray(fromEvent) && fromEvent.length) return fromEvent;
+  return props.state?.myHand || [];
+});
 const top = computed<Card | null>(() => props.state?.top || null);
 const currentColor = computed(() => props.state?.currentColor || 'red');
 const direction = computed(() => props.state?.direction || 1);

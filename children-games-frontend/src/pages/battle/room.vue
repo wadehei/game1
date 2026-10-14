@@ -14,21 +14,22 @@
     <!-- 连接状态 -->
     <div v-if="wsStatus !== 'open'" class="conn-tip">连接中…（断线会自动重连）</div>
 
-    <!-- 座位 -->
-    <div class="seats">
-      <div class="seat" :class="{ active: phase === 'playing' && game.turn === BLACK }">
-        <div class="seat-stone black" />
-        <div class="seat-name">{{ seatName(0) }}</div>
-        <div class="seat-state">{{ seatState(0) }}</div>
-      </div>
-      <div class="vs">VS</div>
-      <div class="seat" :class="{ active: phase === 'playing' && game.turn === WHITE }">
-        <div class="seat-stone white" />
-        <div class="seat-name">{{ seatName(1) }}</div>
-        <div class="seat-state">{{ seatState(1) }}</div>
+    <!-- 座位条：通用网格（全部成员可见） -->
+    <div class="seats-grid">
+      <div
+        v-for="m in members"
+        :key="m.userId"
+        class="seat-cell"
+        :class="{ active: isActiveMember(m), off: !m.online }"
+      >
+        <div class="cell-top">
+          <PlayerAvatar :avatar="m.avatar" :size="30" />
+          <span v-if="m.userId === hostUserId" class="host-mark" title="房主">👑</span>
+        </div>
+        <div class="cell-name">{{ m.nickname }}<template v-if="m.userId === myId">（我）</template></div>
+        <div class="cell-state">{{ memberState(m) }}</div>
       </div>
     </div>
-    <div v-if="spectatorCount > 0" class="spectators">👀 {{ spectatorCount }} 人观战</div>
 
     <!-- 状态条 -->
     <div v-if="lastWsError" class="conn-tip">{{ lastWsError }}</div>
@@ -37,7 +38,7 @@
         {{ waitingText }}
       </template>
       <template v-else-if="phase === 'playing'">
-        {{ !mySeatHasPlayer ? '对局进行中，你正在观战' : game.turn === myColor ? '轮到你落子' : '等待对方落子…' }}
+        {{ !mySeatHasPlayer ? '对局进行中，你正在观战' : gameType !== 'gomoku' ? '对局进行中' : game.turn === myColor ? '轮到你落子' : '等待对方落子…' }}
       </template>
       <template v-else>
         {{ overText }}
@@ -243,18 +244,33 @@ const myRematch = computed(() => rematchVotes.value.includes(myId.value));
 const spectatorCount = computed(() => members.value.filter((m) => m.seat < 0).length);
 const players = computed(() => members.value.filter((m) => m.seat >= 0));
 
-const seatName = (seat: number): string => {
-  const m = members.value.find((x) => x.seat === seat);
-  if (!m) return '等待加入…';
-  return `${m.nickname}${m.userId === myId.value ? '（我）' : ''}${m.online ? '' : ' · 离线'}`;
+const memberState = (m: { userId: number; seat: number; ready: boolean; online: boolean }): string => {
+  if (!m.online) return '离线';
+  if (m.seat < 0) return '观战';
+  if (phase.value === 'waiting') return m.ready ? '已准备' : '未准备';
+  if (gameType.value === 'spy') {
+    const eliminated = (game.value.eliminated || []).some((e: any) => e.userId === m.userId);
+    return eliminated ? '出局' : '存活';
+  }
+  if (gameType.value === 'draw' && phase.value === 'playing') {
+    return game.value.drawerSeat === m.seat ? '🎨 画中' : '猜词中';
+  }
+  if (gameType.value === 'uno' && phase.value === 'playing') {
+    return game.value.turnSeat === m.seat ? '出牌中' : '';
+  }
+  if (gameType.value === 'gomoku') {
+    if (phase.value === 'playing') return m.seat === 0 ? '执黑' : '执白';
+    if (phase.value === 'ended') return game.value.winner === m.seat + 1 ? '获胜 🎉' : game.value.winner === 3 ? '平局' : '惜败';
+  }
+  return '';
 };
 
-const seatState = (seat: number): string => {
-  const m = members.value.find((x) => x.seat === seat);
-  if (!m) return '';
-  if (phase.value === 'waiting') return m.ready ? '已准备' : '未准备';
-  if (phase.value === 'ended') return game.value.winner === seat + 1 ? '获胜 🎉' : game.value.winner === 3 ? '平局' : '惜败';
-  return seat === 0 ? '执黑' : '执白';
+const isActiveMember = (m: { userId: number; seat: number }): boolean => {
+  if (phase.value !== 'playing') return false;
+  if (gameType.value === 'gomoku') return game.value.turn === (m.seat === 0 ? 1 : 2);
+  if (gameType.value === 'uno') return game.value.turnSeat === m.seat;
+  if (gameType.value === 'draw') return game.value.drawerSeat === m.seat && game.value.word != null;
+  return false;
 };
 
 const waitingText = computed(() => {
@@ -279,13 +295,8 @@ const applySnapshot = (s: any) => {
   hostUserId.value = s.hostUserId;
   if (s.gameType) gameType.value = s.gameType;
   board.value = s.game?.board || board.value;
-  game.value = {
-    board: s.game?.board || board.value,
-    turn: s.game?.turn ?? BLACK,
-    winner: s.game?.winner ?? 0,
-    winLine: s.game?.winLine || [],
-    lastMove: s.game?.lastMove || null,
-  };
+  // 保留 serializeFor 的全部字段（各游戏自带结构：五子棋棋盘/UNO 手牌+顶牌/卧底身份等）
+  game.value = { ...(s.game || {}) };
   chatList.value = s.chat || [];
   const me = members.value.find((m) => m.userId === myId.value);
   if (me) mySeat.value = me.seat;
@@ -467,6 +478,30 @@ onMounted(() => {
     gameEvents.round = { ...m, ts: Date.now() };
     gameEvents.stroke = null;
     gameEvents.final = null;
+    // 同步回合状态到 game（DrawGame 模板按 state.phase 切换选词/作画）
+    if (game.value && typeof game.value === 'object') {
+      game.value.phase = m.phase;
+      game.value.drawerSeat = m.drawerSeat;
+      game.value.round = m.round;
+      game.value.totalRounds = m.totalRounds;
+      game.value.deadline = m.deadline || 0;
+      game.value.wordLen = m.wordLen || 0;
+      game.value.category = m.category || '';
+      game.value.word = null;
+      game.value.strokes = [];
+      game.value.myGuessed = false;
+    }
+  });
+  ws.on('guess_result', (m: any) => {
+    gameEvents.guessResult = m;
+    if (m.userId === myId.value && game.value && typeof game.value === 'object') game.value.myGuessed = true;
+  });
+  ws.on('draw_candidates', (m: any) => {
+    gameEvents.candidates = m.words || [];
+  });
+  ws.on('draw_word', (m: any) => {
+    // 画家的词（私发）：同步到 state 供词牌显示
+    if (game.value && typeof game.value === 'object') game.value.word = m.word;
   });
   ws.on('draw_stroke', (m: any) => {
     gameEvents.stroke = m;
@@ -477,9 +512,7 @@ onMounted(() => {
   ws.on('draw_clear', () => {
     gameEvents.clear = { ts: Date.now() };
   });
-  ws.on('guess_result', (m: any) => {
-    gameEvents.guessResult = m;
-  });
+
   ws.on('draw_round_end', (m: any) => {
     gameEvents.roundEnd = m;
   });
@@ -509,6 +542,28 @@ onMounted(() => {
   ws.on('uno_state', (m: any) => {
     gameEvents.uno_state = m;
     gameEvents.turn = { seat: m.turnSeat, seq: Date.now() };
+    // 同步公共状态到 game（UnoGame 从 state 读顶牌/颜色/回合）
+    if (game.value && typeof game.value === 'object') {
+      game.value.top = m.top;
+      game.value.currentColor = m.currentColor;
+      game.value.direction = m.direction;
+      game.value.turnSeat = m.turnSeat;
+      game.value.counts = m.counts;
+    }
+  });
+  ws.on('uno_turn', (m: any) => {
+    gameEvents.turn = { ...m, seq: Date.now() };
+    if (game.value && typeof game.value === 'object') game.value.turnSeat = m.seat;
+  });
+  ws.on('uno_played', (m: any) => {
+    gameEvents.uno_played = m;
+    if (game.value && typeof game.value === 'object') {
+      game.value.top = m.card;
+      if (m.chooseColor) game.value.currentColor = m.chooseColor;
+    }
+  });
+  ws.on('uno_hand', (m: any) => {
+    gameEvents.uno_hand = m;
   });
   ws.on('uno_turn', (m: any) => {
     gameEvents.turn = { ...m, seq: Date.now() };
@@ -630,44 +685,47 @@ onMounted(() => {
 }
 
 /* 座位 */
-.seats {
-  display: flex;
-  align-items: stretch;
+.seats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
   gap: 8px;
-  margin-bottom: 6px;
+  margin-bottom: 10px;
 }
 
-.seat {
-  flex: 1;
+.seat-cell {
   background: #fff;
+  border: 2px solid #e3e8ef;
   border-radius: 12px;
-  padding: 8px 10px;
+  padding: 8px 6px;
   text-align: center;
-  border: 2px solid transparent;
 }
 
-.seat.active {
+.seat-cell.active {
   border-color: #667eea;
+  background: #eef1fd;
 }
 
-.seat-stone {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  margin: 0 auto 4px;
+.seat-cell.off {
+  opacity: 0.55;
 }
 
-.seat-stone.black {
-  background: radial-gradient(circle at 35% 35%, #555, #111);
+.cell-top {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  min-height: 30px;
 }
 
-.seat-stone.white {
-  background: radial-gradient(circle at 35% 35%, #fff, #ccc);
-  border: 1px solid #ddd;
+.host-mark {
+  position: absolute;
+  top: -4px;
+  right: -2px;
+  font-size: 12px;
 }
 
-.seat-name {
-  font-size: 13px;
+.cell-name {
+  font-size: 12px;
   font-weight: bold;
   color: #333;
   white-space: nowrap;
@@ -675,10 +733,11 @@ onMounted(() => {
   text-overflow: ellipsis;
 }
 
-.seat-state {
+.cell-state {
   font-size: 11px;
   color: #999;
   margin-top: 2px;
+  min-height: 14px;
 }
 
 .vs {
