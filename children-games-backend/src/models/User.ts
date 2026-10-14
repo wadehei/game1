@@ -6,6 +6,7 @@ interface UserAttributes {
   openid: string;
   nickname: string;
   avatar: string;
+  avatarHistory: string[];
   totalStars: number;
   level: number;
   achievements: string;
@@ -15,13 +16,14 @@ interface UserAttributes {
   updatedAt?: Date;
 }
 
-interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'totalStars' | 'level' | 'achievements' | 'pinHash'> {}
+interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'totalStars' | 'level' | 'achievements' | 'pinHash' | 'avatarHistory'> {}
 
 export class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
   public id!: number;
   public openid!: string;
   public nickname!: string;
   public avatar!: string;
+  public avatarHistory!: string[];
   public totalStars!: number;
   public level!: number;
   public achievements!: string;
@@ -54,6 +56,12 @@ User.init(
       allowNull: true,
       defaultValue: '',
       comment: '头像URL',
+    },
+    avatarHistory: {
+      type: DataTypes.JSON,
+      allowNull: false,
+      defaultValue: [],
+      comment: '历史头像（emoji/照片URL），最多 12 个',
     },
     totalStars: {
       type: DataTypes.INTEGER.UNSIGNED,

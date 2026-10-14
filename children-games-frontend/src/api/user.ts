@@ -7,6 +7,7 @@ interface LoginResult {
     id: number;
     nickname: string;
     avatar: string;
+    avatarHistory?: string[];
     level: number;
     totalStars: number;
   };

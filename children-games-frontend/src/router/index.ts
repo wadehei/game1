@@ -32,6 +32,11 @@ const routes = [
     component: () => import('@/pages/feedback/index.vue'),
   },
   {
+    path: '/profile',
+    name: 'Profile',
+    component: () => import('@/pages/profile/index.vue'),
+  },
+  {
     path: '/battle',
     name: 'Battle',
     component: () => import('@/pages/battle/index.vue'),

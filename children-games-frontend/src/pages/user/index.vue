@@ -148,60 +148,17 @@
 
     <!-- 我的资料 + 角色口令 -->
     <div class="profile-edit card">
-      <div class="section-title">👤 我的资料</div>
-      <div class="edit-row">
-        <span class="edit-label">昵称</span>
-        <input v-model="editNickname" class="edit-input" maxlength="12" />
-      </div>
-      <div class="edit-row">
-        <span class="edit-label">音量</span>
-        <input
-          class="volume-slider"
-          type="range"
-          min="0"
-          max="100"
-          :value="volume"
-          @input="onVolumeChange"
-        />
-        <span class="volume-num">{{ Math.round(volume * 100) }}%</span>
-      </div>
-      <div class="edit-row">
-        <span class="edit-label">形象</span>
-        <div class="avatar-tools">
-          <label class="me-photo-btn" :title="'上传照片'">
-            <PlayerAvatar
-              v-if="isPhotoAvatar"
-              :avatar="editAvatar"
-              :size="44"
-            />
-            <span v-else class="me-photo-icon">📷</span>
-            <input
-              type="file"
-              accept="image/*"
-              class="photo-input"
-              @change="onPhotoPick"
-            />
-          </label>
-          <div class="edit-emojis">
-            <span
-              v-for="e in AVATARS"
-              :key="e"
-              class="edit-emoji"
-              :class="{ picked: editAvatar === e }"
-              @click="editAvatar = e"
-              >{{ e }}</span
-            >
-          </div>
-        </div>
-      </div>
-      <div v-if="uploadTip" class="upload-tip">{{ uploadTip }}</div>
-      <button
-        class="save-profile-btn"
-        :disabled="savingProfile"
-        @click="saveProfile"
+      <div
+        class="profile-entry"
+        @click="$router.push('/profile')"
       >
-        {{ savingProfile ? "保存中…" : "保存资料" }}
-      </button>
+        <PlayerAvatar :avatar="userInfo?.avatar" :size="52" />
+        <div class="pe-main">
+          <div class="pe-title">👤 个人中心</div>
+          <div class="pe-desc">头像 · 昵称 · 头像历史</div>
+        </div>
+        <span class="pe-arrow">›</span>
+      </div>
 
       <div class="section-title pin-title">🔑 角色口令</div>
       <div class="pin-desc">
@@ -1424,4 +1381,32 @@ onMounted(async () => {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+.profile-entry {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 4px 14px;
+  border-bottom: 1px dashed #e3e8ef;
+  margin-bottom: 14px;
+  cursor: pointer;
+}
+
+.pe-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #333;
+}
+
+.pe-desc {
+  font-size: 12px;
+  color: #999;
+  margin-top: 2px;
+}
+
+.pe-arrow {
+  margin-left: auto;
+  font-size: 20px;
+  color: #c3c8d0;
+}
+
 </style>

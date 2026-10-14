@@ -347,6 +347,7 @@ export const getUserInfo = asyncHandler(async (req: AuthRequest, res: Response) 
     id: user.id,
     nickname: user.nickname,
     avatar: user.avatar,
+    avatarHistory: Array.isArray(user.avatarHistory) ? user.avatarHistory : [],
     level: user.level,
     totalStars: user.totalStars,
   });
@@ -364,7 +365,18 @@ export const updateUserInfo = asyncHandler(async (req: AuthRequest, res: Respons
   }
 
   if (nickname) user.nickname = nickname;
-  if (avatar) user.avatar = avatar;
+  let avatarChanged = false;
+  if (avatar && avatar !== user.avatar) {
+    // 头像历史：新旧头像都保留（emoji 与照片 URL 一视同仁），最多 12 个
+    const history: string[] = Array.isArray(user.avatarHistory) ? [...user.avatarHistory] : [];
+    if (user.avatar && !history.includes(user.avatar)) history.unshift(user.avatar);
+    const idx = history.indexOf(avatar);
+    if (idx !== -1) history.splice(idx, 1);
+    history.unshift(avatar);
+    user.avatarHistory = history.slice(0, 12);
+    user.avatar = avatar;
+    avatarChanged = true;
+  }
 
   await user.save();
 
@@ -372,5 +384,6 @@ export const updateUserInfo = asyncHandler(async (req: AuthRequest, res: Respons
     id: user.id,
     nickname: user.nickname,
     avatar: user.avatar,
+    ...(avatarChanged ? { avatarHistory: user.avatarHistory } : {}),
   });
 });
