@@ -50,7 +50,7 @@
       :game-state="game"
       :phase="phase"
       :my-seat="mySeat"
-      :events="gameType === 'draw' ? drawEvents : quizEvents"
+      :events="gameEvents"
       :members="members"
       @action="onGameAction"
     />
@@ -222,8 +222,22 @@ const myColor = computed(() => (mySeat.value === 0 ? BLACK : mySeat.value === 1 
 const mySeatHasPlayer = computed(() => mySeat.value >= 0);
 const myReady = computed(() => members.value.find((m) => m.userId === myId.value)?.ready || false);
 const rematchVotes = ref<number[]>([]);
-const quizEvents = reactive({ question: null as any, result: null as any, final: null as any });
-const drawEvents = reactive({ round: null as any, stroke: null as any, undo: null as any, clear: null as any, guessResult: null as any, roundEnd: null as any, final: null as any });
+const gameEvents = reactive<Record<string, any>>({
+  question: null as any,
+  result: null as any,
+  final: null as any,
+  round: null as any,
+  stroke: null as any,
+  undo: null as any,
+  clear: null as any,
+  guessResult: null as any,
+  roundEnd: null as any,
+  phase: null as any,
+  deal: null as any,
+  voteUpdate: null as any,
+  voteResult: null as any,
+  eliminated: null as any,
+});
 const lastWsError = ref('');
 const myRematch = computed(() => rematchVotes.value.includes(myId.value));
 const spectatorCount = computed(() => members.value.filter((m) => m.seat < 0).length);
@@ -275,7 +289,7 @@ const applySnapshot = (s: any) => {
   const me = members.value.find((m) => m.userId === myId.value);
   if (me) mySeat.value = me.seat;
   if (s.gameType === 'quiz' && s.qid) {
-    quizEvents.question = { ...s.game, ...s, scores: s.game?.scores || [] };
+    gameEvents.question = { ...s.game, ...s, scores: s.game?.scores || [] };
   }
   scrollChat();
 };
@@ -423,17 +437,13 @@ onMounted(() => {
     phase.value = m.phase;
     board.value = Array.from({ length: 15 }, () => Array(15).fill(0));
     game.value = { board: board.value, turn: 1, winner: 0, winLine: [], lastMove: null };
-    quizEvents.question = null;
-    quizEvents.result = null;
-    quizEvents.final = null;
+    Object.keys(gameEvents).forEach((k) => (gameEvents[k] = null));
   });
   ws.on('game_restart', (m: any) => {
     phase.value = m.phase;
     board.value = Array.from({ length: 15 }, () => Array(15).fill(0));
     game.value = { board: board.value, turn: 1, winner: 0, winLine: [], lastMove: null };
-    quizEvents.question = null;
-    quizEvents.result = null;
-    quizEvents.final = null;
+    Object.keys(gameEvents).forEach((k) => (gameEvents[k] = null));
   });
   ws.on('game_over', (m: any) => {
     phase.value = 'ended';
@@ -442,38 +452,57 @@ onMounted(() => {
     rematchVotes.value = [];
   });
   ws.on('quiz_question', (m: any) => {
-    quizEvents.question = m;
-    quizEvents.result = null;
-    quizEvents.final = null;
+    gameEvents.question = m;
+    gameEvents.result = null;
+    gameEvents.final = null;
   });
   ws.on('quiz_result', (m: any) => {
-    quizEvents.result = m;
+    gameEvents.result = m;
   });
   ws.on('quiz_final', (m: any) => {
-    quizEvents.final = m;
+    gameEvents.final = m;
   });
   ws.on('draw_round', (m: any) => {
-    drawEvents.round = { ...m, ts: Date.now() };
-    drawEvents.stroke = null;
-    drawEvents.final = null;
+    gameEvents.round = { ...m, ts: Date.now() };
+    gameEvents.stroke = null;
+    gameEvents.final = null;
   });
   ws.on('draw_stroke', (m: any) => {
-    drawEvents.stroke = m;
+    gameEvents.stroke = m;
   });
   ws.on('draw_undo', () => {
-    drawEvents.undo = { ts: Date.now() };
+    gameEvents.undo = { ts: Date.now() };
   });
   ws.on('draw_clear', () => {
-    drawEvents.clear = { ts: Date.now() };
+    gameEvents.clear = { ts: Date.now() };
   });
   ws.on('guess_result', (m: any) => {
-    drawEvents.guessResult = m;
+    gameEvents.guessResult = m;
   });
   ws.on('draw_round_end', (m: any) => {
-    drawEvents.roundEnd = m;
+    gameEvents.roundEnd = m;
   });
   ws.on('draw_final', (m: any) => {
-    drawEvents.final = m;
+    gameEvents.final = m;
+    phase.value = 'ended';
+  });
+  ws.on('spy_phase', (m: any) => {
+    gameEvents.phase = m;
+  });
+  ws.on('spy_deal', (m: any) => {
+    gameEvents.deal = m;
+  });
+  ws.on('spy_vote_update', (m: any) => {
+    gameEvents.voteUpdate = m;
+  });
+  ws.on('spy_vote_result', (m: any) => {
+    gameEvents.voteResult = m;
+  });
+  ws.on('spy_eliminated', (m: any) => {
+    gameEvents.eliminated = m;
+  });
+  ws.on('spy_final', (m: any) => {
+    gameEvents.final = m;
     phase.value = 'ended';
   });
   ws.on('error', (m: any) => {

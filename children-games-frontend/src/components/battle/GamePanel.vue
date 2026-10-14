@@ -25,7 +25,16 @@
     :my-seat="mySeat"
     @action="emit('action', $event)"
   />
-  <!-- 后续游戏组件在此按 gameType 挂载：spy / uno -->
+  <SpyGame
+    v-else-if="gameType === 'spy'"
+    :state="gameState"
+    :events="events"
+    :members="members"
+    :phase="phase"
+    :my-seat="mySeat"
+    @action="emit('action', $event)"
+  />
+  <!-- 后续游戏组件在此按 gameType 挂载：uno -->
   <div v-else class="game-placeholder">该游戏暂未开放</div>
 </template>
 
@@ -33,6 +42,7 @@
 import GomokuBoard from './GomokuBoard.vue';
 import QuizGame from './QuizGame.vue';
 import DrawGame from './DrawGame.vue';
+import SpyGame from './SpyGame.vue';
 
 defineProps<{
   gameType: string;
