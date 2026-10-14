@@ -297,7 +297,7 @@ const onVolumeInput = (e: Event) => {
   volume.value = Number((e.target as HTMLInputElement).value) / 100;
   soundManager.setVolume(volume.value);
 };
-const testSound = () => soundManager.play('collect');
+const testSound = () => soundManager.playSuccess();
 
 const goBattle = () => {
   soundManager.playClick();
