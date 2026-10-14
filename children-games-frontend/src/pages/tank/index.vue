@@ -249,18 +249,21 @@ const pauseLoop = () => {
     cancelAnimationFrame(animationId);
     animationId = null;
   }
-  if (autoFireInterval) {
-    clearInterval(autoFireInterval);
-    autoFireInterval = null;
-  }
+  stopAutoFire();
+};
+
+/** 辅助自动开火：孩子不用按发射键；独立于主循环管理，保证跨关卡持续有效 */
+const startAutoFire = () => {
+  stopAutoFire();
+  autoFireInterval = setInterval(() => {
+    fire();
+  }, levelConfig.value.autoFireInterval);
 };
 
 const resumeLoop = () => {
   if (gameEnded || animationId !== null) return;
   gameLoop();
-  autoFireInterval = setInterval(() => {
-    fire();
-  }, levelConfig.value.autoFireInterval);
+  startAutoFire();
 };
 
 const startGame = () => resumeLoop();
@@ -304,6 +307,10 @@ const quitGame = () => {
 const gameLoop = () => {
   update();
   render();
+  // 看门狗：只要游戏进行中，辅助自动开火必须在线（丢失即自愈）
+  if (!gameEnded && !paused.value && autoFireInterval === null) {
+    startAutoFire();
+  }
   animationId = requestAnimationFrame(gameLoop);
 };
 

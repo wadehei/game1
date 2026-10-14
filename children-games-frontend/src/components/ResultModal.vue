@@ -7,9 +7,13 @@
         <span v-for="i in 3" :key="i" class="star" :class="{ active: i <= stars }">⭐</span>
       </div>
       <div v-if="info" class="result-info">{{ info }}</div>
+      <div v-if="autoNext && won" class="auto-next-tip" @click="cancelAuto">
+        {{ autoCountdown > 0 ? `${autoCountdown} 秒后自动开始下一关` : '自动开始中…' }}
+        <span class="cancel-hint">点击这里取消</span>
+      </div>
       <div class="result-buttons">
-        <button class="btn-retry" @click="$emit('retry')">再玩一次</button>
-        <button v-if="won" class="btn-next" @click="$emit('next')">下一关</button>
+        <button class="btn-retry" @click="cancelAuto(); $emit('retry')">再玩一次</button>
+        <button v-if="won" class="btn-next" @click="cancelAuto(); $emit('next')">下一关</button>
       </div>
     </div>
   </div>
@@ -27,14 +31,48 @@ const props = defineProps<{
   icon?: string;
   title?: string;
   info?: string;
+  autoNext?: boolean; // 通关后倒计时自动进入下一关（默认开启）
 }>();
 
-defineEmits<{
+
+
+const contentRef = ref<HTMLElement | null>(null);
+
+// 通关自动开始下一关：3 秒倒计时，点击提示可取消
+const emit = defineEmits<{
   retry: [];
   next: [];
 }>();
 
-const contentRef = ref<HTMLElement | null>(null);
+const autoCountdown = ref(3);
+let autoTimer: ReturnType<typeof setInterval> | null = null;
+
+const stopAuto = () => {
+  if (autoTimer) {
+    clearInterval(autoTimer);
+    autoTimer = null;
+  }
+};
+
+const cancelAuto = () => stopAuto();
+
+watch(
+  () => [props.show, props.won, props.autoNext],
+  ([show, won, auto]) => {
+    stopAuto();
+    autoCountdown.value = 3;
+    if (show && won && auto !== false) {
+      autoTimer = setInterval(() => {
+        autoCountdown.value -= 1;
+        if (autoCountdown.value <= 0) {
+          stopAuto();
+          emit('next');
+        }
+      }, 1000);
+    }
+  },
+  { immediate: true }
+);
 
 // 弹出时语音鼓励；赢了来一场星星雨
 watch(() => props.show, (visible) => {
@@ -56,6 +94,21 @@ watch(() => props.show, (visible) => {
 </script>
 
 <style scoped>
+.auto-next-tip {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #667eea;
+  text-align: center;
+  cursor: pointer;
+}
+
+.cancel-hint {
+  font-size: 11px;
+  color: #b3bac4;
+  margin-left: 6px;
+  text-decoration: underline;
+}
+
 .result-modal {
   position: fixed;
   top: 0;
