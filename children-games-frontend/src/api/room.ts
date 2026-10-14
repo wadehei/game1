@@ -2,6 +2,11 @@
 import axios from 'axios';
 import { api } from '../utils/request';
 
+// 可用游戏列表（大厅建房卡片）
+export const getGameList = async (): Promise<Array<{ type: string; title: string; emoji: string; desc: string; minPlayers: number; maxPlayers: number }>> => {
+  return api.get('/room/games');
+};
+
 // 创建房间（五子棋）
 export const createRoom = async (gameType: 'gomoku' = 'gomoku'): Promise<{ roomId: string; gameType: string }> => {
   return api.post<{ roomId: string; gameType: string }>('/room', { gameType });

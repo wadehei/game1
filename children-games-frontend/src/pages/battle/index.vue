@@ -18,10 +18,23 @@
     <!-- 创建房间 -->
     <div class="section card">
       <div class="section-title">创建房间</div>
+      <div class="game-cards">
+        <button
+          v-for="g in games"
+          :key="g.type"
+          class="game-card"
+          :class="{ active: selected === g.type }"
+          @click="selected = g.type"
+        >
+          <span class="gc-icon">{{ g.emoji }}</span>
+          <span class="gc-title">{{ g.title }}</span>
+          <span class="gc-desc">{{ g.desc }}</span>
+          <span class="gc-range">{{ g.minPlayers }}~{{ g.maxPlayers }} 人</span>
+        </button>
+      </div>
       <button class="create-btn" :disabled="creating" @click="create">
-        {{ creating ? '创建中…' : '⚫ 开一局五子棋' }}
+        {{ creating ? '创建中…' : `创建「${selectedTitle}」房间` }}
       </button>
-      <div class="game-desc">15路棋盘 · 黑棋先手 · 五连成线获胜，支持观战和再来一局</div>
     </div>
 
     <!-- 加入房间 -->
@@ -51,14 +64,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { createRoom } from '@/api/room';
+import { createRoom, getGameList } from '@/api/room';
 
 const router = useRouter();
 const creating = ref(false);
 const joinCode = ref('');
 const errMsg = ref('');
+const games = ref<Array<{ type: string; title: string; emoji: string; desc: string; minPlayers: number; maxPlayers: number }>>([]);
+const selected = ref('gomoku');
+const selectedTitle = computed(() => games.value.find((g) => g.type === selected.value)?.title || '五子棋');
+
+onMounted(async () => {
+  games.value = await getGameList().catch(() => [{ type: 'gomoku', title: '五子棋', emoji: '⚫', desc: '', minPlayers: 2, maxPlayers: 2 }]);
+});
 
 const goBack = () => {
   const pos = Number(window.history.state?.position ?? 0);
@@ -71,7 +91,7 @@ const create = async () => {
   creating.value = true;
   errMsg.value = '';
   try {
-    const { roomId } = await createRoom('gomoku');
+    const { roomId } = await createRoom(selected.value as 'gomoku');
     router.push(`/battle/room/${roomId}`);
   } catch (e) {
     errMsg.value = e instanceof Error ? e.message : '创建失败，请重试';
@@ -168,6 +188,57 @@ const join = () => {
   font-weight: bold;
   color: #333;
   margin-bottom: 12px;
+}
+
+.game-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.game-card {
+  display: grid;
+  grid-template-columns: 34px 1fr auto;
+  grid-template-areas: "icon title range" "icon desc range";
+  column-gap: 10px;
+  align-items: center;
+  border: 2px solid #e3e8ef;
+  background: #fafbfc;
+  border-radius: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.12s ease;
+}
+
+.game-card.active {
+  border-color: #667eea;
+  background: #eef1fd;
+}
+
+.gc-icon {
+  grid-area: icon;
+  font-size: 24px;
+}
+
+.gc-title {
+  grid-area: title;
+  font-size: 14px;
+  font-weight: bold;
+  color: #333;
+}
+
+.gc-desc {
+  grid-area: desc;
+  font-size: 11px;
+  color: #999;
+}
+
+.gc-range {
+  grid-area: range;
+  font-size: 11px;
+  color: #b3bac4;
 }
 
 .create-btn {

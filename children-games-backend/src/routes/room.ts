@@ -5,16 +5,29 @@ import express from 'express';
 import { authMiddleware } from '../middleware/auth';
 import { success, fail, asyncHandler } from '../utils/response';
 import { createRoom, getRoom, getVoice, storeVoice, type RoomVoice } from '../ws/roomManager';
+import { gameList, getHandler } from '../ws/games/registry';
 import type { GameType } from '../ws/games/types';
 
 const router = Router();
 
-const GAME_TYPES: GameType[] = ['gomoku'];
+const isGameType = (t: unknown): t is GameType => {
+  try {
+    getHandler(t as GameType);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+// 可用游戏列表（大厅建房卡片用）
+router.get('/games', (_req: Request, res: Response) => {
+  success(res, gameList());
+});
 
 // 创建房间（需要登录）
 router.post('/', authMiddleware, asyncHandler(async (req: Request & { userId?: number }, res: Response) => {
   const { gameType } = req.body as { gameType?: GameType };
-  const type: GameType = GAME_TYPES.includes(gameType as GameType) ? (gameType as GameType) : 'gomoku';
+  const type: GameType = isGameType(gameType) ? gameType : 'gomoku';
   const user = { userId: req.userId!, nickname: '', avatar: '' };
   // 建房响应里不含昵称也无妨，进房时 WS 会重新取；这里补全以便房间页立即显示房主
   const { User } = await import('../models');

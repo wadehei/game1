@@ -203,3 +203,40 @@ export const adminUpdateFeedback = async (
 export const adminAddReply = async (id: number, content: string): Promise<void> => {
   await client.post(`/feedback/${id}/reply`, { content });
 };
+
+// ─── 题库管理（答题对战） ────────────────────────────────
+
+export interface AdminQuizQuestion {
+  id: number;
+  category: string;
+  difficulty: number;
+  text: string;
+  options: string[];
+  answer: number;
+}
+
+export interface QuizQuestionPayload {
+  text: string;
+  options: string[];
+  answer: number;
+  category?: string;
+  difficulty?: number;
+}
+
+export const adminQuizList = async (page = 1, category = ''): Promise<{ list: AdminQuizQuestion[]; total: number }> => {
+  const params: Record<string, unknown> = { page };
+  if (category) params.category = category;
+  return client.get('/quiz', { params }) as unknown as Promise<{ list: AdminQuizQuestion[]; total: number }>;
+};
+
+export const adminQuizCreate = async (data: QuizQuestionPayload): Promise<AdminQuizQuestion> =>
+  client.post('/quiz', data) as unknown as Promise<AdminQuizQuestion>;
+
+export const adminQuizUpdate = async (id: number, data: QuizQuestionPayload): Promise<AdminQuizQuestion> =>
+  client.put(`/quiz/${id}`, data) as unknown as Promise<AdminQuizQuestion>;
+
+export const adminQuizDelete = async (id: number): Promise<void> =>
+  client.delete(`/quiz/${id}`) as unknown as Promise<void>;
+
+export const adminQuizImport = async (questions: QuizQuestionPayload[]): Promise<{ created: number; skipped: number }> =>
+  client.post('/quiz/import', { questions }) as unknown as Promise<{ created: number; skipped: number }>;

@@ -15,6 +15,11 @@ import {
   getErrorLogs,
   clearErrorLogs,
   downloadBackup,
+  quizList,
+  quizCreate,
+  quizUpdate,
+  quizDelete,
+  quizImport,
 } from '../controllers/adminController';
 import { listFeedbacks, updateFeedback, addFeedbackReply } from '../controllers/feedbackController';
 import { adminMiddleware } from '../middleware/adminAuth';
@@ -40,6 +45,13 @@ router.delete('/levels/:gameId/:level', deleteLevelOverride);
 router.get('/logs', getErrorLogs);
 router.delete('/logs', clearErrorLogs);
 router.get('/backup', downloadBackup);
+
+// 题库管理（答题对战）
+router.get('/quiz', quizList);
+router.post('/quiz', quizCreate);
+router.put('/quiz/:id', quizUpdate);
+router.delete('/quiz/:id', quizDelete);
+router.post('/quiz/import', quizImport);
 
 // 意见反馈（与 /api/feedback 共用列表控制器，管理员额外返回内部备注）
 router.get('/feedback', listFeedbacks);

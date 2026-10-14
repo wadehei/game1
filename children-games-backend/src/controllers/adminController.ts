@@ -4,7 +4,7 @@ import path from 'path';
 import { Op } from 'sequelize';
 import jwt from 'jsonwebtoken';
 import { config } from '../config';
-import { User, GameProgress, DailyTask, AppSetting, UserPlaytime, LevelConfig } from '../models';
+import { User, GameProgress, DailyTask, AppSetting, UserPlaytime, LevelConfig, QuizQuestion } from '../models';
 import { AdminRequest } from '../middleware/adminAuth';
 import { success, fail, asyncHandler } from '../utils/response';
 import { LEVEL_FIELDS } from './levelController';
@@ -358,4 +358,80 @@ export const downloadBackup = asyncHandler(async (req: AdminRequest, res: Respon
     `attachment; filename="children_games_backup_${localDateString()}.sql"`
   );
   res.send(lines.join('\n'));
+});
+
+
+// ─── 题库管理（答题对战） ────────────────────────────────
+
+const validateQuestion = (body: any): { error?: string; data?: any } => {
+  const text = String(body?.text || '').trim();
+  const options = Array.isArray(body?.options) ? body.options.map((o: any) => String(o).trim()) : [];
+  const answer = Number(body?.answer);
+  const category = String(body?.category || '综合').trim().slice(0, 20);
+  const difficulty = Math.min(3, Math.max(1, Number(body?.difficulty) || 1));
+  if (!text) return { error: '题干不能为空' };
+  if (options.length !== 4 || options.some((o: string) => !o)) return { error: '必须提供 4 个非空选项' };
+  if (!Number.isInteger(answer) || answer < 0 || answer > 3) return { error: '正确答案下标无效' };
+  return { data: { text, options, answer, category, difficulty } };
+};
+
+export const quizList = asyncHandler(async (req: Request, res: Response) => {
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = 20;
+  const category = (req.query.category as string) || '';
+  const where = category ? { category } : {};
+  const { rows, count } = await QuizQuestion.findAndCountAll({
+    where,
+    order: [['id', 'DESC']],
+    offset: (page - 1) * limit,
+    limit,
+  });
+  success(res, { list: rows, total: count, page, limit });
+});
+
+export const quizCreate = asyncHandler(async (req: Request, res: Response) => {
+  const v = validateQuestion(req.body);
+  if (v.error) return fail(res, v.error);
+  const dup = await QuizQuestion.findOne({ where: { text: v.data.text } });
+  if (dup) return fail(res, '已存在相同题干的题目');
+  const q = await QuizQuestion.create(v.data);
+  success(res, q, '创建成功');
+});
+
+export const quizUpdate = asyncHandler(async (req: Request, res: Response) => {
+  const q = await QuizQuestion.findByPk(Number(req.params.id));
+  if (!q) return fail(res, '题目不存在', 404);
+  const v = validateQuestion(req.body);
+  if (v.error) return fail(res, v.error);
+  await q.update(v.data);
+  success(res, q, '更新成功');
+});
+
+export const quizDelete = asyncHandler(async (req: Request, res: Response) => {
+  const q = await QuizQuestion.findByPk(Number(req.params.id));
+  if (!q) return fail(res, '题目不存在', 404);
+  await q.destroy();
+  success(res, { ok: true }, '删除成功');
+});
+
+export const quizImport = asyncHandler(async (req: Request, res: Response) => {
+  const list = Array.isArray(req.body?.questions) ? req.body.questions : [];
+  if (list.length === 0) return fail(res, '导入内容为空');
+  let created = 0;
+  let skipped = 0;
+  for (const item of list) {
+    const v = validateQuestion(item);
+    if (v.error) {
+      skipped += 1;
+      continue;
+    }
+    const dup = await QuizQuestion.findOne({ where: { text: v.data.text } });
+    if (dup) {
+      skipped += 1;
+      continue;
+    }
+    await QuizQuestion.create(v.data);
+    created += 1;
+  }
+  success(res, { created, skipped }, `导入完成：新增 ${created}，跳过 ${skipped}`);
 });

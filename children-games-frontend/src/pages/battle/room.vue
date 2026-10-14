@@ -31,6 +31,7 @@
     <div v-if="spectatorCount > 0" class="spectators">👀 {{ spectatorCount }} 人观战</div>
 
     <!-- 状态条 -->
+    <div v-if="lastWsError" class="conn-tip">{{ lastWsError }}</div>
     <div class="status-line">
       <template v-if="phase === 'waiting'">
         {{ waitingText }}
@@ -49,6 +50,7 @@
       :game-state="game"
       :phase="phase"
       :my-seat="mySeat"
+      :events="quizEvents"
       @action="onGameAction"
     />
 
@@ -148,7 +150,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useUserStore } from '@/store/user';
 import { useRoomWs } from '@/composables/useRoomWs';
@@ -219,6 +221,8 @@ const myColor = computed(() => (mySeat.value === 0 ? BLACK : mySeat.value === 1 
 const mySeatHasPlayer = computed(() => mySeat.value >= 0);
 const myReady = computed(() => members.value.find((m) => m.userId === myId.value)?.ready || false);
 const rematchVotes = ref<number[]>([]);
+const quizEvents = reactive({ question: null as any, result: null as any, final: null as any });
+const lastWsError = ref('');
 const myRematch = computed(() => rematchVotes.value.includes(myId.value));
 const spectatorCount = computed(() => members.value.filter((m) => m.seat < 0).length);
 const players = computed(() => members.value.filter((m) => m.seat >= 0));
@@ -268,6 +272,9 @@ const applySnapshot = (s: any) => {
   chatList.value = s.chat || [];
   const me = members.value.find((m) => m.userId === myId.value);
   if (me) mySeat.value = me.seat;
+  if (s.gameType === 'quiz' && s.qid) {
+    quizEvents.question = { ...s.game, ...s, scores: s.game?.scores || [] };
+  }
   scrollChat();
 };
 
@@ -410,17 +417,38 @@ onMounted(() => {
     phase.value = m.phase;
     board.value = Array.from({ length: 15 }, () => Array(15).fill(0));
     game.value = { board: board.value, turn: 1, winner: 0, winLine: [], lastMove: null };
+    quizEvents.question = null;
+    quizEvents.result = null;
+    quizEvents.final = null;
   });
   ws.on('game_restart', (m: any) => {
     phase.value = m.phase;
     board.value = Array.from({ length: 15 }, () => Array(15).fill(0));
     game.value = { board: board.value, turn: 1, winner: 0, winLine: [], lastMove: null };
+    quizEvents.question = null;
+    quizEvents.result = null;
+    quizEvents.final = null;
   });
   ws.on('game_over', (m: any) => {
     phase.value = 'ended';
     overReason.value = m.reason || '';
     game.value.winner = m.winnerSeat === 0 ? 1 : m.winnerSeat === 1 ? 2 : 3;
     rematchVotes.value = [];
+  });
+  ws.on('quiz_question', (m: any) => {
+    quizEvents.question = m;
+    quizEvents.result = null;
+    quizEvents.final = null;
+  });
+  ws.on('quiz_result', (m: any) => {
+    quizEvents.result = m;
+  });
+  ws.on('quiz_final', (m: any) => {
+    quizEvents.final = m;
+  });
+  ws.on('error', (m: any) => {
+    lastWsError.value = m.message || '';
+    setTimeout(() => (lastWsError.value = ''), 2500);
   });
   ws.on('rematch_vote', (m: any) => {
     rematchVotes.value = m.userIds || [];

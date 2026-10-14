@@ -3,9 +3,11 @@ import type { GameHandler, GameType } from './types';
 
 export type { GameType };
 import { gomokuHandler } from './gomoku';
+import { quizHandler } from './quiz';
 
 export const gameHandlers: Partial<Record<GameType, GameHandler>> = {
   gomoku: gomokuHandler,
+  quiz: quizHandler,
 };
 
 export const getHandler = (type: GameType): GameHandler => {
