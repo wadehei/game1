@@ -62,6 +62,18 @@
     </button>
     <div v-if="msg" class="msg" :class="{ err: isErr }">{{ msg }}</div>
 
+    <!-- 切换角色 -->
+    <div class="section card switch-role" @click="$router.push('/profiles')">
+      <div class="switch-row">
+        <span class="switch-icon">🔄</span>
+        <div class="switch-main">
+          <div class="switch-title">切换角色</div>
+          <div class="switch-desc">回到家庭成员选择页</div>
+        </div>
+        <span class="pe-arrow">›</span>
+      </div>
+    </div>
+
     <!-- 未来扩展占位 -->
     <div class="section card coming">
       <div class="section-title">对战战绩 <span class="soon">即将上线</span></div>
@@ -409,5 +421,27 @@ onMounted(async () => {
 .coming-desc {
   font-size: 12px;
   color: #b5bac2;
+}
+.switch-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.switch-icon {
+  font-size: 22px;
+}
+
+.switch-title {
+  font-size: 14px;
+  font-weight: bold;
+  color: #333;
+}
+
+.switch-desc {
+  font-size: 12px;
+  color: #999;
+  margin-top: 2px;
 }
 </style>

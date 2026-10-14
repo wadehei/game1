@@ -286,7 +286,7 @@ const getScoreText = (gameId: string): string => {
 
 const goToProfiles = () => {
   soundManager.playClick();
-  router.push("/profiles");
+  router.push("/profile");
 };
 
 const goToGame = (gameId: string) => {
