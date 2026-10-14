@@ -160,25 +160,25 @@ const buildRound = (level: number, pairs: number) => {
   const right: Item[] = [];
 
   if (typeIdx === 0) {
-    // 数字 ↔ 数量
+    // 数字 ↔ 数量（左右两侧共用配对 id，判定按 id 相等）
     const nums = shuffle(COUNT_POOL).slice(0, pairs);
     for (const n of nums) {
-      left.push({ id: `l-${n}`, text: String(n) });
-      right.push({ id: `r-${n}`, emoji: '🍎', emojiCount: n });
+      left.push({ id: `p-${n}`, text: String(n) });
+      right.push({ id: `p-${n}`, emoji: '🍎', emojiCount: n });
     }
   } else if (typeIdx === 1) {
     // 动物 ↔ 爱吃的食物
     const ps = shuffle(ANIMAL_PAIRS).slice(0, pairs);
     for (const [animal, food] of ps) {
-      left.push({ id: `l-${animal}`, emoji: animal });
-      right.push({ id: `r-${animal}`, emoji: food });
+      left.push({ id: `p-${animal}`, emoji: animal });
+      right.push({ id: `p-${animal}`, emoji: food });
     }
   } else {
     // 颜色圆点 ↔ 汉字
     const ps = shuffle(COLOR_PAIRS).slice(0, pairs);
     for (const [dot, label] of ps) {
-      left.push({ id: `l-${label}`, emoji: dot });
-      right.push({ id: `r-${label}`, text: label });
+      left.push({ id: `p-${label}`, emoji: dot });
+      right.push({ id: `p-${label}`, text: label });
     }
   }
 
@@ -288,6 +288,7 @@ const renderFonts = () => void 0;
 const endGame = (won: boolean) => {
   if (gameEnded) return;
   gameEnded = true;
+  gameWon.value = won;
   if (tickTimer) clearInterval(tickTimer);
   if (won) {
     sounds.play('match');

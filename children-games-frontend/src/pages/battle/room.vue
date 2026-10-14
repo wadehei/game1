@@ -280,6 +280,7 @@ const applySnapshot = (s: any) => {
   if (s.gameType) gameType.value = s.gameType;
   board.value = s.game?.board || board.value;
   game.value = {
+    board: s.game?.board || board.value,
     turn: s.game?.turn ?? BLACK,
     winner: s.game?.winner ?? 0,
     winLine: s.game?.winLine || [],

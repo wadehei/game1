@@ -139,10 +139,11 @@ const headerItems = computed(() => [
 
 const hintText = computed(() => {
   const q = question.value;
+  const info = iconInfo(q.icon);
   if (q.mode === 'count') {
-    return `一共有几${ICON_NAMES[q.icon || '🍎'] || '个'}呀？`;
+    return `一共有几${info.mw}${info.name}呀？`;
   }
-  return (q as any).subtract ? '拿走了一部分，还剩几个呀？' : '两盘合起来是多少呀？';
+  return q.subtract ? '拿走了一部分，还剩几个呀？' : '两盘合起来是多少呀？';
 });
 
 const applyLevelConfig = async (level: number) => {
@@ -230,18 +231,27 @@ const generateQuestion = (): MathQuestion => {
 // 数字读成中文（数学题语音读题）
 const CN_NUM = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
 
-// 物件中文名（语音读题用）
-const ICON_NAMES: Record<string, string> = {
-  '🍎': '苹果', '🍌': '香蕉', '🍇': '葡萄', '🍊': '橘子', '🍓': '草莓',
-  '🌟': '星星', '🎈': '气球', '🐥': '小鸡', '🐟': '小鱼', '🧁': '蛋糕',
+// 物件中文名 + 量词（语音读题和提示用）
+const ICON_NAMES: Record<string, { name: string; mw: string }> = {
+  '🍎': { name: '苹果', mw: '个' },
+  '🍌': { name: '香蕉', mw: '根' },
+  '🍇': { name: '葡萄', mw: '颗' },
+  '🍊': { name: '橘子', mw: '个' },
+  '🍓': { name: '草莓', mw: '颗' },
+  '🌟': { name: '星星', mw: '颗' },
+  '🎈': { name: '气球', mw: '个' },
+  '🐥': { name: '小鸡', mw: '只' },
+  '🐟': { name: '小鱼', mw: '条' },
+  '🧁': { name: '蛋糕', mw: '个' },
 };
+const iconInfo = (icon?: string) => ICON_NAMES[icon || '🍎'] || { name: '苹果', mw: '个' };
 
 const nextQuestion = () => {
   question.value = generateQuestion();
   const q = question.value;
-  const iconName = ICON_NAMES[q.icon || '🍎'] || '苹果';
+  const info = iconInfo(q.icon);
   if (q.mode === 'count') {
-    speak(`一共有几个${iconName}呀？`);
+    speak(`一共有几${info.mw}${info.name}呀？`);
   } else if ((q as any).subtract) {
     speak(`${CN_NUM[q.countA]} 减 ${CN_NUM[q.countB]}，等于几？`);
   } else {

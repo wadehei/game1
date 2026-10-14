@@ -24,15 +24,18 @@ import { nextTick, ref, watch } from 'vue';
 import { playVoice, stopSpeaking } from '@/utils/voice';
 import { createStarRain } from '@/utils/animations';
 
-const props = defineProps<{
-  show: boolean;
-  won: boolean;
-  stars: number;
-  icon?: string;
-  title?: string;
-  info?: string;
-  autoNext?: boolean; // 通关后倒计时自动进入下一关（默认开启）
-}>();
+const props = withDefaults(
+  defineProps<{
+    show: boolean;
+    won: boolean;
+    stars: number;
+    icon?: string;
+    title?: string;
+    info?: string;
+    autoNext?: boolean; // 通关后倒计时自动进入下一关（默认开启）
+  }>(),
+  { autoNext: true },
+);
 
 
 
