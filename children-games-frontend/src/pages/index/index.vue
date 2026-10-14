@@ -11,10 +11,32 @@
           </div>
         </div>
       </div>
-      <div class="star-count" :class="{ pulse: starPulse }">
-        <span class="star-icon">⭐</span>
-        <span class="star-num">{{ userInfo?.totalStars || 0 }}</span>
+      <div class="header-right">
+        <div class="star-count" :class="{ pulse: starPulse }">
+          <span class="star-icon">⭐</span>
+          <span class="star-num">{{ userInfo?.totalStars || 0 }}</span>
+        </div>
+        <button class="settings-btn" @click="showSettings = !showSettings">⚙️</button>
       </div>
+    </div>
+
+    <!-- 快捷设置：音量 -->
+    <div v-if="showSettings" class="settings-panel">
+      <div class="sp-row">
+        <span class="sp-icon">{{ volume === 0 ? '🔇' : '🔊' }}</span>
+        <span class="sp-label">音效音量</span>
+        <input
+          class="sp-slider"
+          type="range"
+          min="0"
+          max="100"
+          :value="Math.round(volume * 100)"
+          @input="onVolumeInput"
+        />
+        <span class="sp-num">{{ Math.round(volume * 100) }}%</span>
+      </div>
+      <button class="sp-test" @click="testSound">点一下试听</button>
+      <div class="sp-tip">背景音乐功能即将上线</div>
     </div>
 
     <!-- 好友对战入口 -->
@@ -269,6 +291,14 @@ const goFeedback = () => {
   router.push("/feedback");
 };
 
+const showSettings = ref(false);
+const volume = ref(0.6);
+const onVolumeInput = (e: Event) => {
+  volume.value = Number((e.target as HTMLInputElement).value) / 100;
+  soundManager.setVolume(volume.value);
+};
+const testSound = () => soundManager.play('collect');
+
 const goBattle = () => {
   soundManager.playClick();
   router.push("/battle");
@@ -276,6 +306,7 @@ const goBattle = () => {
 
 onMounted(async () => {
   soundManager.init();
+  volume.value = soundManager.getVolume();
   // 路由守卫保证进入首页前已有角色；这里刷新星星/等级快照
   try {
     await getUserInfo();
@@ -615,6 +646,75 @@ onMounted(async () => {
 .reward-claimed {
   color: #43a047;
   font-weight: bold;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.settings-btn {
+  border: none;
+  background: #fff;
+  font-size: 20px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.settings-panel {
+  background: #fff;
+  border-radius: 14px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+
+.sp-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sp-icon {
+  font-size: 18px;
+}
+
+.sp-label {
+  font-size: 13px;
+  color: #555;
+  flex-shrink: 0;
+}
+
+.sp-slider {
+  flex: 1;
+}
+
+.sp-num {
+  font-size: 12px;
+  color: #667eea;
+  width: 38px;
+  text-align: right;
+}
+
+.sp-test {
+  margin-top: 8px;
+  border: 1px solid #e3e8ef;
+  background: #fafbfc;
+  color: #666;
+  font-size: 12px;
+  padding: 5px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.sp-tip {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #b3bac4;
 }
 
 .battle-entry {
