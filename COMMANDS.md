@@ -48,7 +48,7 @@ cd /home/songshaohui/children-games/backend
 pm2 logs children-games-api
 
 # 测试 API
-curl -H "Host: 49.232.231.35" http://127.0.0.1/api/health
+curl http://127.0.0.1:90/api/health
 
 # 重启后端
 pm2 restart children-games-api
@@ -94,7 +94,7 @@ scp root@49.232.231.35:/home/songshaohui/文件名 D:\本地路径\
 
 ```bash
 # 查看端口占用
-ss -tlnp | grep :80
+ss -tlnp | grep :90
 ss -tlnp | grep :3001
 ss -tlnp | grep :3306
 
@@ -182,6 +182,7 @@ cmd /c "D:\software\mysql-8.4\bin\mysql -u root -proot123 children_games < D:\me
 
 ## 十一、注意事项
 
+- **统一端口：90** — 前后端全部通过 Nginx 的 90 端口对外提供服务（不再是 80）
 - 服务器系统：**OpenCloudOS**（包管理器用 `dnf`/`yum`，不是 `apt`）
 - Nginx 是**宝塔面板**安装的，路径 `/www/server/nginx/`，不是系统 Nginx
 - 不要用 `systemctl restart nginx`（会重启系统 Nginx，丢失宝塔站点配置）
