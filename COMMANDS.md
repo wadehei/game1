@@ -14,6 +14,41 @@ http://49.232.231.35:8888/tencentcloud
 
 ---
 
+## 一·五、一键部署（本机 → 服务器）
+
+替代「宝塔手动拖文件 + SSH 重启」的旧流程，在项目根目录 Git Bash 中一条命令完成：
+
+```bash
+./deploy.sh
+```
+
+脚本做的事：本地构建前端+后端 → tar 管道经 SSH 上传（前端 dist 清空后解压、后端 dist 覆盖）→ `pm2 restart children-games-api`。部署完访问 `http://49.232.231.35:90`。
+
+> ⚠️ `deploy.sh` 含服务器账号，**已加 .gitignore 不入库**（公开仓库）；换电脑时按下述配置重建即可，脚本仅 30 行。
+
+**首次使用：配置 root 的 SSH 免密登录（一次性）**
+
+```bash
+# 1. 本机生成密钥（已有可跳过，一路回车）
+ssh-keygen -t ed25519
+
+# 2. 把公钥装到服务器（要输一次 root 密码）
+cat ~/.ssh/id_ed25519.pub | ssh root@49.232.231.35 \
+  "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys"
+
+# 3. 验证：不再要密码即成功
+ssh root@49.232.231.35 "echo ok"
+```
+
+**说明**
+
+- **后端 PM2 进程是 root 启动的，必须用 root 部署重启**（`pm2 restart` 用别的用户会另起一套进程）；脚本 `SERVER` 已按 `root@` 配置
+- 目标目录在前端：`/home/songshaohui/children-games/frontend`、后端：`/home/songshaohui/children-games/backend`（变动时改脚本顶部变量）
+- 后端只上传编译产物 `dist/`；若 `package.json` 依赖有变，需手动上服务器 `npm install` 后再重启
+- 前端上传前会清空目标目录（避免旧版 hash 文件堆积），Nginx 读静态文件无需重载
+
+---
+
 ## 二、服务管理
 
 ```bash

@@ -2,3 +2,6 @@
 # 数据备份文件（含个人信息，不入库）
 database/*.sql
 *.backup.sql
+
+# 部署脚本（含服务器账号，公开仓库不入库；重建方法见 COMMANDS.md）
+deploy.sh
