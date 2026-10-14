@@ -64,6 +64,11 @@ const FORMULAS: Record<string, Formula> = {
     seqLength: Math.min(2 + level, 12),
     playbackMs: Math.max(620 - level * 25, 380),
   }),
+  // 连线：对数每 2 关 +1（3→6），限时每关 -10s；配对类型按关卡轮换（数字/动物/颜色）
+  match: (level) => ({
+    pairs: Math.min(3 + Math.floor((level - 1) / 2), 6),
+    timeLimit: Math.max(120 - (level - 1) * 10, 30),
+  }),
   math: (level) => ({
     targetCorrect: 8,
     forceMode: 0,

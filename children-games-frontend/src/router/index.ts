@@ -82,6 +82,11 @@ const routes = [
     component: () => import('@/pages/simon/index.vue'),
   },
   {
+    path: '/match',
+    name: 'Match',
+    component: () => import('@/pages/match/index.vue'),
+  },
+  {
     path: '/math',
     name: 'Math',
     component: () => import('@/pages/math/index.vue'),

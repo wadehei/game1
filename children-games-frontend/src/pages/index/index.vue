@@ -161,6 +161,7 @@ import iconTankSvg from "@/static/images/games/lobby/icon-tank.svg";
 import iconMoleSvg from "@/static/images/games/lobby/icon-mole.svg";
 import iconSimonSvg from "@/static/images/games/lobby/icon-simon.svg";
 import iconMathSvg from "@/static/images/games/lobby/icon-math.svg";
+import iconMatchSvg from "@/static/images/games/lobby/icon-match.svg";
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -254,6 +255,13 @@ const games = [
     totalLevels: 20,
     icon: iconMathSvg,
     bgColor: "linear-gradient(135deg, #43C59E 0%, #2d9d7a 100%)",
+  },
+  {
+    id: "match",
+    name: "快乐连线",
+    totalLevels: 20,
+    icon: iconMatchSvg,
+    bgColor: "linear-gradient(135deg, #a18cd1 0%, #7c3aed 100%)",
   },
 ];
 

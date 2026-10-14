@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <rect x="2" y="2" width="44" height="44" rx="10" fill="#fff" opacity="0.25"/>
+  <circle cx="12" cy="12" r="6" fill="#fff"/>
+  <circle cx="36" cy="36" r="6" fill="#fff"/>
+  <path d="M16 16 L32 32" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-dasharray="1 5"/>
+  <text x="12" y="15.5" font-size="8" text-anchor="middle" fill="#7c3aed" font-weight="bold">3</text>
+  <circle cx="36" cy="36" r="4.5" fill="#fff"/>
+  <text x="24" y="27" font-size="6" fill="#fff" opacity="0.9">连线</text>
+</svg>

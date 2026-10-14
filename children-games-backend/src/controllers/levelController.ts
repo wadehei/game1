@@ -12,6 +12,7 @@ export const LEVEL_FIELDS: Record<string, string[]> = {
   mole: ['spawnInterval', 'upDuration', 'bunnyChance', 'timeLimit', 'targetHits'],
   simon: ['seqLength', 'playbackMs'],
   math: ['targetCorrect', 'forceMode', 'countMax', 'addMax'],
+  match: ['pairs', 'timeLimit'],
 };
 
 /** 读取某关卡的云端覆盖配置：没有则 override 为 null（默认难度以前端内置公式为准） */
