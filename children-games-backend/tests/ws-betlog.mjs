@@ -126,6 +126,88 @@ const freshSnapshot = async (token, roomId) => {
   await http('POST', '/api/room/leave', { roomId }, tokens[1]).catch(() => {});
 }
 
+// ════════ 21点：加倍改流水 + 让庄退款删条目（keep 模式） ════════
+{
+  // — 加倍：条目 stake×2、doubled=true，结算回填 —
+  const tokens = [];
+  for (const uid of [2, 4]) tokens.push((await http('POST', '/api/user/login/family', { uid })).json.data.token);
+  const created = await http('POST', '/api/room', { gameType: 'blackjack', config: { bankerMode: 'rotate', roundLimit: 1, career: false } }, tokens[0]);
+  const roomId = created.json.data.roomId;
+  const A = new Client(tokens[0], 'DBL-A'); // 座位0=首庄
+  const B = new Client(tokens[1], 'DBL-B');
+  await A.connect(roomId);
+  await B.connect(roomId);
+  for (const c of [B, A]) c.send({ t: 'ready' });
+  await A.waitNew('blackjack_phase', 0);
+
+  B.send({ t: 'blackjack_bet', amount: 10 });
+  await A.waitNew('blackjack_deal', 0);
+  // 轮到 B 时直接加倍（前两张后必可加倍：h.cards.length===2 且积分足够）
+  const bBase = B.all('blackjack_phase').length;
+  let doubled = false;
+  for (let i = 0; i < 30 && !doubled; i++) {
+    const p = B.all('blackjack_phase').slice(bBase).at(-1);
+    if (p?.phase === 'acting' && p.turnSeat === 1) {
+      B.send({ t: 'blackjack_double' });
+      doubled = true;
+    }
+    await sleep(100);
+  }
+  if (!doubled) B.send({ t: 'blackjack_double' });
+  const dblEvt = await B.waitNew('blackjack_action', B.all('blackjack_action').length, 8000).catch(() => null);
+  const dbl = B.all('blackjack_action').find((e) => e.action === 'double' && e.userId === 4);
+  check('21点 加倍广播带新注额', !!dbl && dbl.stake === 20);
+  void dblEvt;
+  const settle = await B.waitNew('blackjack_settle', 0, 20000);
+  const myResult = settle.results.find((r) => r.userId === 4);
+  const snap = await freshSnapshot(tokens[1], roomId);
+  const entry = (snap.game?.myBetLog || [])[0];
+  check('21点 加倍后流水条目 stake=20 且 doubled=true', !!entry && entry.stake === 20 && entry.doubled === true);
+  check('21点 加倍手结算回填（delta 与结果一致，输赢含加倍注）', !!entry && entry.delta === myResult.delta && (myResult.delta === -20 || myResult.delta === 20 || myResult.delta === 30 || myResult.delta === 0));
+  A.close();
+  B.close();
+  await http('POST', '/api/room/leave', { roomId }, tokens[0]).catch(() => {});
+  await http('POST', '/api/room/leave', { roomId }, tokens[1]).catch(() => {});
+}
+{
+  // — keep 模式让庄：已下注退还，本手流水条目移除（3 人房：留一个未下注闲家保住下注阶段） —
+  const tokens = [];
+  for (const uid of [2, 4, 6]) tokens.push((await http('POST', '/api/user/login/family', { uid })).json.data.token);
+  const created = await http('POST', '/api/room', { gameType: 'blackjack', config: { bankerMode: 'keep', roundLimit: 1, career: false } }, tokens[0]);
+  const roomId = created.json.data.roomId;
+  const A = new Client(tokens[0], 'PAS-A');
+  const B = new Client(tokens[1], 'PAS-B');
+  const C = new Client(tokens[2], 'PAS-C');
+  await A.connect(roomId);
+  await B.connect(roomId);
+  await C.connect(roomId);
+  for (const c of [B, C, A]) c.send({ t: 'ready' });
+  const start = await A.waitNew('blackjack_phase', 0);
+  const bankerSeat = start.bankerSeat;
+  check('keep 模式已确定首庄', typeof bankerSeat === 'number');
+  const clients = [A, B, C];
+  const bankerClient = clients[bankerSeat];
+  const bettorIdx = bankerSeat === 0 ? 1 : 0; // 任一非庄闲家
+  const bettorClient = clients[bettorIdx];
+  const bettorToken = tokens[bettorIdx];
+
+  bettorClient.send({ t: 'blackjack_bet', amount: 10 });
+  const midSnap = await freshSnapshot(bettorToken, roomId);
+  check('让庄前流水有 1 条本手记录', (midSnap.game?.myBetLog || []).length === 1);
+
+  bankerClient.send({ t: 'blackjack_pass_bank' });
+  const passPhase = await bankerClient.waitNew('blackjack_phase', bankerClient.all('blackjack_phase').length, 8000);
+  check('让庄后进入新一轮下注阶段', passPhase.phase === 'betting');
+  const afterSnap = await freshSnapshot(bettorToken, roomId);
+  check('让庄退款后本手流水条目已移除', (afterSnap.game?.myBetLog || []).length === 0);
+  A.close();
+  B.close();
+  C.close();
+  await http('POST', '/api/room/leave', { roomId }, tokens[0]).catch(() => {});
+  await http('POST', '/api/room/leave', { roomId }, tokens[1]).catch(() => {});
+  await http('POST', '/api/room/leave', { roomId }, tokens[2]).catch(() => {});
+}
+
 // ════════ 三张牌比大小：2 人 rotate，2 手 ════════
 {
   const tokens = [];
