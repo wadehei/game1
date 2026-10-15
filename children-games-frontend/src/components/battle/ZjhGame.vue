@@ -3,7 +3,7 @@
     <!-- 终局：全员胜利结算面板（带动画） -->
     <BattleResultPanel
       v-if="phase === 'ended' && final"
-      title="♠️ 炸金花 战局结算"
+      title="♠️ 三张牌比大小 战局结算"
       :ranking="final.ranking"
       :my-id="myId"
       :reason="final.reason"
@@ -19,6 +19,9 @@
         <span class="round-no">第 {{ state?.roundNo || 1 }} 轮</span>
         <span v-if="remainSec > 0 && state?.phase === 'betting'" class="timer" :class="{ hurry: remainSec <= 5 }">{{ remainSec }}s</span>
       </div>
+
+      <!-- 我的下注流水（整局累计） -->
+      <BetLedger v-if="myLedger.length" :entries="myLedger" theme="purple" />
 
       <!-- 亮牌区（摊牌） -->
       <div v-if="showdown" class="showdown">
@@ -118,6 +121,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useUserStore } from '@/store/user';
 import BattleResultPanel from './BattleResultPanel.vue';
+import BetLedger, { type BetLedgerEntry } from './BetLedger.vue';
 
 const props = defineProps<{
   state: any;
@@ -147,6 +151,17 @@ const raiseOptions = computed<number[]>(() => props.state?.raiseSteps || [10, 20
 const compareTargets = computed(() => (props.state?.others || []).filter((o: any) => !o.folded && o.userId !== myId.value));
 
 const othersView = computed<any[]>(() => props.state?.others || []);
+
+// 我的下注流水：后端 myBetLog（每手 底注+跟注/加注/比牌 的投入与输赢）转通用展示结构
+const myLedger = computed<BetLedgerEntry[]>(() =>
+  (props.state?.myBetLog || []).map((e: any) => ({
+    round: e.round,
+    bet: e.betTotal,
+    note: '',
+    delta: e.delta,
+    tag: e.delta === null ? '' : e.ended === 'win' ? '赢' : e.ended === 'fold' ? '弃牌' : '开牌',
+  }))
+);
 
 const doLook = () => emit('action', { t: 'zjh_look' });
 const dismissCompare = () => (props.events.compareCards = null);

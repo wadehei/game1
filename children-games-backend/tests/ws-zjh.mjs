@@ -1,4 +1,4 @@
-// 炸金花协议测试（需后端在线；建议 ZJH_BET_SECONDS=4 加速）
+// 三张牌比大小协议测试（需后端在线；建议 ZJH_BET_SECONDS=4 加速）
 // 覆盖：牌型判定（A23 顺/235 特杀开关/花色决胜）→ 闷牌不发牌（防偷看）→ look 私发 →
 //       跟注/超时弃牌 → 强制开牌终局 → 比牌（轮数限制/输者弃牌/牌面只给双方）→ 生涯
 import WebSocket from 'ws';
@@ -131,7 +131,7 @@ for (const uid of [2, 4, 6]) {
   tokens.push((await http('POST', '/api/user/login/family', { uid })).json.data.token);
 }
 const created = await http('POST', '/api/room', { gameType: 'zjh', config: { special235: false, timeoutFold: true, roundLimit: 1, career: true } }, tokens[0]);
-check('创建炸金花房间', created.json?.code === 200 && created.json.data.gameType === 'zjh');
+check('创建三张牌比大小房间', created.json?.code === 200 && created.json.data.gameType === 'zjh');
 const roomId = created.json.data.roomId;
 
 const A = new Client(tokens[0], 'A');

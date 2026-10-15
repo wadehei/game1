@@ -45,6 +45,8 @@ interface BJState {
   lastResults: Array<{ userId: number; outcome: string; delta: number; chips: number }> | null;
   ranking: Array<{ userId: number; nickname: string; chips: number; delta: number; seat: number }> | null;
   endReason: string;
+  /** 个人下注流水（整局累计，serializeFor 只发本人）：每手一条，delta/outcome 结算时回填 */
+  betLog: Map<number, Array<{ round: number; stake: number; doubled: boolean; delta: number | null; outcome: string | null }>>;
   config: BJConfig;
 }
 
@@ -108,6 +110,11 @@ const placeBet = (room: Room, userId: number, amount: number): void => {
   if (stake <= 0) return;
   st.chips.set(userId, chips - stake);
   st.hands.set(userId, { cards: [], stake, doubled: false, done: false, busted: false, natural: false });
+  const log = st.betLog.get(userId) || [];
+  log.push({ round: st.round, stake, doubled: false, delta: null, outcome: null });
+  st.betLog.set(userId, log);
+  // 统一在下注处广播（含超时默认下注），前端据此累积流水
+  getRoomBus().broadcast(room, { t: 'blackjack_action', userId, action: 'bet', stake });
 };
 
 const dealCards = (room: Room): void => {
@@ -267,6 +274,11 @@ const settleHand = (room: Room): void => {
     st.chips.set(uid, chips);
     const outcome = mult === 0 ? (h.busted ? 'bust' : 'lose') : mult === 1 ? 'push' : mult === 2.5 ? 'blackjack' : 'win';
     results.push({ userId: uid, outcome, delta, chips });
+    const logEntry = (st.betLog.get(uid) || []).find((e) => e.round === st.round);
+    if (logEntry) {
+      logEntry.delta = delta;
+      logEntry.outcome = outcome;
+    }
     const m = room.members.get(uid);
     if (m) m.chips = chips;
     if (delta > bestDelta) {
@@ -394,6 +406,7 @@ export const blackjackHandler: GameHandler<BJState> = {
       lastResults: null,
       ranking: null,
       endReason: '',
+      betLog: new Map(),
       config: { bankerMode: 'rotate', roundLimit: DEFAULT_ROUNDS, career: true },
     };
   },
@@ -422,6 +435,7 @@ export const blackjackHandler: GameHandler<BJState> = {
     st.nextBankerSeat = null;
     st.ranking = null;
     st.endReason = '';
+    st.betLog = new Map();
     enterBetting(room, st, false);
   },
 
@@ -445,6 +459,9 @@ export const blackjackHandler: GameHandler<BJState> = {
         if (!hh.done) {
           st.chips.set(uid, (st.chips.get(uid) || 0) + hh.stake);
           st.hands.delete(uid);
+          const log = st.betLog.get(uid);
+          const idx = log ? log.findIndex((e) => e.round === st.round && e.delta === null) : -1;
+          if (idx >= 0) log!.splice(idx, 1);
         }
       }
       st.bankerSeat = nextBanker(room, st);
@@ -466,8 +483,7 @@ export const blackjackHandler: GameHandler<BJState> = {
       if (!BET_OPTIONS.includes(amount)) return { error: '下注金额只能是 10/20/50/100' };
       const chips = st.chips.get(member.userId) || 0;
       if (amount > chips) return { error: '积分不足' };
-      placeBet(room, member.userId, amount);
-      bus.broadcast(room, { t: 'blackjack_action', userId: member.userId, action: 'bet', stake: Math.min(amount, chips) });
+      placeBet(room, member.userId, amount); // 广播统一在 placeBet 内
       // 全员下完立即发牌
       const pending = activePlayers(room, st).filter((m) => !st.hands.has(m.userId));
       if (pending.length === 0) dealCards(room);
@@ -483,6 +499,9 @@ export const blackjackHandler: GameHandler<BJState> = {
       if (!next) return { error: '没有可以接庄的玩家' };
       for (const [uid, h] of st.hands) {
         st.chips.set(uid, (st.chips.get(uid) || 0) + h.stake);
+        const log = st.betLog.get(uid);
+        const idx = log ? log.findIndex((e) => e.round === st.round && e.delta === null) : -1;
+        if (idx >= 0) log!.splice(idx, 1);
       }
       st.hands = new Map();
       st.bankerSeat = next.seat;
@@ -512,6 +531,11 @@ export const blackjackHandler: GameHandler<BJState> = {
       st.chips.set(member.userId, chips - h.stake);
       h.stake *= 2;
       h.doubled = true;
+      const logEntry = (st.betLog.get(member.userId) || []).find((e) => e.round === st.round && e.delta === null);
+      if (logEntry) {
+        logEntry.stake = h.stake;
+        logEntry.doubled = true;
+      }
       const card = drawCard(st);
       h.cards.push(card);
       const { total } = handValue(h.cards);
@@ -574,6 +598,7 @@ export const blackjackHandler: GameHandler<BJState> = {
       betOptions: BET_OPTIONS,
       canPassBank: st.config.bankerMode === 'keep' && st.handPhase === 'betting' && isBanker,
       lastResults: st.lastResults,
+      myBetLog: st.betLog.get(viewer.userId) || [],
       ended: st.ranking ? { ranking: st.ranking, reason: st.endReason } : null,
     };
   },

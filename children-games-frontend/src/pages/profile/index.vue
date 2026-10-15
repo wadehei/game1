@@ -151,7 +151,7 @@ const GAME_META: Record<string, { name: string; emoji: string }> = {
   spy: { name: '谁是卧底', emoji: '🕵️' },
   uno: { name: 'UNO', emoji: '🎴' },
   blackjack: { name: '21点', emoji: '🃏' },
-  zjh: { name: '炸金花', emoji: '♠️' },
+  zjh: { name: '三张牌比大小', emoji: '♠️' },
 };
 const gameName = (t: string): string => GAME_META[t]?.name || t;
 const gameEmoji = (t: string): string => GAME_META[t]?.emoji || '🎮';

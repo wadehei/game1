@@ -19,6 +19,9 @@
         <span v-if="remainSec > 0 && (state?.phase === 'betting' || state?.phase === 'acting')" class="timer" :class="{ hurry: remainSec <= 5 }">{{ remainSec }}s</span>
       </div>
 
+      <!-- 我的下注流水（整局累计） -->
+      <BetLedger v-if="myLedger.length" :entries="myLedger" theme="green" />
+
       <!-- 庄家区 -->
       <div class="banker-area" :class="{ turn: state?.phase === 'dealer' }">
         <div class="area-label">庄家{{ isBanker ? '（你）' : '' }}</div>
@@ -95,6 +98,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useUserStore } from '@/store/user';
 import BattleResultPanel from './BattleResultPanel.vue';
+import BetLedger, { type BetLedgerEntry } from './BetLedger.vue';
 
 const props = defineProps<{
   state: any;
@@ -131,6 +135,17 @@ const othersView = computed<any[]>(() => {
 });
 
 const lastResults = computed(() => props.state?.lastResults || null);
+
+// 我的下注流水：后端 myBetLog（每手 押注/加倍/输赢）转通用展示结构
+const myLedger = computed<BetLedgerEntry[]>(() =>
+  (props.state?.myBetLog || []).map((e: any) => ({
+    round: e.round,
+    bet: e.stake,
+    note: e.doubled ? '加倍' : '',
+    delta: e.delta,
+    tag: e.delta === null ? '' : outcomeText(e.outcome),
+  }))
+);
 
 const phaseText = computed(() => {
   const p = props.state?.phase;

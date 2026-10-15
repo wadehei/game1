@@ -1,4 +1,4 @@
-// 炸金花 handler：发 3 张闷牌（look 才私发，防客户端偷看）、闷/看双轨注码、比牌/弃牌/强制开牌
+// 三张牌比大小 handler：发 3 张闷牌（look 才私发，防客户端偷看）、闷/看双轨注码、比牌/弃牌/强制开牌
 // 积分每手实时落库；超时动作建房可选（弃牌/跟注）；特殊 235 建房开关
 import type { Room, Member } from '../roomManager';
 import { addTimer, clearRoomTimers, getRoom } from '../roomManager';
@@ -55,6 +55,8 @@ interface ZjhState {
   ranking: Array<{ userId: number; nickname: string; chips: number; delta: number; seat: number }> | null;
   endReason: string;
   lastWinnerSeat: number | null; // winner 坐庄模式：本手赢家做下一手庄
+  /** 个人下注流水（整局累计，serializeFor 只发本人）：每手一条，底注/跟注/比牌累加 betTotal，结算回填 delta/ended */
+  betLog: Map<number, Array<{ round: number; betTotal: number; delta: number | null; ended: string | null }>>;
   config: ZjhConfig;
 }
 
@@ -78,6 +80,27 @@ const clearTimer = (st: ZjhState): void => {
   st.timer = null;
 };
 
+/** 本手流水条目（无则 null） */
+const handLogEntry = (st: ZjhState, uid: number) => (st.betLog.get(uid) || []).find((e) => e.round === st.round) || null;
+
+/** 本手结算：按玩家回填每手净输赢与结束方式 */
+const markHandSettled = (st: ZjhState, winnerUid: number, winAmount: number): void => {
+  for (const [uid, p] of st.players) {
+    const entry = handLogEntry(st, uid);
+    if (!entry) continue;
+    entry.delta = (uid === winnerUid ? winAmount : 0) - p.betTotal;
+    entry.ended = uid === winnerUid ? 'win' : p.folded ? 'fold' : 'showdown';
+  }
+};
+
+/** 移除本手流水条目（退款路径用） */
+const dropHandLog = (st: ZjhState, uid: number): void => {
+  const log = st.betLog.get(uid);
+  if (!log) return;
+  const idx = log.findIndex((e) => e.round === st.round);
+  if (idx >= 0) log.splice(idx, 1);
+};
+
 const phasePayload = (room: Room, st: ZjhState) => ({
   t: 'zjh_phase',
   round: st.round,
@@ -91,6 +114,7 @@ const phasePayload = (room: Room, st: ZjhState) => ({
   deadline: st.deadline,
   compareMinRound: COMPARE_MIN_ROUND,
   aliveCount: aliveSeats(room, st).length,
+  entrants: [...st.players].filter(([, p]) => !p.folded).map(([uid]) => uid),
   chips: [...st.chips].map(([userId, chips]) => ({ userId, chips })),
   raiseSteps: RAISE_STEPS,
   stakeCap: STAKE_CAP,
@@ -147,6 +171,9 @@ const startHand = (room: Room): void => {
     st.chips.set(m.userId, chips - ANTE);
     st.pot += ANTE;
     st.players.set(m.userId, { cards: [], seen: false, folded: false, allIn: false, betTotal: ANTE });
+    const log = st.betLog.get(m.userId) || [];
+    log.push({ round: st.round, betTotal: ANTE, delta: null, ended: null });
+    st.betLog.set(m.userId, log);
   }
   getRoomBus().broadcast(room, phasePayload(room, st));
   advanceTurn(room, st, true);
@@ -194,6 +221,8 @@ const doCall = (room: Room, member: Member, auto = false): void => {
   st.chips.set(member.userId, chips - paid);
   st.pot += paid;
   p.betTotal += paid;
+  const entry = handLogEntry(st, member.userId);
+  if (entry) entry.betTotal += paid;
   if (paid < cost) p.allIn = true;
   getRoomBus().broadcast(room, {
     t: 'zjh_action',
@@ -242,6 +271,8 @@ const doCompare = (room: Room, me: Member, target: Member): void => {
   st.chips.set(me.userId, chips - cost);
   st.pot += cost;
   myP.betTotal += cost;
+  const myEntry = handLogEntry(st, me.userId);
+  if (myEntry) myEntry.betTotal += cost;
   myP.seen = true;
   const myCards = dealTo(st, me.userId);
   const oppCards = dealTo(st, target.userId);
@@ -286,6 +317,7 @@ const winByFold = (room: Room, seat: number | undefined): void => {
     // 没有存活玩家（极端：全员弃/掉线）——池子按投入退回
     for (const [uid, p] of st.players) {
       st.chips.set(uid, (st.chips.get(uid) || 0) + p.betTotal);
+      dropHandLog(st, uid);
     }
     st.pot = 0;
   } else {
@@ -294,6 +326,7 @@ const winByFold = (room: Room, seat: number | undefined): void => {
     st.chips.set(m.userId, (st.chips.get(m.userId) || 0) + winAmount);
     st.pot = 0;
     st.lastWinnerSeat = seat;
+    markHandSettled(st, m.userId, winAmount);
     const deltas = [...st.chips]
       .filter(([uid]) => st.handStartChips.has(uid))
       .map(([uid, chips]) => ({
@@ -355,6 +388,7 @@ const settleHand = (
   st.chips.set(winner.userId, (st.chips.get(winner.userId) || 0) + winAmount);
   st.pot = 0;
   st.lastWinnerSeat = winner.seat;
+  markHandSettled(st, winner.userId, winAmount);
   const wm = room.members.get(winner.userId);
   if (wm) wm.chips = st.chips.get(winner.userId) || 0;
 
@@ -436,9 +470,9 @@ const finish = (room: Room, reason: string): void => {
 
 export const zjhHandler: GameHandler<ZjhState> = {
   type: 'zjh',
-  title: '炸金花',
+  title: '三张牌比大小',
   emoji: '♠️',
-  desc: '三张牌比大小，闷看加注比牌，积分随账号永久跟随',
+  desc: '闷看加注比牌，积分随账号永久跟随',
   minPlayers: 2,
   maxPlayers: 6,
   allowSpectators: true,
@@ -479,6 +513,7 @@ export const zjhHandler: GameHandler<ZjhState> = {
       ranking: null,
       endReason: '',
       lastWinnerSeat: null,
+      betLog: new Map(),
       config: { special235: true, timeoutFold: true, roundLimit: DEFAULT_ROUNDS, career: true, bankerMode: 'rotate', mustBlindRounds: 0 },
     };
   },
@@ -499,6 +534,7 @@ export const zjhHandler: GameHandler<ZjhState> = {
     st.round = 1;
     st.ranking = null;
     st.endReason = '';
+    st.betLog = new Map();
     startHand(room);
   },
 
@@ -508,6 +544,12 @@ export const zjhHandler: GameHandler<ZjhState> = {
     if (p && !p.folded) {
       p.folded = true;
       if (st.handPhase === 'betting' && st.turnSeat === member.seat) advanceTurn(room, st, false);
+    }
+    // 退出视作弃牌：本手流水立即按投入亏损结算（此后不再参与本手结算）
+    const quitEntry = p ? handLogEntry(st, member.userId) : null;
+    if (quitEntry && quitEntry.delta === null) {
+      quitEntry.delta = -p!.betTotal;
+      quitEntry.ended = 'fold';
     }
     st.players.delete(member.userId);
     const remaining = seatPlayers(room);
@@ -616,6 +658,7 @@ export const zjhHandler: GameHandler<ZjhState> = {
       raiseSteps: RAISE_STEPS,
       stakeCap: STAKE_CAP,
       special235: st.config.special235,
+      myBetLog: st.betLog.get(viewer.userId) || [],
       ended: st.ranking ? { ranking: st.ranking, reason: st.endReason } : null,
     };
   },

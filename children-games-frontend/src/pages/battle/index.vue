@@ -57,7 +57,7 @@
         </div>
       </div>
       <div v-if="selected === 'zjh'" class="cfg">
-        <div class="cfg-title">♠️ 炸金花 房间设置</div>
+        <div class="cfg-title">♠️ 三张牌比大小 房间设置</div>
         <div class="cfg-row">
           <span class="cfg-label">特殊 235</span>
           <button class="switch" :class="{ on: zjhSpecial235 }" @click="zjhSpecial235 = !zjhSpecial235">

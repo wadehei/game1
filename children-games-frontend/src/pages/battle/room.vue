@@ -713,6 +713,17 @@ onMounted(() => {
   });
   // ── 21点 ──
   const seatOfUser = (userId: number): number => members.value.find((m) => m.userId === userId)?.seat ?? -1;
+  /** 我的下注流水：按手取条目（无则建），delta=null 表示未结算 */
+  const myBetEntry = (round: number) => {
+    if (!game.value || typeof game.value !== 'object') return null;
+    const log: any[] = game.value.myBetLog || [];
+    let entry = log.find((e) => e.round === round && e.delta === null);
+    if (!entry) {
+      entry = { round, stake: 0, doubled: false, delta: null, outcome: null };
+      game.value.myBetLog = [...log, entry];
+    }
+    return entry;
+  };
   ws.on('blackjack_phase', (m: any) => {
     if (game.value && typeof game.value === 'object') {
       const newRound = game.value.round !== m.round;
@@ -772,7 +783,14 @@ onMounted(() => {
     if (m.action === 'hit' || m.action === 'double') {
       if (m.userId === myId.value) {
         game.value.myCards = [...(game.value.myCards || []), m.card];
-        if (m.action === 'double') game.value.myStake = m.stake;
+        if (m.action === 'double') {
+          game.value.myStake = m.stake;
+          const entry = myBetEntry(game.value.round);
+          if (entry) {
+            entry.stake = m.stake;
+            entry.doubled = true;
+          }
+        }
         game.value.myDone = true;
         game.value.myBusted = !!m.busted;
       }
@@ -794,6 +812,10 @@ onMounted(() => {
       return;
     }
     if (m.action === 'bet' && m.stake) {
+      if (m.userId === myId.value) {
+        const entry = myBetEntry(game.value.round);
+        if (entry) entry.stake = m.stake;
+      }
       const item = (gameEvents.handsView || []).find((x: any) => x.userId === m.userId);
       if (item) item.stake = m.stake;
     }
@@ -805,6 +827,12 @@ onMounted(() => {
       game.value.bankerCards = m.bankerCards || [];
       game.value.bankerValue = m.bankerValue ?? game.value.bankerValue;
       game.value.phase = 'settle';
+      const mine = (m.results || []).find((r: any) => r.userId === myId.value);
+      const entry = (game.value.myBetLog || []).find((e: any) => e.round === m.round && e.delta === null);
+      if (mine && entry) {
+        entry.delta = mine.delta;
+        entry.outcome = mine.outcome;
+      }
     }
     // 结算同步爆牌/自然杰克状态到视图
     for (const r of m.results || []) {
@@ -821,7 +849,7 @@ onMounted(() => {
     phase.value = 'ended';
   });
 
-  // ── 炸金花 ──
+  // ── 三张牌比大小 ──
   const resetZjhOthers = () => {
     game.value.others = members.value
       .filter((m) => m.seat >= 0 && m.userId !== myId.value)
@@ -853,6 +881,11 @@ onMounted(() => {
         gameEvents.settle = null;
         gameEvents.compareCards = null;
         resetZjhOthers();
+        // 我付了底注 → 新增本手流水（entrants=付底注入局的玩家）
+        const log: any[] = game.value.myBetLog || [];
+        if (Array.isArray(m.entrants) && m.entrants.includes(myId.value) && !log.some((e) => e.round === m.round)) {
+          game.value.myBetLog = [...log, { round: m.round, betTotal: 10, delta: null, ended: null }];
+        }
       }
     }
   });
@@ -879,6 +912,11 @@ onMounted(() => {
         o.betTotal = (o.betTotal || 0) + (m.cost || 0);
         if (m.allIn) o.allIn = true;
       }
+      if (m.userId === myId.value) {
+        const log: any[] = game.value.myBetLog || [];
+        const entry = log.find((e) => e.round === game.value.round && e.delta === null);
+        if (entry) entry.betTotal += m.cost || 0;
+      }
       return;
     }
     if (m.action === 'fold' || m.action === 'timeout_fold') {
@@ -895,9 +933,16 @@ onMounted(() => {
     const winner = others.find((x: any) => x.userId === m.winner);
     if (winner) winner.seen = true;
     if (game.value && typeof game.value === 'object') {
+      const prevPot = game.value.pot || 0;
       game.value.pot = m.pot ?? game.value.pot;
       game.value.aliveCount = m.aliveCount ?? game.value.aliveCount;
       if (m.loser === myId.value) game.value.myFolded = true;
+      // 发起比牌者的花费 = 池子增量（比牌广播不带 cost）
+      if (m.from === myId.value) {
+        const log: any[] = game.value.myBetLog || [];
+        const entry = log.find((e) => e.round === game.value.round && e.delta === null);
+        if (entry) entry.betTotal += Math.max(0, (m.pot || 0) - prevPot);
+      }
     }
   });
   ws.on('zjh_compare_cards', (m: any) => {
@@ -915,7 +960,14 @@ onMounted(() => {
       if (Array.isArray(m.deltas)) {
         game.value.chips = m.deltas.map((d: any) => ({ userId: d.userId, chips: d.chips }));
         const meDelta = m.deltas.find((d: any) => d.userId === myId.value);
-        if (meDelta) game.value.myChips = meDelta.chips;
+        if (meDelta) {
+          game.value.myChips = meDelta.chips;
+          const entry = (game.value.myBetLog || []).find((e: any) => e.round === m.round && e.delta === null);
+          if (entry) {
+            entry.delta = meDelta.delta;
+            entry.ended = m.winner === myId.value ? 'win' : game.value.myFolded ? 'fold' : 'showdown';
+          }
+        }
       }
     }
   });
