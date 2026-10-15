@@ -3,9 +3,9 @@
     <!-- 顶栏 -->
     <div class="room-top">
       <button class="rt-exit" @click="askExit">‹ 退出</button>
-      <div class="rt-code" @click="copyCode">
+      <div class="rt-code" @click="copyCode" title="复制邀请链接，朋友点开直接进房">
         房间 <b>{{ roomId }}</b>
-        <span class="rt-copy">{{ copied ? '已复制' : '复制' }}</span>
+        <span class="rt-copy">{{ copied ? '链接已复制' : '复制链接' }}</span>
       </div>
       <button v-if="isHost" class="rt-disband" @click="askDisband">解散</button>
       <span v-else class="rt-placeholder" />
@@ -520,7 +520,9 @@ const askDisband = () => {
 
 const copyCode = async () => {
   try {
-    await navigator.clipboard.writeText(roomId);
+    // 复制整体邀请链接：对方点击直接进房（未登录会先到选角色页，登录后自动回到本房间）
+    const link = `${location.origin}${location.pathname}#/battle/room/${roomId}`;
+    await navigator.clipboard.writeText(link);
     setTimeout(() => (copied.value = false), 1500);
     copied.value = true;
   } catch {

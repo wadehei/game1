@@ -69,7 +69,7 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { familyLogin, getProfiles, getLastProfileId, type FamilyProfile } from '@/api/user';
 import { useUserStore } from '@/store/user';
 import { uploadPhotoAvatar } from '@/utils/avatarUpload';
@@ -79,6 +79,7 @@ import PinPad from '@/components/PinPad.vue';
 const EMOJIS = ['🐰', '🐻', '🐼', '🦊', '🐸', '🐵', '🐯', '🦁', '🐷', '🐨', '👑', '🦄', '🌟', '🌸'];
 
 const router = useRouter();
+const route = useRoute();
 const userStore = useUserStore();
 
 const profiles = ref<FamilyProfile[]>([]);
@@ -116,6 +117,12 @@ const loadProfiles = async () => {
 };
 
 const enter = () => {
+  // 携带回跳参数（如好友分享的房间邀请链接）→ 登录后直接回到原目标
+  const redirect = route.query.redirect;
+  if (typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//')) {
+    router.replace(redirect);
+    return;
+  }
   router.replace('/');
 };
 

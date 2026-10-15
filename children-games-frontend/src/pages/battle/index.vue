@@ -113,12 +113,11 @@
         <input
           v-model="joinCode"
           class="join-input"
-          inputmode="numeric"
-          maxlength="4"
-          placeholder="输入 4 位房间码"
+          inputmode="text"
+          placeholder="房间码或粘贴邀请链接"
           @keyup.enter="join"
         />
-        <button class="join-btn" :disabled="joinCode.length !== 4" @click="join">加入</button>
+        <button class="join-btn" :disabled="!joinCode.trim()" @click="join">加入</button>
       </div>
       <div v-if="errMsg" class="err">{{ errMsg }}</div>
     </div>
@@ -207,9 +206,12 @@ const create = async () => {
 };
 
 const join = () => {
-  const code = joinCode.value.trim();
-  if (!/^\d{4}$/.test(code)) {
-    errMsg.value = '房间码是 4 位数字';
+  // 支持粘贴邀请链接（…#/battle/room/5310）或直接输入 4 位房间码
+  const fromLink = joinCode.value.match(/battle\/room\/(\d{4})/);
+  const plain = joinCode.value.trim().match(/^(\d{4})$/);
+  const code = fromLink?.[1] || plain?.[1];
+  if (!code) {
+    errMsg.value = '请输入 4 位房间码或粘贴邀请链接';
     return;
   }
   errMsg.value = '';

@@ -125,7 +125,8 @@ router.beforeEach(async (to) => {
       // 口令角色无法静默重登（需 pin），或成员已被删除 → 去选角色页
     }
   }
-  return { path: '/profiles' };
+  // 带上原始目标：选角登录后直接回到要去的页面（如好友分享的房间邀请链接）
+  return { path: '/profiles', query: { redirect: to.fullPath } };
 });
 
 export default router;
