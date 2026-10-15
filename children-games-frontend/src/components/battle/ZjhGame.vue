@@ -119,8 +119,8 @@
 
       <!-- 我要验牌 动态弹框（全房间可见+语音通知） -->
       <div v-if="yanpai" :key="yanpai.seq" class="yanpai-pop">
-        <div class="yp-main">我要验牌！</div>
-        <div class="yp-sub">{{ nameOfUser(yanpai.from) }} 向 {{ nameOfUser(yanpai.to) }} 发起验牌</div>
+        <div class="yp-main">「{{ nameOfUser(yanpai.from) }}」我要验牌！</div>
+        <div class="yp-sub">比牌对象：<b>{{ nameOfUser(yanpai.to) }}</b>（输家自动弃牌）</div>
       </div>
       </template>
     </template>
@@ -169,28 +169,10 @@ watch(canActNow, (now, before) => {
 // ── 我要验牌弹框 + 法语口音语音通知 ──
 const yanpai = computed(() => props.events.yanpai);
 
-/** 用 fr-FR 语音念中文「我要验牌」——法国人说中文的热梗效果；无法语语音时退回默认音色 */
-const speakFrenchYanpai = (): void => {
-  try {
-    const synth = window.speechSynthesis;
-    if (!synth) return;
-    const u = new SpeechSynthesisUtterance('我要验牌');
-    const fr = synth.getVoices().find((v) => v.lang?.toLowerCase().startsWith('fr'));
-    if (fr) u.voice = fr;
-    u.lang = 'fr-FR';
-    u.rate = 0.85;
-    u.pitch = 1.05;
-    u.volume = soundManager.getVolume();
-    synth.speak(u);
-  } catch {
-    // 语音不可用不影响对局
-  }
-};
-
 let yanpaiTimer: ReturnType<typeof setTimeout> | null = null;
 watch(yanpai, (v) => {
   if (!v) return;
-  if (!soundManager.isMuted()) speakFrenchYanpai();
+  soundManager.speakFrench('我要验牌');
   if (yanpaiTimer) clearTimeout(yanpaiTimer);
   yanpaiTimer = setTimeout(() => {
     props.events.yanpai = null;
@@ -555,6 +537,10 @@ onUnmounted(() => {
   font-size: 12px;
   color: #d9c8ee;
   margin-top: 4px;
+}
+
+.yp-sub b {
+  color: #ffe27a;
 }
 
 @keyframes yanpai-in {

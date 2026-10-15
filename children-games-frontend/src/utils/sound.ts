@@ -338,6 +338,25 @@ class SoundManager {
     });
   }
 
+  /** 法语口音播报 — 用 fr-FR 语音念中文（「法国人说中文」热梗效果）；无法语语音时退回默认音色 */
+  speakFrench(text: string): void {
+    if (this.muted) return;
+    try {
+      const synth = window.speechSynthesis;
+      if (!synth) return;
+      const u = new SpeechSynthesisUtterance(text);
+      const fr = synth.getVoices().find((v) => v.lang?.toLowerCase().startsWith('fr'));
+      if (fr) u.voice = fr;
+      u.lang = 'fr-FR';
+      u.rate = 0.85;
+      u.pitch = 1.05;
+      u.volume = this.getVolume();
+      synth.speak(u);
+    } catch {
+      // 语音不可用不影响对局
+    }
+  }
+
   /** 收集音 — 铃铛效果 A5 + 泛音, 150ms */
   playCollect(): void {
     if (this.muted || !this.ctx) return;

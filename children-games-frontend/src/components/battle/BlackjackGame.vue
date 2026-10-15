@@ -94,6 +94,12 @@
         <button class="btn pass" @click="emit('action', { t: 'blackjack_pass_bank' })">让庄给下家</button>
       </div>
       <div v-else class="idle-tip">{{ idleText }}</div>
+
+      <!-- 我要加倍 动态弹框（全房间可见+语音通知） -->
+      <div v-if="dblPop" :key="dblPop.seq" class="yanpai-pop">
+        <div class="yp-main">「{{ nameOfUser(dblPop.userId) }}」我要加倍！</div>
+        <div class="yp-sub">押注加倍到 <b>{{ dblPop.stake }} 分</b>，再补一张牌</div>
+      </div>
       </template>
     </template>
   </div>
@@ -131,6 +137,19 @@ const myInView = computed(() => (props.state?.myCards?.length || 0) > 0 || props
 // 轮到自己行动：提示音（仅状态切换沿触发，进房即轮到不响）
 watch(myTurnToAct, (now, before) => {
   if (now && !before) soundManager.playTurn();
+});
+
+// ── 我要加倍弹框 + 法语口音语音通知 ──
+const dblPop = computed(() => props.events.doubled);
+
+let dblTimer: ReturnType<typeof setTimeout> | null = null;
+watch(dblPop, (v) => {
+  if (!v) return;
+  soundManager.speakFrench('我要加倍');
+  if (dblTimer) clearTimeout(dblTimer);
+  dblTimer = setTimeout(() => {
+    props.events.doubled = null;
+  }, 2800);
 });
 
 // 发牌动画基准（只对新增牌做入场动画的占位；简化：首两张不动画）
@@ -211,6 +230,7 @@ onUnmounted(() => {
   padding: 12px;
   margin-bottom: 10px;
   color: #f2f7f5;
+  position: relative;
 }
 
 .bj-status {
@@ -424,6 +444,66 @@ onUnmounted(() => {
 
 .pre-start {
   padding: 30px 0;
+}
+
+/* ── 我要加倍弹框 ── */
+.yanpai-pop {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(135deg, #14352c 0%, #1f4a3a 100%);
+  border: 2px solid #ffe27a;
+  border-radius: 14px;
+  padding: 12px 26px;
+  text-align: center;
+  z-index: 30;
+  pointer-events: none;
+  box-shadow: 0 6px 26px rgba(0, 0, 0, 0.55);
+  animation:
+    yanpai-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) backwards,
+    yanpai-shake 0.45s ease-in-out 0.4s 3;
+}
+
+.yp-main {
+  font-size: 22px;
+  font-weight: bold;
+  color: #ffe27a;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.yp-sub {
+  font-size: 12px;
+  color: #9fc4b6;
+  margin-top: 4px;
+}
+
+.yp-sub b {
+  color: #ffe27a;
+}
+
+@keyframes yanpai-in {
+  from {
+    transform: translate(-50%, -50%) scale(0.3);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes yanpai-shake {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  25% {
+    transform: translate(-50%, -50%) rotate(-3deg);
+  }
+  75% {
+    transform: translate(-50%, -50%) rotate(3deg);
+  }
 }
 
 .hint {

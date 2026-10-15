@@ -794,6 +794,10 @@ onMounted(() => {
         game.value.myDone = true;
         game.value.myBusted = !!m.busted;
       }
+      // 全房间「我要加倍」动态弹框 + 语音通知（BlackjackGame 消费）
+      if (m.action === 'double') {
+        gameEvents.doubled = { userId: m.userId, stake: m.stake, seq: Date.now() };
+      }
       const item = (gameEvents.handsView || []).find((x: any) => x.userId === m.userId);
       if (item && m.userId !== myId.value) {
         item.cards = [...(item.cards || []), m.card];
