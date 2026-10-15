@@ -277,7 +277,8 @@ const doLook = (room: Room, member: Member): void => {
 const doCompare = (room: Room, me: Member, target: Member): void => {
   const st = room.game as ZjhState;
   const myP = st.players.get(me.userId)!;
-  const cost = st.stake * 2;
+  // 比牌费 = 自己跟注价的 2 倍（闷 2×单注 / 看 4×单注——看牌比闷牌贵一倍）
+  const cost = myP.seen ? st.stake * 4 : st.stake * 2;
   const chips = st.chips.get(me.userId) || 0;
   if (chips < cost) return;
   myP.timeoutCalls = 0; // 手动比牌清零连续超时计数
@@ -625,7 +626,8 @@ export const zjhHandler: GameHandler<ZjhState> = {
       const tp = st.players.get(target.userId);
       if (!tp || tp.folded) return { error: '对方已弃牌' };
       if (tp.allIn) return { error: '对方已 all-in，不能与其比牌' };
-      const cost = st.stake * 2;
+      // 比牌费 = 自己跟注价的 2 倍（闷 2×单注 / 看 4×单注）
+      const cost = p.seen ? st.stake * 4 : st.stake * 2;
       if ((st.chips.get(member.userId) || 0) < cost) return { error: '积分不足，无法比牌' };
       doCompare(room, member, target);
       return {};

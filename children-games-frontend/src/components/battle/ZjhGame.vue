@@ -98,7 +98,7 @@
         >
           +{{ amt }}
         </button>
-        <button v-if="canCompare" class="btn compare" @click="pickingTarget = !pickingTarget">比牌 {{ (state?.stake || 0) * 2 }}</button>
+        <button v-if="canCompare" class="btn compare" @click="pickingTarget = !pickingTarget">比牌 {{ compareCost }}</button>
         <button class="btn fold" @click="emit('action', { t: 'zjh_fold' })">弃牌</button>
       </div>
       <div v-else-if="state?.phase === 'betting' && state?.turnSeat >= 0" class="idle-tip">
@@ -108,7 +108,7 @@
 
       <!-- 比牌选人 -->
       <div v-if="pickingTarget" class="target-pick">
-        <div class="tp-title">选择比牌对象（费用 {{ (state?.stake || 0) * 2 }}）</div>
+        <div class="tp-title">选择比牌对象（{{ state?.mySeen ? '已看牌 ' : '闷牌 ' }}费用 {{ compareCost }}）</div>
         <div class="tp-list">
           <button v-for="o in compareTargets" :key="o.userId" class="tp-btn" @click="pickTarget(o.seat)">
             {{ o.nickname }}
@@ -158,6 +158,8 @@ void compareVisibleUntil;
 
 const canActNow = computed(() => props.phase === 'playing' && props.state?.phase === 'betting' && props.state?.turnSeat === props.mySeat && !props.state?.myFolded && !props.state?.myAllIn);
 const canCompare = computed(() => canActNow.value && (props.state?.roundNo || 1) >= (props.state?.compareMinRound || 3));
+// 比牌费 = 自己跟注价的 2 倍（闷 2×单注 / 看 4×单注）
+const compareCost = computed(() => (props.state?.mySeen ? (props.state?.stake || 0) * 4 : (props.state?.stake || 0) * 2));
 const raiseOptions = computed<number[]>(() => props.state?.raiseSteps || [10, 20, 50]);
 const compareTargets = computed(() => (props.state?.others || []).filter((o: any) => !o.folded && !o.allIn && o.userId !== myId.value));
 

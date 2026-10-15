@@ -52,9 +52,9 @@ interface BJState {
 }
 
 const seatedPlayers = (room: Room): Member[] => [...room.members.values()].filter((m) => m.seat >= 0).sort((a, b) => a.seat - b.seat);
-/** 还有积分、能参与下注的闲家 */
+/** 还有积分、能参与下注的闲家（排除离线：掉线立即停手，不再代下注/代打防放血） */
 const activePlayers = (room: Room, st: BJState): Member[] =>
-  seatedPlayers(room).filter((m) => m.seat !== st.bankerSeat && (st.chips.get(m.userId) || 0) > 0);
+  seatedPlayers(room).filter((m) => m.seat !== st.bankerSeat && (st.chips.get(m.userId) || 0) > 0 && m.online);
 
 const clearTimer = (st: BJState): void => {
   if (st.timer) clearTimeout(st.timer);
@@ -439,6 +439,16 @@ export const blackjackHandler: GameHandler<BJState> = {
     st.endReason = '';
     st.betLog = new Map();
     enterBetting(room, st, false);
+  },
+
+  /** 掉线立即停手：进行中的手视作停牌，不再代打/代下注（60s 判离场前防放血） */
+  onMemberOffline(room: Room, member: Member): void {
+    const st = room.game as BJState;
+    const h = st.hands.get(member.userId);
+    if (h && !h.done) {
+      h.done = true;
+      if (st.handPhase === 'acting' && st.turnSeat === member.seat) advanceTurn(room, st);
+    }
   },
 
   onPlayerQuit(room: Room, member: Member): ActionResult | void {

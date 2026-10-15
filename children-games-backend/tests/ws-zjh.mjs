@@ -209,12 +209,17 @@ await Q.connect(roomId2);
 await R.connect(roomId2);
 for (const cl of [Q, R, P]) cl.send({ t: 'ready' });
 await P.waitNew('zjh_phase', 0);
+P.send({ t: 'zjh_look' }); // P 提前看牌 → 比牌走看牌价（4×单注）
 
 let compared = false;
+let preComparePot = 0;
+let preCompareStake = 0;
 for (let i = 0; i < 80 && !compared; i += 1) {
   const st = await waitForAnyTurn(P);
   if (!st) break;
   if (st.turnSeat === 0 && st.roundNo >= 3) {
+    preComparePot = st.pot;
+    preCompareStake = st.stake;
     P.send({ t: 'zjh_compare', target: 1 });
     compared = true;
     break;
@@ -224,6 +229,7 @@ for (let i = 0; i < 80 && !compared; i += 1) {
 }
 const cmp = await P.waitNew('zjh_compare', 0, 15000);
 check('比牌广播含双方与胜负', typeof cmp.winner === 'number' && typeof cmp.loser === 'number' && cmp.loser !== cmp.winner);
+check('看牌玩家比牌费=4×单注（闷牌的2倍）', cmp.pot - preComparePot === preCompareStake * 4);
 const pCards = await P.waitNew('zjh_compare_cards', 0);
 check('发起者收到对方牌面', Array.isArray(pCards.oppCards) && pCards.oppCards.length === 3);
 check('旁观者收不到牌面', !JSON.stringify(Q.all('zjh_compare')).includes('"cards"') && !JSON.stringify(R.all('zjh_compare')).includes('"cards"'));

@@ -199,6 +199,30 @@ bankerClient.send({ t: 'blackjack_pass_bank' });
 const afterPass = await A2.waitNew('blackjack_phase', A2.all('blackjack_phase').length);
 check('让庄后庄家必然换人', afterPass.bankerSeat !== keepBanker);
 check('让庄后仍是下注阶段', afterPass.phase === 'betting');
+A2.close();
+B2.close();
+C2.close();
+
+// ── 掉线立即停手：离线玩家不代下注/代打（防放血） ──
+const created3 = await http('POST', '/api/room', { gameType: 'blackjack', config: { bankerMode: 'rotate', roundLimit: 1, career: false } }, tokens[0]);
+const roomId3 = created3.json.data.roomId;
+const OA = new Client(tokens[0], 'OFF-A'); // 庄家
+const OB = new Client(tokens[1], 'OFF-B');
+await OA.connect(roomId3);
+await OB.connect(roomId3);
+for (const c of [OB, OA]) c.send({ t: 'ready' });
+const offStart = await OA.waitNew('blackjack_phase', 0);
+check('掉线测试房开局', offStart.phase === 'betting' && offStart.bankerSeat === 0);
+OB.close(); // 闲家 B 立即掉线，且从未下注
+// 下注超时后：B 不被代下注 → 空手发牌结算，B 积分不变
+const offSettle = await OA.waitNew('blackjack_settle', 0, 15000);
+const offBChips = offSettle.chips.find((c) => c.userId === 4)?.chips;
+const offBStart = offStart.chips.find((c) => c.userId === 4)?.chips;
+check('掉线玩家未被代下注（积分不变）', typeof offBChips === 'number' && offBChips === offBStart);
+check('掉线手无结果（空手结算）', offSettle.results.length === 0);
+OA.close();
+await http('POST', '/api/room/leave', { roomId: roomId3 }, tokens[0]).catch(() => {});
+await http('POST', '/api/room/leave', { roomId: roomId3 }, tokens[1]).catch(() => {});
 
 console.log(`\n结果: ${pass} 通过, ${failCount} 失败`);
 process.exit(failCount ? 1 : 0);
