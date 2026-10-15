@@ -944,6 +944,8 @@ onMounted(() => {
         const entry = log.find((e) => e.round === game.value.round && e.delta === null);
         if (entry) entry.betTotal += Math.max(0, (m.pot || 0) - prevPot);
       }
+      // 全房间「我要验牌」动态弹框 + 语音通知（ZjhGame 消费）
+      gameEvents.yanpai = { from: m.from, to: m.to, seq: Date.now() };
     }
   });
   ws.on('zjh_compare_cards', (m: any) => {

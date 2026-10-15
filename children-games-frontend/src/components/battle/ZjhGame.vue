@@ -110,11 +110,17 @@
       <div v-if="pickingTarget" class="target-pick">
         <div class="tp-title">选择比牌对象（费用 {{ (state?.stake || 0) * 2 }}）</div>
         <div class="tp-list">
-          <button v-for="o in compareTargets" :key="o.userId" class="tp-btn" @click="pickTarget(o.userId)">
+          <button v-for="o in compareTargets" :key="o.userId" class="tp-btn" @click="pickTarget(o.seat)">
             {{ o.nickname }}
           </button>
         </div>
         <button class="tp-cancel" @click="pickingTarget = false">取消</button>
+      </div>
+
+      <!-- 我要验牌 动态弹框（全房间可见+语音通知） -->
+      <div v-if="yanpai" :key="yanpai.seq" class="yanpai-pop">
+        <div class="yp-main">我要验牌！</div>
+        <div class="yp-sub">{{ nameOfUser(yanpai.from) }} 向 {{ nameOfUser(yanpai.to) }} 发起验牌</div>
       </div>
       </template>
     </template>
@@ -160,6 +166,37 @@ watch(canActNow, (now, before) => {
   if (now && !before) soundManager.playTurn();
 });
 
+// ── 我要验牌弹框 + 法语口音语音通知 ──
+const yanpai = computed(() => props.events.yanpai);
+
+/** 用 fr-FR 语音念中文「我要验牌」——法国人说中文的热梗效果；无法语语音时退回默认音色 */
+const speakFrenchYanpai = (): void => {
+  try {
+    const synth = window.speechSynthesis;
+    if (!synth) return;
+    const u = new SpeechSynthesisUtterance('我要验牌');
+    const fr = synth.getVoices().find((v) => v.lang?.toLowerCase().startsWith('fr'));
+    if (fr) u.voice = fr;
+    u.lang = 'fr-FR';
+    u.rate = 0.85;
+    u.pitch = 1.05;
+    u.volume = soundManager.getVolume();
+    synth.speak(u);
+  } catch {
+    // 语音不可用不影响对局
+  }
+};
+
+let yanpaiTimer: ReturnType<typeof setTimeout> | null = null;
+watch(yanpai, (v) => {
+  if (!v) return;
+  if (!soundManager.isMuted()) speakFrenchYanpai();
+  if (yanpaiTimer) clearTimeout(yanpaiTimer);
+  yanpaiTimer = setTimeout(() => {
+    props.events.yanpai = null;
+  }, 2800);
+});
+
 const othersView = computed<any[]>(() => props.state?.others || []);
 
 // 我的下注流水：后端 myBetLog（每手 底注+跟注/加注/比牌 的投入与输赢）转通用展示结构
@@ -175,9 +212,10 @@ const myLedger = computed<BetLedgerEntry[]>(() =>
 
 const doLook = () => emit('action', { t: 'zjh_look' });
 const dismissCompare = () => (props.events.compareCards = null);
-const pickTarget = (userId: number) => {
+// 服务端按座位号找比牌对象（payload.target=seat），不是 userId
+const pickTarget = (seat: number) => {
   pickingTarget.value = false;
-  emit('action', { t: 'zjh_compare', target: userId });
+  emit('action', { t: 'zjh_compare', target: seat });
 };
 
 const nameOfUser = (userId: number): string => {
@@ -214,6 +252,7 @@ onUnmounted(() => {
   padding: 12px;
   margin-bottom: 10px;
   color: #f4effa;
+  position: relative;
 }
 
 .zjh-status {
@@ -484,6 +523,62 @@ onUnmounted(() => {
 
 .pre-start {
   padding: 30px 0;
+}
+
+/* ── 我要验牌弹框 ── */
+.yanpai-pop {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(135deg, #2b1544 0%, #46215f 100%);
+  border: 2px solid #ffe27a;
+  border-radius: 14px;
+  padding: 12px 26px;
+  text-align: center;
+  z-index: 30;
+  pointer-events: none;
+  box-shadow: 0 6px 26px rgba(0, 0, 0, 0.55);
+  animation:
+    yanpai-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) backwards,
+    yanpai-shake 0.45s ease-in-out 0.4s 3;
+}
+
+.yp-main {
+  font-size: 22px;
+  font-weight: bold;
+  color: #ffe27a;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.yp-sub {
+  font-size: 12px;
+  color: #d9c8ee;
+  margin-top: 4px;
+}
+
+@keyframes yanpai-in {
+  from {
+    transform: translate(-50%, -50%) scale(0.3);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes yanpai-shake {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  25% {
+    transform: translate(-50%, -50%) rotate(-3deg);
+  }
+  75% {
+    transform: translate(-50%, -50%) rotate(3deg);
+  }
 }
 
 .btn {
