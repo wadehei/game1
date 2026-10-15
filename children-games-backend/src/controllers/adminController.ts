@@ -118,6 +118,7 @@ export const getUsers = asyncHandler(async (req: AdminRequest, res: Response) =>
     avatar: u.avatar,
     level: u.level,
     totalStars: u.totalStars,
+    battleChips: u.battleChips ?? 1000,
     isFamily: u.openid.startsWith('family_'),
     hasPin: !!(u as any).pinHash,
     gamesPlayed: progressCountByUser.get(u.id) || 0,
@@ -145,6 +146,28 @@ export const updateUser = asyncHandler(async (req: AdminRequest, res: Response) 
   await user.save();
 
   success(res, { id: user.id, nickname: user.nickname, avatar: user.avatar });
+});
+
+/** 手动发放/调整好友对战积分（{ delta } 增减 或 { set } 直接设定） */
+export const adjustUserChips = asyncHandler(async (req: AdminRequest, res: Response) => {
+  const userId = parseInt(String(req.params.id), 10);
+  const { delta, set } = req.body as { delta?: number; set?: number };
+  const { adminAdjustChips } = await import('../services/battleChips');
+
+  const user = await User.findByPk(userId);
+  if (!user) {
+    fail(res, '用户不存在', 404);
+    return;
+  }
+  if (typeof set !== 'number' && typeof delta !== 'number') {
+    fail(res, '请提供 delta（增减）或 set（设定）');
+    return;
+  }
+  const chips = await adminAdjustChips(userId, {
+    delta: typeof delta === 'number' ? delta : undefined,
+    set: typeof set === 'number' ? set : undefined,
+  });
+  success(res, { id: userId, nickname: user.nickname, battleChips: chips });
 });
 
 /** 重置某用户的全部游戏进度（保留角色档案） */

@@ -78,6 +78,7 @@ export interface AdminUser {
   avatar: string;
   level: number;
   totalStars: number;
+  battleChips?: number;
   isFamily: boolean;
   hasPin?: boolean;
   gamesPlayed: number;
@@ -87,6 +88,9 @@ export interface AdminUser {
 }
 
 export const getUsers = (): Promise<AdminUser[]> => client.get('/users');
+
+export const adjustUserChips = (id: number, data: { delta?: number; set?: number }): Promise<{ battleChips: number }> =>
+  client.put(`/users/${id}/chips`, data);
 
 export const updateUser = (id: number, data: { nickname?: string; avatar?: string }): Promise<void> =>
   client.put(`/users/${id}`, data);

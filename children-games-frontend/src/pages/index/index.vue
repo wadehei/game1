@@ -162,6 +162,7 @@ import iconMoleSvg from "@/static/images/games/lobby/icon-mole.svg";
 import iconSimonSvg from "@/static/images/games/lobby/icon-simon.svg";
 import iconMathSvg from "@/static/images/games/lobby/icon-math.svg";
 import iconMatchSvg from "@/static/images/games/lobby/icon-match.svg";
+import iconMatch3Svg from "@/static/images/games/lobby/icon-match3.svg";
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -262,6 +263,13 @@ const games = [
     totalLevels: 20,
     icon: iconMatchSvg,
     bgColor: "linear-gradient(135deg, #a18cd1 0%, #7c3aed 100%)",
+  },
+  {
+    id: "match3",
+    name: "消消乐",
+    totalLevels: 20,
+    icon: iconMatch3Svg,
+    bgColor: "linear-gradient(135deg, #ff9966 0%, #ff5e62 100%)",
   },
 ];
 

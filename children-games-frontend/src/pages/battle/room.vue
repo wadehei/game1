@@ -62,7 +62,7 @@
         <button v-if="!myReady" class="act ready" @click="send({ t: 'ready' })">准备</button>
         <button v-else class="act cancel-ready" @click="send({ t: 'ready' })">取消准备</button>
       </template>
-      <template v-if="phase === 'playing' && mySeat >= 0">
+      <template v-if="phase === 'playing' && mySeat >= 0 && !chipTableGames.includes(gameType)">
         <button class="act resign" @click="askResign">认输</button>
       </template>
       <template v-if="phase === 'ended' && mySeat >= 0">
@@ -218,6 +218,9 @@ const recorder = useRecorder();
 
 const ws = useRoomWs();
 
+/** 牌类（积分桌）游戏：无"认输"，退出按弃牌处理 */
+const chipTableGames = ['blackjack', 'zjh'];
+
 const isHost = computed(() => hostUserId.value === myId.value);
 const myColor = computed(() => (mySeat.value === 0 ? BLACK : mySeat.value === 1 ? WHITE : 0));
 const myReady = computed(() => members.value.find((m) => m.userId === myId.value)?.ready || false);
@@ -237,6 +240,10 @@ const gameEvents = reactive<Record<string, any>>({
   voteUpdate: null as any,
   voteResult: null as any,
   eliminated: null as any,
+  handsView: null as any,
+  showdown: null as any,
+  settle: null as any,
+  compareCards: null as any,
 });
 const lastWsError = ref('');
 const myRematch = computed(() => rematchVotes.value.includes(myId.value));
@@ -272,6 +279,26 @@ const memberState = (m: { userId: number; seat: number; ready: boolean; online: 
   if (gameType.value === 'quiz' && phase.value === 'playing') {
     const s = (game.value.scores || []).find((x: any) => x.userId === m.userId);
     return s ? `${s.total} 分` : '答题中';
+  }
+  if (gameType.value === 'blackjack' && phase.value === 'playing') {
+    if (game.value.bankerSeat === m.seat) return '🎲 庄家';
+    const h = (gameEvents.handsView || []).find((x: any) => x.userId === m.userId);
+    if (h?.busted) return '💥 爆牌';
+    if (h?.natural) return '✨ Blackjack';
+    if (h?.done) return '🛑 停牌';
+    if (h?.stake) return `押 ${h.stake}`;
+    return game.value.phase === 'betting' ? '下注中' : '行动中';
+  }
+  if (gameType.value === 'zjh' && phase.value === 'playing') {
+    const o = (game.value.others || []).find((x: any) => x.userId === m.userId);
+    const self = m.userId === myId.value;
+    const folded = self ? game.value.myFolded : o?.folded;
+    const allIn = self ? game.value.myAllIn : o?.allIn;
+    const seen = self ? game.value.mySeen : o?.seen;
+    if (folded) return '🚫 已弃';
+    if (allIn) return '💰 all-in';
+    if (game.value.turnSeat === m.seat) return seen ? '👀 行动中' : '🙈 行动中';
+    return seen ? '👀 已看' : '🙈 闷牌';
   }
   if (gameType.value === 'gomoku' && phase.value === 'playing') {
     return m.seat === 0 ? '执黑' : '执白';
@@ -334,6 +361,24 @@ const playingStatusText = computed(() => {
     return game.value.phase === 'vote' ? '🗳️ 投票中，点击玩家名牌投票' : '🗣️ 描述阶段（线下口头描述）';
   }
   if (gt === 'quiz') return game.value.myAnswered ? '你已作答，等待出下一题…' : '答题进行中，拼手速！';
+  if (gt === 'blackjack') {
+    if (game.value.isBanker) return game.value.phase === 'dealer' ? '庄家自动结算中…' : '你是庄家，等待闲家行动';
+    if (game.value.phase === 'betting') return game.value.myStake ? '已下注，等待其他玩家…' : '请选择下注金额';
+    if (game.value.phase === 'acting') return game.value.turnSeat === mySeat.value ? '轮到你行动（要牌/停牌/加倍）' : '等待其他玩家行动…';
+    if (game.value.phase === 'dealer') return '庄家结算中…';
+    return '本手结算中…';
+  }
+  if (gt === 'zjh') {
+    if (game.value.phase === 'showdown') return '开牌！比大小…';
+    if (game.value.phase === 'settle') return '本手结算中…';
+    if (game.value.turnSeat === mySeat.value) {
+      if (game.value.myFolded) return '你已弃牌，观战中';
+      if (game.value.myAllIn) return '你已 all-in，等待开牌';
+      return game.value.mySeen ? '轮到你行动（跟注/加注/比牌/弃牌）' : '轮到你：可先看牌再行动';
+    }
+    const name = members.value.find((m) => m.seat === game.value.turnSeat)?.nickname;
+    return name ? `等待 ${name} 行动…` : '对局进行中';
+  }
   return '对局进行中';
 });
 
@@ -436,8 +481,9 @@ const doExit = () => {
 
 const askExit = () => {
   if (phase.value === 'playing' && mySeat.value >= 0) {
+    const isChipTable = chipTableGames.includes(gameType.value);
     confirmBox.value = {
-      text: '对局正在进行，退出将判你认输，确定退出？',
+      text: isChipTable ? '对局正在进行，退出将按弃牌处理，已投入的积分不退，确定退出？' : '对局正在进行，退出将判你认输，确定退出？',
       ok: () => {
         send({ t: 'resign' });
         doExit();
@@ -645,6 +691,218 @@ onMounted(() => {
     gameEvents.drew = { ...m, seq: Date.now() };
   });
   ws.on('uno_final', (m: any) => {
+    gameEvents.final = m;
+    phase.value = 'ended';
+  });
+  // ── 21点 ──
+  const seatOfUser = (userId: number): number => members.value.find((m) => m.userId === userId)?.seat ?? -1;
+  ws.on('blackjack_phase', (m: any) => {
+    if (game.value && typeof game.value === 'object') {
+      const newRound = game.value.round !== m.round;
+      game.value.round = m.round;
+      game.value.totalRounds = m.totalRounds;
+      game.value.phase = m.phase;
+      game.value.bankerSeat = m.bankerSeat;
+      game.value.turnSeat = m.turnSeat;
+      game.value.deadline = m.deadline || 0;
+      game.value.chips = m.chips || game.value.chips;
+      game.value.canPassBank = !!m.canPassBank;
+      game.value.isBanker = m.bankerSeat === mySeat.value;
+      if (newRound && m.phase === 'betting') {
+        gameEvents.handsView = [];
+        game.value.myCards = [];
+        game.value.myStake = 0;
+        game.value.myDone = false;
+        game.value.myBusted = false;
+        game.value.myNatural = false;
+        game.value.myDoubled = false;
+        game.value.bankerCards = [];
+        game.value.bankerValue = null;
+        game.value.lastResults = null;
+      }
+    }
+  });
+  ws.on('blackjack_deal', (m: any) => {
+    gameEvents.handsView = (m.hands || []).map((h: any) => ({
+      ...h,
+      seat: seatOfUser(h.userId),
+      done: !!h.natural,
+      busted: false,
+    }));
+    const mine = (m.hands || []).find((h: any) => h.userId === myId.value);
+    if (game.value && typeof game.value === 'object') {
+      game.value.myCards = mine ? [...mine.cards] : [];
+      game.value.myStake = mine?.stake || 0;
+      game.value.myNatural = !!mine?.natural;
+      game.value.myDone = !!mine?.natural;
+      if (game.value.isBanker) {
+        game.value.bankerCards = m.bankerUpcard ? [m.bankerUpcard] : [];
+      } else {
+        game.value.bankerCards = m.bankerUpcard ? [m.bankerUpcard] : [];
+      }
+    }
+  });
+  ws.on('blackjack_your_banker', (m: any) => {
+    if (game.value && typeof game.value === 'object') game.value.bankerCards = m.cards || [];
+  });
+  ws.on('blackjack_action', (m: any) => {
+    if (!game.value || typeof game.value !== 'object') return;
+    if (m.action === 'banker_hit') {
+      game.value.bankerCards = [...(game.value.bankerCards || []), m.card];
+      game.value.bankerValue = m.total;
+      return;
+    }
+    if (m.action === 'hit' || m.action === 'double') {
+      if (m.userId === myId.value) {
+        game.value.myCards = [...(game.value.myCards || []), m.card];
+        if (m.action === 'double') game.value.myStake = m.stake;
+        game.value.myDone = true;
+        game.value.myBusted = !!m.busted;
+      }
+      const item = (gameEvents.handsView || []).find((x: any) => x.userId === m.userId);
+      if (item && m.userId !== myId.value) {
+        item.cards = [...(item.cards || []), m.card];
+        item.done = true;
+        item.busted = !!m.busted;
+      } else if (item) {
+        item.done = true;
+        item.busted = !!m.busted;
+      }
+      return;
+    }
+    if (m.action === 'stand') {
+      if (m.userId === myId.value) game.value.myDone = true;
+      const item = (gameEvents.handsView || []).find((x: any) => x.userId === m.userId);
+      if (item) item.done = true;
+      return;
+    }
+    if (m.action === 'bet' && m.stake) {
+      const item = (gameEvents.handsView || []).find((x: any) => x.userId === m.userId);
+      if (item) item.stake = m.stake;
+    }
+  });
+  ws.on('blackjack_settle', (m: any) => {
+    if (game.value && typeof game.value === 'object') {
+      game.value.lastResults = m.results || [];
+      game.value.chips = m.chips || game.value.chips;
+      game.value.bankerCards = m.bankerCards || [];
+      game.value.bankerValue = m.bankerValue ?? game.value.bankerValue;
+      game.value.phase = 'settle';
+    }
+    // 结算同步爆牌/自然杰克状态到视图
+    for (const r of m.results || []) {
+      const item = (gameEvents.handsView || []).find((x: any) => x.userId === r.userId);
+      if (item) {
+        item.done = true;
+        if (r.outcome === 'bust') item.busted = true;
+        if (r.outcome === 'blackjack') item.natural = true;
+      }
+    }
+  });
+  ws.on('blackjack_final', (m: any) => {
+    gameEvents.final = m;
+    phase.value = 'ended';
+  });
+
+  // ── 炸金花 ──
+  const resetZjhOthers = () => {
+    game.value.others = members.value
+      .filter((m) => m.seat >= 0 && m.userId !== myId.value)
+      .map((m) => ({ userId: m.userId, nickname: m.nickname, seat: m.seat, seen: false, folded: false, allIn: false, betTotal: 10 }));
+  };
+  ws.on('zjh_phase', (m: any) => {
+    if (game.value && typeof game.value === 'object') {
+      const newHand = game.value.round !== m.round;
+      game.value.round = m.round;
+      game.value.totalRounds = m.totalRounds;
+      game.value.phase = m.phase;
+      game.value.dealerSeat = m.dealerSeat;
+      game.value.pot = m.pot;
+      game.value.stake = m.stake;
+      game.value.roundNo = m.roundNo;
+      game.value.turnSeat = m.turnSeat;
+      game.value.deadline = m.deadline || 0;
+      game.value.compareMinRound = m.compareMinRound || 3;
+      game.value.aliveCount = m.aliveCount;
+      game.value.chips = m.chips || game.value.chips;
+      if (newHand && m.phase === 'betting') {
+        game.value.myCards = null;
+        game.value.mySeen = false;
+        game.value.myFolded = false;
+        game.value.myAllIn = false;
+        game.value.myBetTotal = 10;
+        game.value.myRank = null;
+        gameEvents.showdown = null;
+        gameEvents.settle = null;
+        gameEvents.compareCards = null;
+        resetZjhOthers();
+      }
+    }
+  });
+  ws.on('zjh_your_cards', (m: any) => {
+    if (game.value && typeof game.value === 'object') {
+      game.value.myCards = m.cards || [];
+      game.value.mySeen = true;
+      game.value.myRank = m.rank || null;
+    }
+  });
+  ws.on('zjh_action', (m: any) => {
+    if (!game.value || typeof game.value !== 'object') return;
+    const others = game.value.others || [];
+    if (m.action === 'look') {
+      const o = others.find((x: any) => x.userId === m.userId);
+      if (o) o.seen = true;
+      return;
+    }
+    if (m.action === 'call' || m.action === 'timeout_call') {
+      game.value.pot = m.pot ?? game.value.pot;
+      game.value.stake = m.stake ?? game.value.stake;
+      const o = others.find((x: any) => x.userId === m.userId);
+      if (o) {
+        o.betTotal = (o.betTotal || 0) + (m.cost || 0);
+        if (m.allIn) o.allIn = true;
+      }
+      return;
+    }
+    if (m.action === 'fold' || m.action === 'timeout_fold') {
+      const o = others.find((x: any) => x.userId === m.userId);
+      if (o) o.folded = true;
+      game.value.aliveCount = m.aliveCount ?? game.value.aliveCount;
+      if (m.userId === myId.value) game.value.myFolded = true;
+    }
+  });
+  ws.on('zjh_compare', (m: any) => {
+    const others = game.value?.others || [];
+    const loser = others.find((x: any) => x.userId === m.loser);
+    if (loser) loser.folded = true;
+    const winner = others.find((x: any) => x.userId === m.winner);
+    if (winner) winner.seen = true;
+    if (game.value && typeof game.value === 'object') {
+      game.value.pot = m.pot ?? game.value.pot;
+      game.value.aliveCount = m.aliveCount ?? game.value.aliveCount;
+      if (m.loser === myId.value) game.value.myFolded = true;
+    }
+  });
+  ws.on('zjh_compare_cards', (m: any) => {
+    gameEvents.compareCards = m;
+  });
+  ws.on('zjh_showdown', (m: any) => {
+    gameEvents.showdown = m;
+    if (game.value && typeof game.value === 'object') game.value.phase = 'showdown';
+  });
+  ws.on('zjh_settle', (m: any) => {
+    gameEvents.settle = m;
+    if (game.value && typeof game.value === 'object') {
+      game.value.pot = 0;
+      game.value.phase = 'settle';
+      if (Array.isArray(m.deltas)) {
+        game.value.chips = m.deltas.map((d: any) => ({ userId: d.userId, chips: d.chips }));
+        const meDelta = m.deltas.find((d: any) => d.userId === myId.value);
+        if (meDelta) game.value.myChips = meDelta.chips;
+      }
+    }
+  });
+  ws.on('zjh_final', (m: any) => {
     gameEvents.final = m;
     phase.value = 'ended';
   });

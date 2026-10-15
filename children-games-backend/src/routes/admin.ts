@@ -4,6 +4,7 @@ import {
   getOverview,
   getUsers,
   updateUser,
+  adjustUserChips,
   resetUserProgress,
   deleteUser,
   clearUserPin,
@@ -34,6 +35,7 @@ router.use(adminMiddleware);
 router.get('/overview', getOverview);
 router.get('/users', getUsers);
 router.put('/users/:id', updateUser);
+router.put('/users/:id/chips', adjustUserChips);
 router.post('/users/:id/reset', resetUserProgress);
 router.post('/users/:id/clear-pin', clearUserPin);
 router.delete('/users/:id', deleteUser);

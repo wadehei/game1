@@ -7,6 +7,7 @@ export { UserPlaytime } from './UserPlaytime';
 export { Feedback } from './Feedback';
 export { FeedbackReply } from './FeedbackReply';
 export { QuizQuestion } from './QuizQuestion';
+export { BattleRecord } from './BattleRecord';
 
 import { sequelize } from '../config/database';
 import { User } from './User';
@@ -18,6 +19,7 @@ import { UserPlaytime } from './UserPlaytime';
 import { Feedback } from './Feedback';
 import { FeedbackReply } from './FeedbackReply';
 import { QuizQuestion } from './QuizQuestion';
+import { BattleRecord } from './BattleRecord';
 
 // 定义模型关联关系
 User.hasMany(GameProgress, { foreignKey: 'userId', as: 'gameProgress' });
@@ -44,6 +46,7 @@ export const initModels = async (): Promise<void> => {
     await Feedback.sync();
     await FeedbackReply.sync();
     await QuizQuestion.sync();
+    await BattleRecord.sync();
     // sync 不会给旧表补列，逐一对比真实表结构补齐缺失列（防表结构漂移）
     await syncMissingColumns(User);
     await syncMissingColumns(GameProgress);
@@ -54,6 +57,7 @@ export const initModels = async (): Promise<void> => {
     await syncMissingColumns(Feedback);
     await syncMissingColumns(FeedbackReply);
     await syncMissingColumns(QuizQuestion);
+    await syncMissingColumns(BattleRecord);
     console.log('✅ 数据表同步成功');
   } catch (error) {
     console.error('❌ 数据表同步失败:', error);

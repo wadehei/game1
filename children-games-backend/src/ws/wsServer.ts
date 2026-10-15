@@ -25,6 +25,31 @@ import {
 } from './roomManager';
 import { getHandler, gameHandlers } from './games/registry';
 import { setRoomBus } from './bus';
+import { settleRankingChips, applyChipDelta, CHIPS_JOIN_MIN, CHIPS_JOIN_REFILL } from '../services/battleChips';
+
+/** 牌类（blackjack/zjh）每手自行实时结算积分，game_over 时不再发排名分 */
+const CHIP_TABLE_GAMES = new Set(['blackjack', 'zjh']);
+
+/** 局终积分结算：bus 层拦截 game_over，一处覆盖所有游戏的结束路径 */
+const settleGameChips = (room: Room, winnerSeatFromMsg: number): void => {
+  if (room.chipSettled) return;
+  room.chipSettled = true;
+  if (CHIP_TABLE_GAMES.has(room.gameType)) return; // 牌类已在每手结算
+  const careerOn = room.config?.career !== false;
+  const ranking: Array<{ userId: number }> = [];
+  const game = room.game || {};
+  if (Array.isArray(game.ranking) && game.ranking.length) {
+    for (const r of game.ranking) ranking.push({ userId: r.userId });
+  } else {
+    const seated = [...room.members.values()].filter((m) => m.seat >= 0).sort((a, b) => a.seat - b.seat);
+    const winner = winnerSeatFromMsg >= 0 ? seated.find((m) => m.seat === winnerSeatFromMsg) : undefined;
+    if (winner) ranking.push({ userId: winner.userId });
+    for (const m of seated) {
+      if (!winner || m.userId !== winner.userId) ranking.push({ userId: m.userId });
+    }
+  }
+  if (ranking.length) void settleRankingChips(room.gameType, ranking, careerOn);
+};
 
 interface Ctx {
   userId: number;
@@ -61,6 +86,7 @@ const broadcastSnapshot = (room: Room, exceptWs?: WebSocket): void => {
 };
 
 const busBroadcast = (room: Room, msg: Record<string, unknown>, exceptUserId?: number): void => {
+  if (msg.t === 'game_over') settleGameChips(room, Number(msg.winnerSeat ?? -1));
   for (const m of room.members.values()) {
     if (m.ws && m.userId !== exceptUserId) send(m.ws, msg);
   }
@@ -73,6 +99,7 @@ const busSendToUser = (room: Room, userId: number, msg: Record<string, unknown>)
 
 const startGame = (room: Room): void => {
   room.phase = 'playing';
+  room.chipSettled = false;
   const handler = getHandler(room.gameType);
   for (const m of room.members.values()) {
     m.ready = false;
@@ -94,7 +121,7 @@ const startGame = (room: Room): void => {
 const endGame = (room: Room, winnerSeat: number, reason: string): void => {
   room.phase = 'ended';
   clearRoomTimers(room);
-  broadcast(room, { t: 'game_over', winnerSeat, reason });
+  busBroadcast(room, { t: 'game_over', winnerSeat, reason });
 };
 
 /** 通用重开：重置游戏状态，必要时交换座位；由 rematch 表决触发 */
@@ -108,6 +135,7 @@ const restartGame = (room: Room): void => {
   }
   room.game = handler.create();
   room.phase = 'playing';
+  room.chipSettled = false;
   for (const m of room.members.values()) {
     m.ready = false;
     m.rematch = false;
@@ -151,13 +179,19 @@ export const initWsServer = (server: Server): void => {
       return;
     }
 
-    const user = await User.findByPk(userId, { attributes: ['id', 'nickname', 'avatar'] });
+    const user = await User.findByPk(userId, { attributes: ['id', 'nickname', 'avatar', 'battleChips'] });
     if (!user) {
       ws.close(4002, '角色不存在');
       return;
     }
+    // 积分救济线：进房时低于 100 自动补足到 1000（防止破产后永远无法开局）
+    let chips = user.battleChips ?? 1000;
+    if (chips < CHIPS_JOIN_MIN) {
+      chips = CHIPS_JOIN_REFILL;
+      void applyChipDelta(userId, CHIPS_JOIN_REFILL - (user.battleChips || 0));
+    }
     clients.set(ws, { userId, roomId: null });
-    send(ws, { t: 'auth_ok', userId });
+    send(ws, { t: 'auth_ok', userId, chips });
 
     // 连接即带 roomId = 直接进房（重连也走这里，座位保留）
     const url = new URL(req.url || '/', 'http://localhost');
@@ -175,7 +209,7 @@ export const initWsServer = (server: Server): void => {
       }
       let member: Member;
       try {
-        member = joinRoom(room, { userId, nickname: user.nickname, avatar: user.avatar });
+        member = joinRoom(room, { userId, nickname: user.nickname, avatar: user.avatar, chips });
       } catch {
         send(ws, { t: 'error', message: '进入房间失败' });
         return;

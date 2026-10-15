@@ -33,6 +33,7 @@ export interface Member {
   ws: any; // WebSocket；断线时置 null，成员保留以便重连
   offlineAt: number;
   lastChatAt?: number; // 聊天限流
+  chips: number; // 进房时的账号积分快照（座位格展示；牌类对局以 handler 内的桌面积分为准）
 }
 
 export interface Room {
@@ -42,9 +43,11 @@ export interface Room {
   members: Map<number, Member>;
   phase: Phase;
   game: any; // 由对应 GameHandler 创建与管理
+  config: any; // 建房配置（handler 白名单校验后存入，对局期间不可改）
   chat: ChatMsg[]; // 上限 100 条，环形截断
   voices: Map<string, RoomVoice>;
   timers: NodeJS.Timeout[]; // 游戏定时器（题目推进/回合倒计时等），解散时统一清除
+  chipSettled?: boolean; // 本局积分是否已结算（防 game_over 重复发放；rematch 时重置）
   createdAt: number;
   lastActiveAt: number;
 }
@@ -59,7 +62,11 @@ export const getRoom = (id: string): Room | undefined => rooms.get(id);
 
 export const roomCount = (): number => rooms.size;
 
-export const createRoom = (user: { userId: number; nickname: string; avatar: string }, gameType: GameType): Room => {
+export const createRoom = (
+  user: { userId: number; nickname: string; avatar: string },
+  gameType: GameType,
+  config?: any
+): Room => {
   let id: string;
   do {
     id = String(1000 + Math.floor(Math.random() * 9000));
@@ -72,6 +79,7 @@ export const createRoom = (user: { userId: number; nickname: string; avatar: str
     members: new Map(),
     phase: 'waiting',
     game: getHandler(gameType).create(),
+    config: config || {},
     chat: [],
     voices: new Map(),
     timers: [],
@@ -82,11 +90,15 @@ export const createRoom = (user: { userId: number; nickname: string; avatar: str
   return room;
 };
 
-export const joinRoom = (room: Room, user: { userId: number; nickname: string; avatar: string }): Member => {
+export const joinRoom = (
+  room: Room,
+  user: { userId: number; nickname: string; avatar: string; chips?: number }
+): Member => {
   const existing = room.members.get(user.userId);
   if (existing) {
-    // 重连：恢复在线
+    // 重连：恢复在线（顺带刷新积分快照）
     existing.online = true;
+    if (typeof user.chips === 'number') existing.chips = user.chips;
     room.lastActiveAt = Date.now();
     return existing;
   }
@@ -109,6 +121,7 @@ export const joinRoom = (room: Room, user: { userId: number; nickname: string; a
     online: true,
     ws: null,
     offlineAt: 0,
+    chips: typeof user.chips === 'number' ? user.chips : 1000,
   };
   room.members.set(user.userId, member);
   room.lastActiveAt = Date.now();
@@ -176,6 +189,7 @@ export const memberList = (room: Room) =>
     seat: m.seat,
     ready: m.ready,
     online: m.online,
+    chips: m.chips,
   }));
 
 export const isHost = (room: Room, userId: number): boolean => room.hostUserId === userId;

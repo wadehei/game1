@@ -76,6 +76,12 @@ const FORMULAS: Record<string, Formula> = {
     addMax: 0,
     level, // 占位：math 的题目模式由关卡推导，level 参与推导（不单独可配）
   }),
+  // 消消乐：目标分每关 +60，步数每 3 关 -1（下限 14）；emoji 种类前期少更易上手
+  match3: (level) => ({
+    targetScore: 200 + (level - 1) * 60,
+    moves: Math.max(22 - Math.floor((level - 1) / 3), 14),
+    kinds: level <= 3 ? 4 : level <= 8 ? 5 : 6,
+  }),
 };
 
 /** 某游戏某关的内置默认配置（数值/布尔混合表，调用方按需取用） */
@@ -143,6 +149,11 @@ export const LEVEL_FIELD_DEFS: Record<string, FieldDef[]> = {
     { key: 'forceMode', label: '题目模式（0自动 1数数 2加法）' },
     { key: 'countMax', label: '数数上限（0=按关卡自动）' },
     { key: 'addMax', label: '加法上限（0=按关卡自动）' },
+  ],
+  match3: [
+    { key: 'targetScore', label: '目标分数' },
+    { key: 'moves', label: '步数' },
+    { key: 'kinds', label: 'emoji 种类（4~6）' },
   ],
 };
 

@@ -7,10 +7,21 @@ export const getGameList = async (): Promise<Array<{ type: string; title: string
   return api.get('/room/games');
 };
 
-// 创建房间（五子棋）
-export const createRoom = async (gameType: 'gomoku' = 'gomoku'): Promise<{ roomId: string; gameType: string }> => {
-  return api.post<{ roomId: string; gameType: string }>('/room', { gameType });
+// 创建房间（config = 建房配置，服务端按游戏白名单校验+默认值）
+export const createRoom = async (gameType: string = 'gomoku', config?: Record<string, unknown>): Promise<{ roomId: string; gameType: string }> => {
+  return api.post<{ roomId: string; gameType: string }>('/room', { gameType, config });
 };
+
+// 好友对战生涯（积分 + 战绩流水）
+export const getBattleCareer = async (): Promise<BattleCareer> => {
+  return api.get<BattleCareer>('/user/battle/career');
+};
+
+export interface BattleCareer {
+  chips: number;
+  games: Array<{ gameType: string; total: number; wins: number }>;
+  recent: Array<{ gameType: string; result: string; chipsDelta: number; chipsAfter: number; createdAt: string }>;
+}
 
 // 上传房间语音（raw body），返回 voiceId；广播由服务端完成
 export const uploadRoomVoice = async (roomId: string, blob: Blob, duration: number): Promise<{ voiceId: string }> => {

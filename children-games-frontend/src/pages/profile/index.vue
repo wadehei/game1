@@ -86,11 +86,34 @@
       </div>
     </div>
 
-    <!-- 未来扩展占位 -->
-    <div class="section card coming">
-      <div class="section-title">对战战绩 <span class="soon">即将上线</span></div>
-      <div class="coming-desc">你的五子棋/答题/UNO 战绩将在这里展示</div>
+    <!-- 好友对战生涯 -->
+    <div class="section card battle-career">
+      <div class="section-title">♟️ 好友对战生涯</div>
+      <div class="chips-row">
+        <span class="chips-num">💰 {{ career?.chips ?? userStore.userInfo?.battleChips ?? 0 }}</span>
+        <span class="chips-label">对战积分</span>
+      </div>
+      <div v-if="career?.games?.length" class="career-games">
+        <div v-for="g in career.games" :key="g.gameType" class="career-game">
+          <span class="cg-icon">{{ gameEmoji(g.gameType) }}</span>
+          <span class="cg-name">{{ gameName(g.gameType) }}</span>
+          <span class="cg-stat">{{ g.total }} 场 · 胜 {{ g.wins }}</span>
+        </div>
+      </div>
+      <div v-else class="career-empty">还没打过好友对战，去大厅开一局吧！</div>
+      <div v-if="career?.recent?.length" class="recent">
+        <div class="recent-title">最近战绩</div>
+        <div v-for="(r, i) in career.recent.slice(0, 8)" :key="i" class="recent-row">
+          <span>{{ gameEmoji(r.gameType) }} {{ gameName(r.gameType) }}</span>
+          <span class="recent-result">{{ resultText(r.result) }}</span>
+          <span class="recent-delta" :class="{ pos: r.chipsDelta > 0, neg: r.chipsDelta < 0 }">
+            {{ r.chipsDelta > 0 ? `+${r.chipsDelta}` : r.chipsDelta }}
+          </span>
+        </div>
+      </div>
     </div>
+
+    <!-- 未来扩展占位 -->
     <div class="section card coming">
       <div class="section-title">勋章墙 <span class="soon">即将上线</span></div>
       <div class="coming-desc">集齐星星解锁专属勋章</div>
@@ -103,6 +126,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useUserStore } from '@/store/user';
 import { getUserInfo, updateUserInfo } from '@/api/user';
+import { getBattleCareer, type BattleCareer } from '@/api/room';
 import { uploadPhotoAvatar } from '@/utils/avatarUpload';
 import PlayerAvatar from '@/components/PlayerAvatar.vue';
 
@@ -118,6 +142,20 @@ const saving = ref(false);
 const msg = ref('');
 const isErr = ref(false);
 const uploadTip = ref('');
+const career = ref<BattleCareer | null>(null);
+
+const GAME_META: Record<string, { name: string; emoji: string }> = {
+  gomoku: { name: '五子棋', emoji: '⚫' },
+  quiz: { name: '答题对战', emoji: '🧠' },
+  draw: { name: '你画我猜', emoji: '🎨' },
+  spy: { name: '谁是卧底', emoji: '🕵️' },
+  uno: { name: 'UNO', emoji: '🎴' },
+  blackjack: { name: '21点', emoji: '🃏' },
+  zjh: { name: '炸金花', emoji: '♠️' },
+};
+const gameName = (t: string): string => GAME_META[t]?.name || t;
+const gameEmoji = (t: string): string => GAME_META[t]?.emoji || '🎮';
+const resultText = (r: string): string => (r === 'win' ? '🏆 胜' : r === 'lose' ? '负' : r === 'draw' ? '平' : r.startsWith('rank:') ? `第 ${r.split(':')[1]} 名` : r);
 
 const goBack = () => router.back();
 
@@ -209,14 +247,19 @@ onMounted(async () => {
   } catch {
     // ignore
   }
+  // 好友对战生涯（积分 + 战绩）
+  try {
+    career.value = await getBattleCareer();
+  } catch {
+    career.value = null;
+  }
 });
 </script>
 
 <style scoped>
 .profile-page {
   min-height: 100vh;
-  background: linear-gradient(180deg, #f5f7fa 0%, #e8ecf1 100%);
-  padding: 16px;
+  background: linear-gradient(180deg, #f5f7fa 0%, #e8ecf1 100%);  padding: 16px;
   max-width: 500px;
   margin: 0 auto;
   box-sizing: border-box;
@@ -455,5 +498,88 @@ onMounted(async () => {
   font-size: 12px;
   color: #999;
   margin-top: 2px;
+}
+
+/* 好友对战生涯 */
+.battle-career .chips-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.chips-num {
+  font-size: 26px;
+  font-weight: bold;
+  color: #b3541e;
+}
+
+.chips-label {
+  font-size: 12px;
+  color: #999;
+}
+
+.career-games {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.career-game {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f8f9fb;
+  border-radius: 10px;
+  padding: 7px 12px;
+  font-size: 13px;
+}
+
+.cg-stat {
+  margin-left: auto;
+  color: #888;
+  font-size: 12px;
+}
+
+.career-empty {
+  font-size: 12px;
+  color: #b5bac2;
+  padding: 6px 0;
+}
+
+.recent {
+  margin-top: 12px;
+}
+
+.recent-title {
+  font-size: 12px;
+  color: #999;
+  margin-bottom: 6px;
+}
+
+.recent-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  padding: 4px 0;
+  border-bottom: 1px dashed #f0f2f5;
+}
+
+.recent-result {
+  color: #888;
+}
+
+.recent-delta {
+  margin-left: auto;
+  font-weight: bold;
+}
+
+.recent-delta.pos {
+  color: #27ae60;
+}
+
+.recent-delta.neg {
+  color: #e74c3c;
 }
 </style>

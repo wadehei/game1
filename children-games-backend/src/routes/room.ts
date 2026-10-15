@@ -24,9 +24,9 @@ router.get('/games', (_req: Request, res: Response) => {
   success(res, gameList());
 });
 
-// 创建房间（需要登录）
+// 创建房间（需要登录）。config = 建房配置（handler 白名单校验+默认值，对局期间不可改）
 router.post('/', authMiddleware, asyncHandler(async (req: Request & { userId?: number }, res: Response) => {
-  const { gameType } = req.body as { gameType?: GameType };
+  const { gameType, config } = req.body as { gameType?: GameType; config?: any };
   const type: GameType = isGameType(gameType) ? gameType : 'gomoku';
   const user = { userId: req.userId!, nickname: '', avatar: '' };
   // 建房响应里不含昵称也无妨，进房时 WS 会重新取；这里补全以便房间页立即显示房主
@@ -35,7 +35,8 @@ router.post('/', authMiddleware, asyncHandler(async (req: Request & { userId?: n
   user.nickname = u?.nickname || `角色${req.userId}`;
   user.avatar = u?.avatar || '🙂';
 
-  const room = createRoom(user, type);
+  const normalized = getHandler(type).normalizeConfig?.(config) || {};
+  const room = createRoom(user, type, normalized);
   success(res, { roomId: room.id, gameType: room.gameType });
 }));
 

@@ -7,6 +7,8 @@ export interface UserInfo {
   avatar: string;
   level: number;
   totalStars: number;
+  /** 好友对战积分（账号资产） */
+  battleChips?: number;
 }
 
 export const useUserStore = defineStore('user', () => {

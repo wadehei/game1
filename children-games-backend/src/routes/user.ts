@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { wxLogin, testLogin, familyLogin, getProfiles, getUserInfo, updateUserInfo, updateMyPin, getMyCareer, reportPlaytime } from '../controllers/userController';
+import { wxLogin, testLogin, familyLogin, getProfiles, getUserInfo, updateUserInfo, updateMyPin, getMyCareer, getBattleCareer, reportPlaytime } from '../controllers/userController';
 import { authMiddleware } from '../middleware/auth';
 import { recordPlay } from '../controllers/gameController';
 
@@ -18,6 +18,8 @@ router.get('/info', authMiddleware, getUserInfo);
 router.put('/info', authMiddleware, updateUserInfo);
 // 我的生涯（需要认证）
 router.get('/career', authMiddleware, getMyCareer);
+// 好友对战生涯（积分+战绩流水，需要认证）
+router.get('/battle/career', authMiddleware, getBattleCareer);
 // 角色口令（需要认证）
 router.put('/pin', authMiddleware, updateMyPin);
 // 游玩时长心跳上报（需要认证）

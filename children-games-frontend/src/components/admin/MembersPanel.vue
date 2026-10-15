@@ -27,8 +27,14 @@
               <span v-if="!u.isFamily" class="guest-tag">游客</span>
             </div>
             <div class="member-meta">
-              Lv.{{ u.level }} · ⭐{{ u.totalStars }} · 玩过 {{ u.gamesPlayed }} 个游戏
+              Lv.{{ u.level }} · ⭐{{ u.totalStars }} · 💰{{ u.battleChips ?? 1000 }} 积分 · 玩过 {{ u.gamesPlayed }} 个游戏
               <template v-if="u.lastActiveAt"> · 最近 {{ timeAgo(u.lastActiveAt) }}</template>
+            </div>
+            <div v-if="chipsEditId === u.id" class="chips-edit">
+              <input v-model.number="chipsInput" class="chips-input" type="number" placeholder="数值" />
+              <button class="act-btn save" @click="applyChips(u, 'delta')">增减</button>
+              <button class="act-btn" @click="applyChips(u, 'set')">设为</button>
+              <button class="act-btn" @click="chipsEditId = null">取消</button>
             </div>
           </template>
         </div>
@@ -39,6 +45,7 @@
           </template>
           <template v-else>
             <button class="act-btn" @click="startEdit(u)">编辑</button>
+            <button class="act-btn chips" @click="openChips(u)">💰积分</button>
             <button v-if="u.hasPin" class="act-btn pin" @click="clearPin(u)">清除口令</button>
             <button class="act-btn warn" @click="resetProgress(u)">重置进度</button>
             <button class="act-btn danger" @click="removeUser(u)">删除</button>
@@ -51,7 +58,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { getUsers, updateUser, resetUserProgress, deleteUser, clearUserPin, type AdminUser } from '@/api/admin';
+import { getUsers, updateUser, resetUserProgress, deleteUser, clearUserPin, adjustUserChips, type AdminUser } from '@/api/admin';
 import PlayerAvatar from '@/components/PlayerAvatar.vue';
 
 const EMOJIS = ['🐰', '🐻', '🐼', '🦊', '🐸', '🐵', '🐯', '🦁', '🐷', '🐨', '👑', '🦄', '🌟', '🌸', '🤖', '😊'];
@@ -61,6 +68,24 @@ const loading = ref(true);
 const editingId = ref<number | null>(null);
 const editNickname = ref('');
 const editAvatar = ref('');
+const chipsEditId = ref<number | null>(null);
+const chipsInput = ref<number>(100);
+
+const openChips = (u: AdminUser) => {
+  chipsEditId.value = u.id;
+  chipsInput.value = 100;
+};
+
+const applyChips = async (u: AdminUser, mode: 'delta' | 'set') => {
+  const n = Math.trunc(Number(chipsInput.value));
+  if (!Number.isFinite(n)) return;
+  const payload = mode === 'delta' ? { delta: n } : { set: Math.max(0, n) };
+  const res = await adjustUserChips(u.id, payload).catch(() => null);
+  if (res && typeof res.battleChips === 'number') {
+    u.battleChips = res.battleChips;
+  }
+  chipsEditId.value = null;
+};
 
 const load = async () => {
   loading.value = true;
@@ -216,6 +241,27 @@ onMounted(load);
 
 .act-btn:hover {
   background: #e0e5e9;
+}
+
+.chips-edit {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 6px;
+  width: 100%;
+}
+
+.chips-input {
+  width: 76px;
+  border: 1.5px solid #dfe3ea;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 13px;
+}
+
+.act-btn.chips {
+  background: #fff7e0;
+  color: #b3541e;
 }
 
 .act-btn.save {

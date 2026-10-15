@@ -16,6 +16,8 @@ const GAME_RULES: Record<string, { lowerScoreIsBetter: boolean }> = {
   simon: { lowerScoreIsBetter: false },
   // 数学小怪兽的成绩是通关用时（秒），越快越好
   math: { lowerScoreIsBetter: true },
+  // 消消乐的成绩是通关用掉的步数，越少越好
+  match3: { lowerScoreIsBetter: true },
 };
 
 // 每 15 颗星升一级

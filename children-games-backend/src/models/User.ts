@@ -12,11 +12,13 @@ interface UserAttributes {
   achievements: string;
   /** 4 位数字口令的哈希（sha256(pin:secret)），空=无口令 */
   pinHash: string | null;
+  /** 好友对战积分（账号资产，初始 1000，随账号永久跟随） */
+  battleChips: number;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
-interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'totalStars' | 'level' | 'achievements' | 'pinHash' | 'avatarHistory'> {}
+interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'totalStars' | 'level' | 'achievements' | 'pinHash' | 'avatarHistory' | 'battleChips'> {}
 
 export class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
   public id!: number;
@@ -28,6 +30,7 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
   public level!: number;
   public achievements!: string;
   public pinHash!: string | null;
+  public battleChips!: number;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -86,6 +89,12 @@ User.init(
       allowNull: true,
       defaultValue: null,
       comment: '4位数字口令哈希，NULL=未设置',
+    },
+    battleChips: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+      defaultValue: 1000,
+      comment: '好友对战积分（初始1000，随账号永久跟随）',
     },
   },
   {

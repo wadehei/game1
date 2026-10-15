@@ -32,6 +32,60 @@
           <span class="gc-range">{{ g.minPlayers }}~{{ g.maxPlayers }} 人</span>
         </button>
       </div>
+
+      <!-- 建房配置（牌类；进游戏前设置，游戏期间不可改） -->
+      <div v-if="selected === 'blackjack'" class="cfg">
+        <div class="cfg-title">🃏 21点 房间设置</div>
+        <div class="cfg-row">
+          <span class="cfg-label">庄家模式</span>
+          <div class="seg">
+            <button
+              v-for="m in BANKER_MODES"
+              :key="m.value"
+              class="seg-btn"
+              :class="{ on: bjBankerMode === m.value }"
+              @click="bjBankerMode = m.value as 'rotate' | 'winner' | 'keep'"
+            >
+              {{ m.label }}
+            </button>
+          </div>
+        </div>
+        <div class="cfg-row">
+          <span class="cfg-label">局数</span>
+          <input v-model.number="bjRounds" class="cfg-num" type="number" min="2" max="20" />
+          <span class="cfg-note">打满即结算（2~20 手）</span>
+        </div>
+      </div>
+      <div v-if="selected === 'zjh'" class="cfg">
+        <div class="cfg-title">♠️ 炸金花 房间设置</div>
+        <div class="cfg-row">
+          <span class="cfg-label">特殊 235</span>
+          <button class="switch" :class="{ on: zjhSpecial235 }" @click="zjhSpecial235 = !zjhSpecial235">
+            <span class="knob" />
+          </button>
+          <span class="cfg-note">不同花 2-3-5 反杀豹子</span>
+        </div>
+        <div class="cfg-row">
+          <span class="cfg-label">超时动作</span>
+          <div class="seg">
+            <button class="seg-btn" :class="{ on: zjhTimeoutFold }" @click="zjhTimeoutFold = true">自动弃牌</button>
+            <button class="seg-btn" :class="{ on: !zjhTimeoutFold }" @click="zjhTimeoutFold = false">自动跟注</button>
+          </div>
+        </div>
+        <div class="cfg-row">
+          <span class="cfg-label">局数</span>
+          <input v-model.number="zjhRounds" class="cfg-num" type="number" min="2" max="30" />
+          <span class="cfg-note">打满即结算（2~30 手）</span>
+        </div>
+      </div>
+      <div v-if="selected === 'blackjack' || selected === 'zjh'" class="cfg-row career-row">
+        <span class="cfg-label">战绩计入生涯</span>
+        <button class="switch" :class="{ on: careerOn }" @click="careerOn = !careerOn">
+          <span class="knob" />
+        </button>
+        <span class="cfg-note">关闭后只动积分、不记战绩</span>
+      </div>
+
       <button class="create-btn" :disabled="creating" @click="create">
         {{ creating ? '创建中…' : `创建「${selectedTitle}」房间` }}
       </button>
@@ -76,6 +130,34 @@ const games = ref<Array<{ type: string; title: string; emoji: string; desc: stri
 const selected = ref('gomoku');
 const selectedTitle = computed(() => games.value.find((g) => g.type === selected.value)?.title || '五子棋');
 
+// 建房配置（牌类）
+const BANKER_MODES = [
+  { value: 'rotate', label: '轮流坐庄' },
+  { value: 'winner', label: '赢家坐庄' },
+  { value: 'keep', label: '持续坐庄可让庄' },
+];
+const bjBankerMode = ref<'rotate' | 'winner' | 'keep'>('rotate');
+const bjRounds = ref(8);
+const zjhSpecial235 = ref(true);
+const zjhTimeoutFold = ref(true);
+const zjhRounds = ref(15);
+const careerOn = ref(true);
+
+const buildConfig = (): Record<string, unknown> | undefined => {
+  if (selected.value === 'blackjack') {
+    return { bankerMode: bjBankerMode.value, roundLimit: clampRound(bjRounds.value, 2, 20, 8), career: careerOn.value };
+  }
+  if (selected.value === 'zjh') {
+    return { special235: zjhSpecial235.value, timeoutFold: zjhTimeoutFold.value, roundLimit: clampRound(zjhRounds.value, 2, 30, 15), career: careerOn.value };
+  }
+  return undefined;
+};
+const clampRound = (v: number, min: number, max: number, dft: number): number => {
+  const n = Math.trunc(Number(v));
+  if (!Number.isFinite(n)) return dft;
+  return Math.min(max, Math.max(min, n));
+};
+
 onMounted(async () => {
   games.value = await getGameList().catch(() => [{ type: 'gomoku', title: '五子棋', emoji: '⚫', desc: '', minPlayers: 2, maxPlayers: 2 }]);
 });
@@ -91,7 +173,7 @@ const create = async () => {
   creating.value = true;
   errMsg.value = '';
   try {
-    const { roomId } = await createRoom(selected.value as 'gomoku');
+    const { roomId } = await createRoom(selected.value, buildConfig());
     router.push(`/battle/room/${roomId}`);
   } catch (e) {
     errMsg.value = e instanceof Error ? e.message : '创建失败，请重试';
@@ -255,6 +337,106 @@ const join = () => {
 
 .create-btn:disabled {
   opacity: 0.6;
+}
+
+/* 建房配置 */
+.cfg {
+  background: #f8f9fd;
+  border: 1px solid #eef1fd;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.cfg-title {
+  font-size: 13px;
+  font-weight: bold;
+  color: #444;
+  margin-bottom: 10px;
+}
+
+.cfg-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+}
+
+.career-row {
+  padding: 4px 2px 12px;
+}
+
+.cfg-label {
+  font-size: 13px;
+  color: #555;
+  min-width: 74px;
+}
+
+.cfg-note {
+  font-size: 11px;
+  color: #a0a6b0;
+}
+
+.cfg-num {
+  width: 64px;
+  border: 2px solid #e3e8ef;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.seg {
+  display: flex;
+  gap: 0;
+  border: 1.5px solid #e3e8ef;
+  border-radius: 9px;
+  overflow: hidden;
+}
+
+.seg-btn {
+  border: none;
+  background: #fff;
+  color: #888;
+  font-size: 12px;
+  padding: 7px 10px;
+  cursor: pointer;
+}
+
+.seg-btn.on {
+  background: #667eea;
+  color: #fff;
+  font-weight: bold;
+}
+
+.switch {
+  width: 44px;
+  height: 25px;
+  border-radius: 13px;
+  border: none;
+  background: #d5dae3;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.switch.on {
+  background: #667eea;
+}
+
+.switch .knob {
+  position: absolute;
+  top: 2.5px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  transition: left 0.15s;
+}
+
+.switch.on .knob {
+  left: 21px;
 }
 
 .game-desc {

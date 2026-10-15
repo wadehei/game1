@@ -350,7 +350,14 @@ export const getUserInfo = asyncHandler(async (req: AuthRequest, res: Response) 
     avatarHistory: Array.isArray(user.avatarHistory) ? user.avatarHistory : [],
     level: user.level,
     totalStars: user.totalStars,
+    battleChips: user.battleChips ?? 1000,
   });
+});
+
+// 好友对战生涯：当前积分 + 分游戏统计 + 最近流水
+export const getBattleCareer = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { getCareer } = await import('../services/battleChips');
+  success(res, await getCareer(req.userId!));
 });
 
 // 更新用户信息

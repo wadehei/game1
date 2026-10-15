@@ -43,6 +43,24 @@
     :my-seat="mySeat"
     @action="emit('action', $event)"
   />
+  <BlackjackGame
+    v-else-if="gameType === 'blackjack'"
+    :state="gameState"
+    :events="events"
+    :members="members"
+    :phase="phase"
+    :my-seat="mySeat"
+    @action="emit('action', $event)"
+  />
+  <ZjhGame
+    v-else-if="gameType === 'zjh'"
+    :state="gameState"
+    :events="events"
+    :members="members"
+    :phase="phase"
+    :my-seat="mySeat"
+    @action="emit('action', $event)"
+  />
   <!-- 后续游戏组件在此按 gameType 挂载 -->
   <div v-else class="game-placeholder">该游戏暂未开放</div>
 </template>
@@ -53,6 +71,8 @@ import QuizGame from './QuizGame.vue';
 import DrawGame from './DrawGame.vue';
 import SpyGame from './SpyGame.vue';
 import UnoGame from './UnoGame.vue';
+import BlackjackGame from './BlackjackGame.vue';
+import ZjhGame from './ZjhGame.vue';
 
 defineProps<{
   gameType: string;
