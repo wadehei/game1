@@ -228,5 +228,33 @@ const pCards = await P.waitNew('zjh_compare_cards', 0);
 check('发起者收到对方牌面', Array.isArray(pCards.oppCards) && pCards.oppCards.length === 3);
 check('旁观者收不到牌面', !JSON.stringify(Q.all('zjh_compare')).includes('"cards"') && !JSON.stringify(R.all('zjh_compare')).includes('"cards"'));
 
+// ── 挂机保护：timeoutFold=false 时连续 3 次超时自动跟注 → 强制弃牌 ──
+const createdIdle = await http('POST', '/api/room', { gameType: 'zjh', config: { roundLimit: 1, career: false, timeoutFold: false } }, tokens[0]);
+const roomIdIdle = createdIdle.json.data.roomId;
+const IA = new Client(tokens[0], 'idle-A');
+const IB = new Client(tokens[1], 'idle-B');
+await IA.connect(roomIdIdle);
+await IB.connect(roomIdIdle);
+for (const cl of [IB, IA]) cl.send({ t: 'ready' });
+const idleStart = await IA.waitNew('zjh_phase', 0);
+check('挂机房开局（双方挂机不动）', idleStart.phase === 'betting');
+
+// 双方都不操作：先手（庄家下家）的连续超时先到 3 次 → 被强制弃牌
+const firstSeat = idleStart.turnSeat;
+const firstUid = firstSeat === 0 ? 2 : 4;
+const foldDeadline = Date.now() + 45000;
+let foldEvt = null;
+while (Date.now() < foldDeadline && !foldEvt) {
+  foldEvt = IA.all('zjh_action').find((e) => (e.action === 'fold' || e.action === 'timeout_fold') && e.userId === firstUid);
+  if (!foldEvt) await sleep(300);
+}
+check('连续超时玩家被强制弃牌', !!foldEvt);
+const idleCalls = IA.all('zjh_action').filter((e) => e.action === 'timeout_call' && e.userId === firstUid).length;
+check('强制弃牌前恰好 2 次超时自动跟注', idleCalls === 2);
+const idleSettle = await IA.waitNew('zjh_settle', 0, 20000);
+check('强制弃牌后按弃牌结算（另一家免摊牌赢池）', idleSettle.reason === 'others_folded' && idleSettle.winner !== firstUid);
+IA.close();
+IB.close();
+
 console.log(`\n结果: ${pass} 通过, ${failCount} 失败`);
 process.exit(failCount ? 1 : 0);

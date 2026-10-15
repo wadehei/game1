@@ -833,6 +833,7 @@ onMounted(() => {
         entry.delta = mine.delta;
         entry.outcome = mine.outcome;
       }
+      game.value.nextDeadline = m.nextDeadline || 0;
     }
     // 结算同步爆牌/自然杰克状态到视图
     for (const r of m.results || []) {
@@ -957,6 +958,7 @@ onMounted(() => {
     if (game.value && typeof game.value === 'object') {
       game.value.pot = 0;
       game.value.phase = 'settle';
+      game.value.nextDeadline = m.nextDeadline || 0;
       if (Array.isArray(m.deltas)) {
         game.value.chips = m.deltas.map((d: any) => ({ userId: d.userId, chips: d.chips }));
         const meDelta = m.deltas.find((d: any) => d.userId === myId.value);

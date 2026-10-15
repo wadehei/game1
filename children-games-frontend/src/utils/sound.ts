@@ -314,6 +314,30 @@ class SoundManager {
     osc.stop(t + duration);
   }
 
+  /** 轮到你行动提醒 — G5→C6 双短音，清脆不打扰 */
+  playTurn(): void {
+    if (this.muted || !this.ctx) return;
+    const t = this.ctx.currentTime;
+    const notes = [783.99, 1046.5]; // G5, C6
+
+    notes.forEach((freq, i) => {
+      const start = t + i * 0.09;
+      const osc = this.ctx!.createOscillator();
+      const gain = this.ctx!.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, start);
+
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.22, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.12);
+
+      osc.connect(gain).connect(this.out());
+      osc.start(start);
+      osc.stop(start + 0.12);
+    });
+  }
+
   /** 收集音 — 铃铛效果 A5 + 泛音, 150ms */
   playCollect(): void {
     if (this.muted || !this.ctx) return;

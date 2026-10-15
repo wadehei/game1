@@ -15,7 +15,8 @@ const STAKE_CAP = 100;
 const COMPARE_MIN_ROUND = 3; // 前 2 轮禁比牌（roundNo 从 1 起）
 const FORCE_SHOWDOWN_ROUND = 6; // 第 6 轮结束强制开牌
 const DEFAULT_ROUNDS = 15;
-const NEXT_HAND_DELAY_MS = 2500;
+const NEXT_HAND_DELAY_MS = 4000; // 手间结算展示时长（前端有下一手倒计时）
+const FORCE_FOLD_AFTER_TIMEOUTS = 3; // 连续超时自动跟注达到此次数 → 强制弃牌（防掉线挂机被放血）
 
 export interface ZjhConfig {
   special235: boolean;
@@ -34,6 +35,8 @@ interface ZjhPlayer {
   folded: boolean;
   allIn: boolean;
   betTotal: number;
+  /** 连续超时自动跟注次数（手动操作即清零；达 FORCE_FOLD_AFTER_TIMEOUTS 强制弃牌） */
+  timeoutCalls: number;
 }
 
 interface ZjhState {
@@ -141,7 +144,13 @@ const armTurnTimer = (room: Room, st: ZjhState): void => {
     if (s.config.timeoutFold) {
       doFold(r, m, true);
     } else {
-      doCall(r, m, true);
+      const p = s.players.get(m.userId);
+      if (p) p.timeoutCalls += 1;
+      if (p && p.timeoutCalls >= FORCE_FOLD_AFTER_TIMEOUTS) {
+        doFold(r, m, true); // 连续超时太多次：强制弃牌，防止掉线挂机一直自动跟注放血
+      } else {
+        doCall(r, m, true);
+      }
     }
   }, BET_SECONDS * 1000);
   st.timer = timer;
@@ -165,12 +174,12 @@ const startHand = (room: Room): void => {
     const chips = st.chips.get(m.userId) || 0;
     if (chips < ANTE) {
       // 连底注都付不起：本手观战（保留座位）
-      st.players.set(m.userId, { cards: [], seen: false, folded: true, allIn: false, betTotal: 0 });
+      st.players.set(m.userId, { cards: [], seen: false, folded: true, allIn: false, betTotal: 0, timeoutCalls: 0 });
       continue;
     }
     st.chips.set(m.userId, chips - ANTE);
     st.pot += ANTE;
-    st.players.set(m.userId, { cards: [], seen: false, folded: false, allIn: false, betTotal: ANTE });
+    st.players.set(m.userId, { cards: [], seen: false, folded: false, allIn: false, betTotal: ANTE, timeoutCalls: 0 });
     const log = st.betLog.get(m.userId) || [];
     log.push({ round: st.round, betTotal: ANTE, delta: null, ended: null });
     st.betLog.set(m.userId, log);
@@ -215,6 +224,7 @@ const advanceTurn = (room: Room, st: ZjhState, first: boolean): void => {
 const doCall = (room: Room, member: Member, auto = false): void => {
   const st = room.game as ZjhState;
   const p = st.players.get(member.userId)!;
+  if (!auto) p.timeoutCalls = 0; // 手动跟注清零连续超时计数
   const cost = p.seen ? st.stake * 2 : st.stake;
   const chips = st.chips.get(member.userId) || 0;
   const paid = Math.min(cost, chips);
@@ -241,6 +251,7 @@ const doFold = (room: Room, member: Member, auto = false): void => {
   const st = room.game as ZjhState;
   const p = st.players.get(member.userId);
   if (!p || p.folded) return;
+  if (!auto) p.timeoutCalls = 0; // 手动弃牌清零连续超时计数
   p.folded = true;
   getRoomBus().broadcast(room, {
     t: 'zjh_action',
@@ -256,6 +267,7 @@ const doLook = (room: Room, member: Member): void => {
   const st = room.game as ZjhState;
   const p = st.players.get(member.userId)!;
   p.seen = true;
+  p.timeoutCalls = 0; // 手动看牌清零连续超时计数
   const cards = dealTo(st, member.userId);
   getRoomBus().broadcast(room, { t: 'zjh_action', userId: member.userId, nickname: member.nickname, action: 'look' });
   // 点对点私发自己的牌（防偷看核心：未看牌者的牌不在任何广播/快照里）
@@ -268,6 +280,7 @@ const doCompare = (room: Room, me: Member, target: Member): void => {
   const cost = st.stake * 2;
   const chips = st.chips.get(me.userId) || 0;
   if (chips < cost) return;
+  myP.timeoutCalls = 0; // 手动比牌清零连续超时计数
   st.chips.set(me.userId, chips - cost);
   st.pot += cost;
   myP.betTotal += cost;
@@ -349,6 +362,7 @@ const winByFold = (room: Room, seat: number | undefined): void => {
       winAmount,
       reveals: null,
       deltas,
+      nextDeadline: Date.now() + NEXT_HAND_DELAY_MS,
     });
   }
   const timer = setTimeout(() => nextHand(room, (room.game as ZjhState).round), NEXT_HAND_DELAY_MS);
@@ -414,6 +428,7 @@ const settleHand = (
     winAmount,
     reveals, // 弃牌胜不亮牌（null）
     deltas,
+    nextDeadline: Date.now() + NEXT_HAND_DELAY_MS,
   });
 
   const timer = setTimeout(() => nextHand(room, (room.game as ZjhState).round), NEXT_HAND_DELAY_MS);
@@ -609,6 +624,7 @@ export const zjhHandler: GameHandler<ZjhState> = {
       if (!target || target.userId === member.userId) return { error: '无效的比牌对象' };
       const tp = st.players.get(target.userId);
       if (!tp || tp.folded) return { error: '对方已弃牌' };
+      if (tp.allIn) return { error: '对方已 all-in，不能与其比牌' };
       const cost = st.stake * 2;
       if ((st.chips.get(member.userId) || 0) < cost) return { error: '积分不足，无法比牌' };
       doCompare(room, member, target);

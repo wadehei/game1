@@ -12,6 +12,7 @@ const ACT_SECONDS = Math.max(3, Number(process.env.BLACKJACK_ACT_SECONDS) || 20)
 const DEALER_STEP_MS = 700;
 const DEFAULT_BET = 10;
 const DEFAULT_ROUNDS = 8;
+const NEXT_HAND_DELAY_MS = 4000; // 手间结算展示时长（前端有下一手倒计时）
 
 export interface BJConfig {
   bankerMode: 'rotate' | 'winner' | 'keep';
@@ -300,9 +301,10 @@ const settleHand = (room: Room): void => {
     bankerCards: bankerCards.map(cardLabel),
     bankerValue: handValue(bankerCards).total,
     chips: [...st.chips].map(([userId, chips]) => ({ userId, chips })),
+    nextDeadline: Date.now() + NEXT_HAND_DELAY_MS,
   });
 
-  const timer = setTimeout(() => nextHand(room, (room.game as BJState).round), 2500);
+  const timer = setTimeout(() => nextHand(room, (room.game as BJState).round), NEXT_HAND_DELAY_MS);
   addTimer(room, timer);
 };
 

@@ -11,6 +11,9 @@
     />
 
     <template v-else>
+      <!-- 重开/待开局的空档：状态未到，先占位避免 0/0 NaN 闪现 -->
+      <div v-if="!state?.round" class="idle-tip pre-start">等待开局…</div>
+      <template v-else>
       <!-- 状态条 -->
       <div class="bj-status">
         <span class="round">第 {{ state?.round || 0 }}/{{ state?.totalRounds || 0 }} 手</span>
@@ -66,6 +69,7 @@
           <b :class="r.delta > 0 ? 'pos' : r.delta < 0 ? 'neg' : ''">{{ r.delta > 0 ? `+${r.delta}` : r.delta }}</b>
           <span class="outcome">{{ outcomeText(r.outcome) }}</span>
         </div>
+        <div v-if="nextRemain > 0" class="s-next">下一手 {{ nextRemain }}s 后开始</div>
       </div>
 
       <!-- 操作区 -->
@@ -81,7 +85,7 @@
           {{ amt }}
         </button>
       </div>
-      <div v-else-if="myTurnToAct" class="actions">
+      <div v-else-if="myTurnToAct" class="actions mine">
         <button class="btn hit" @click="emit('action', { t: 'blackjack_hit' })">要牌</button>
         <button class="btn stand" @click="emit('action', { t: 'blackjack_stand' })">停牌</button>
         <button v-if="canDouble" class="btn double" @click="emit('action', { t: 'blackjack_double' })">加倍</button>
@@ -90,13 +94,15 @@
         <button class="btn pass" @click="emit('action', { t: 'blackjack_pass_bank' })">让庄给下家</button>
       </div>
       <div v-else class="idle-tip">{{ idleText }}</div>
+      </template>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useUserStore } from '@/store/user';
+import { soundManager } from '@/utils/sound';
 import BattleResultPanel from './BattleResultPanel.vue';
 import BetLedger, { type BetLedgerEntry } from './BetLedger.vue';
 
@@ -121,6 +127,11 @@ const canBet = computed(() => props.phase === 'playing' && props.state?.phase ==
 const canDouble = computed(() => (props.state?.myCards?.length || 0) === 2 && (myChips.value || 0) >= (props.state?.myStake || 0));
 const canPassBank = computed(() => props.phase === 'playing' && props.state?.canPassBank && isBanker.value);
 const myInView = computed(() => (props.state?.myCards?.length || 0) > 0 || props.state?.myStake);
+
+// 轮到自己行动：提示音（仅状态切换沿触发，进房即轮到不响）
+watch(myTurnToAct, (now, before) => {
+  if (now && !before) soundManager.playTurn();
+});
 
 // 发牌动画基准（只对新增牌做入场动画的占位；简化：首两张不动画）
 const myCardsLenAtDeal = ref(99);
@@ -180,10 +191,12 @@ const outcomeText = (o: string): string => ({ win: '赢', lose: '输', push: '�
 
 // 倒计时
 const remainSec = ref(0);
+const nextRemain = ref(0);
 let timer: ReturnType<typeof setInterval> | null = null;
 onMounted(() => {
   timer = setInterval(() => {
     remainSec.value = Math.max(0, Math.ceil(((props.state?.deadline || 0) - Date.now()) / 1000));
+    nextRemain.value = props.state?.phase === 'settle' && props.state?.nextDeadline ? Math.max(0, Math.ceil((props.state.nextDeadline - Date.now()) / 1000)) : 0;
   }, 400);
 });
 onUnmounted(() => {
@@ -386,6 +399,31 @@ onUnmounted(() => {
   justify-content: center;
   flex-wrap: wrap;
   padding: 4px 0;
+}
+
+.actions.mine .btn {
+  animation: btn-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes btn-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(126, 160, 255, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(126, 160, 255, 0.35);
+  }
+}
+
+.s-next {
+  color: #9fc4b6;
+  font-size: 11px;
+  text-align: right;
+  padding-top: 2px;
+}
+
+.pre-start {
+  padding: 30px 0;
 }
 
 .hint {

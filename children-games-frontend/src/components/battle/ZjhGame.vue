@@ -11,6 +11,9 @@
     />
 
     <template v-else>
+      <!-- 重开/待开局的空档：状态未到，先占位避免 0/0 NaN 闪现 -->
+      <div v-if="!state?.round" class="idle-tip pre-start">等待开局…</div>
+      <template v-else>
       <!-- 状态条 -->
       <div class="zjh-status">
         <span class="round">第 {{ state?.round || 0 }}/{{ state?.totalRounds || 0 }} 手</span>
@@ -74,14 +77,14 @@
 
       <!-- 本手结算 -->
       <div v-if="settle" class="settle-bar">
-        <div class="s-title">{{ nameOfUser(settle.winner) }} 赢得 {{ settle.winAmount }} 分{{ settle.reason === 'others_folded' ? '（无需开牌）' : '' }}</div>
+        <div class="s-title">{{ nameOfUser(settle.winner) }} 赢得 {{ settle.winAmount }} 分{{ settle.reason === 'others_folded' ? '（无需开牌）' : '' }}<span v-if="nextRemain > 0" class="s-next">· 下一手 {{ nextRemain }}s</span></div>
         <div v-for="d in settle.deltas" :key="d.userId" class="s-item">
           {{ d.nickname }} <b :class="d.delta > 0 ? 'pos' : d.delta < 0 ? 'neg' : ''">{{ d.delta > 0 ? `+${d.delta}` : d.delta }}</b>
         </div>
       </div>
 
       <!-- 操作区 -->
-      <div v-if="canActNow" class="actions">
+      <div v-if="canActNow" class="actions mine">
         <button v-if="!state?.mySeen" class="btn look" @click="doLook">看牌</button>
         <button class="btn call" @click="emit('action', { t: 'zjh_call' })">
           跟注 {{ state?.mySeen ? (state?.stake || 0) * 2 : state?.stake || 0 }}
@@ -95,7 +98,7 @@
         >
           +{{ amt }}
         </button>
-        <button v-if="canCompare" class="btn compare" @click="pickingTarget = !pickingTarget">比牌</button>
+        <button v-if="canCompare" class="btn compare" @click="pickingTarget = !pickingTarget">比牌 {{ (state?.stake || 0) * 2 }}</button>
         <button class="btn fold" @click="emit('action', { t: 'zjh_fold' })">弃牌</button>
       </div>
       <div v-else-if="state?.phase === 'betting' && state?.turnSeat >= 0" class="idle-tip">
@@ -113,13 +116,15 @@
         </div>
         <button class="tp-cancel" @click="pickingTarget = false">取消</button>
       </div>
+      </template>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useUserStore } from '@/store/user';
+import { soundManager } from '@/utils/sound';
 import BattleResultPanel from './BattleResultPanel.vue';
 import BetLedger, { type BetLedgerEntry } from './BetLedger.vue';
 
@@ -148,7 +153,12 @@ void compareVisibleUntil;
 const canActNow = computed(() => props.phase === 'playing' && props.state?.phase === 'betting' && props.state?.turnSeat === props.mySeat && !props.state?.myFolded && !props.state?.myAllIn);
 const canCompare = computed(() => canActNow.value && (props.state?.roundNo || 1) >= (props.state?.compareMinRound || 3));
 const raiseOptions = computed<number[]>(() => props.state?.raiseSteps || [10, 20, 50]);
-const compareTargets = computed(() => (props.state?.others || []).filter((o: any) => !o.folded && o.userId !== myId.value));
+const compareTargets = computed(() => (props.state?.others || []).filter((o: any) => !o.folded && !o.allIn && o.userId !== myId.value));
+
+// 轮到自己行动：提示音（仅状态切换沿触发，进房即轮到不响）
+watch(canActNow, (now, before) => {
+  if (now && !before) soundManager.playTurn();
+});
 
 const othersView = computed<any[]>(() => props.state?.others || []);
 
@@ -183,10 +193,13 @@ const nameOfSeat = (seat: number): string => {
 const isRed = (card: string): boolean => card.includes('♥') || card.includes('♦');
 
 const remainSec = ref(0);
+const nextRemain = ref(0);
 let timer: ReturnType<typeof setInterval> | null = null;
 onMounted(() => {
   timer = setInterval(() => {
     remainSec.value = Math.max(0, Math.ceil(((props.state?.deadline || 0) - Date.now()) / 1000));
+    nextRemain.value =
+      props.state?.phase === 'settle' && props.state?.nextDeadline ? Math.max(0, Math.ceil((props.state.nextDeadline - Date.now()) / 1000)) : 0;
   }, 400);
 });
 onUnmounted(() => {
@@ -446,6 +459,31 @@ onUnmounted(() => {
   justify-content: center;
   flex-wrap: wrap;
   padding: 4px 0;
+}
+
+.actions.mine .btn {
+  animation: btn-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes btn-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 226, 122, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(255, 226, 122, 0.35);
+  }
+}
+
+.s-next {
+  color: #d9c8ee;
+  font-weight: normal;
+  font-size: 11px;
+  margin-left: 6px;
+}
+
+.pre-start {
+  padding: 30px 0;
 }
 
 .btn {

@@ -143,21 +143,23 @@ const freshSnapshot = async (token, roomId) => {
   B.send({ t: 'blackjack_bet', amount: 10 });
   await A.waitNew('blackjack_deal', 0);
   // 轮到 B 时直接加倍（前两张后必可加倍：h.cards.length===2 且积分足够）
-  const bBase = B.all('blackjack_phase').length;
+  // 注意不加基线切片：deal 与 acting 广播同帧到达，切片会把 acting 切掉；直接看全局最新阶段
   let doubled = false;
-  for (let i = 0; i < 30 && !doubled; i++) {
-    const p = B.all('blackjack_phase').slice(bBase).at(-1);
+  const dblDeadline = Date.now() + 8000;
+  while (Date.now() < dblDeadline && !doubled) {
+    const p = B.all('blackjack_phase').at(-1);
     if (p?.phase === 'acting' && p.turnSeat === 1) {
       B.send({ t: 'blackjack_double' });
       doubled = true;
+      break;
     }
-    await sleep(100);
+    if (p && (p.phase === 'dealer' || p.phase === 'settle')) break; // 已错过行动窗口
+    await sleep(80);
   }
-  if (!doubled) B.send({ t: 'blackjack_double' });
-  const dblEvt = await B.waitNew('blackjack_action', B.all('blackjack_action').length, 8000).catch(() => null);
+  const dblBase = B.all('blackjack_action').length;
+  await B.waitNew('blackjack_action', dblBase, 5000).catch(() => {}); // 等加倍广播回声
   const dbl = B.all('blackjack_action').find((e) => e.action === 'double' && e.userId === 4);
   check('21点 加倍广播带新注额', !!dbl && dbl.stake === 20);
-  void dblEvt;
   const settle = await B.waitNew('blackjack_settle', 0, 20000);
   const myResult = settle.results.find((r) => r.userId === 4);
   const snap = await freshSnapshot(tokens[1], roomId);
