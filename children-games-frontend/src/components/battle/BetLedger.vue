@@ -1,17 +1,18 @@
 <template>
   <div class="bet-ledger" :class="`theme-${theme}`">
     <button class="bl-head" @click="open = !open">
-      <span class="bl-title">💰 我的下注流水</span>
+      <span class="bl-title">💰 投注明细</span>
       <span class="bl-sum">
-        共投入 <b>{{ totalBet }}</b> 分
-        <template v-if="hasSettled"> · 输赢 <b :class="net > 0 ? 'pos' : net < 0 ? 'neg' : ''">{{ netText }}</b></template>
+        我的投入 <b>{{ myBet }}</b> 分
+        <template v-if="hasMySettled"> · 我的输赢 <b :class="myNet > 0 ? 'pos' : myNet < 0 ? 'neg' : ''">{{ myNetText }}</b></template>
       </span>
-      <span class="bl-toggle">{{ open ? '收起 ▲' : '明细 ▼' }}</span>
+      <span class="bl-toggle">{{ open ? '收起 ▲' : `全员 ${entries.length} 条 ▼` }}</span>
     </button>
     <div v-if="open" class="bl-list">
-      <div v-for="(e, i) in entries" :key="i" class="bl-row">
+      <div v-for="(e, i) in sorted" :key="i" class="bl-row" :class="{ mine: e.userId === myId }">
         <span class="bl-round">第{{ e.round }}手</span>
-        <span class="bl-bet">押 {{ e.bet }} 分<template v-if="e.note">（{{ e.note }}）</template></span>
+        <span class="bl-name">{{ nameOf(e.userId) }}<template v-if="e.userId === myId">（我）</template></span>
+        <span class="bl-bet">投 {{ e.bet }} 分<template v-if="e.note">（{{ e.note }}）</template></span>
         <span class="bl-tag">{{ e.tag || (e.delta === null ? '未结算' : '') }}</span>
         <span class="bl-delta" :class="e.delta == null ? '' : e.delta > 0 ? 'pos' : e.delta < 0 ? 'neg' : ''">
           {{ e.delta === null ? '—' : e.delta > 0 ? `+${e.delta}` : e.delta }}
@@ -25,7 +26,9 @@
 import { computed, ref } from 'vue';
 
 export interface BetLedgerEntry {
+  userId: number;
   round: number;
+  /** 本手投入（含加注/加倍/比牌费） */
   bet: number;
   /** 附加说明（如「加倍」） */
   note?: string;
@@ -35,18 +38,27 @@ export interface BetLedgerEntry {
   tag?: string;
 }
 
-const props = defineProps<{
-  entries: BetLedgerEntry[];
-  theme?: 'green' | 'purple';
-}>();
+const props = withDefaults(
+  defineProps<{
+    entries: BetLedgerEntry[];
+    members: Array<{ userId: number; nickname: string }>;
+    myId: number;
+    theme?: 'green' | 'purple';
+  }>(),
+  { theme: 'green' }
+);
 
 const open = ref(false);
 
-const totalBet = computed(() => props.entries.reduce((s, e) => s + (e.bet || 0), 0));
-const settled = computed(() => props.entries.filter((e) => e.delta !== null));
-const hasSettled = computed(() => settled.value.length > 0);
-const net = computed(() => settled.value.reduce((s, e) => s + (e.delta || 0), 0));
-const netText = computed(() => (net.value > 0 ? `+${net.value}` : `${net.value}`));
+const sorted = computed(() => [...props.entries].sort((a, b) => a.round - b.round));
+const nameOf = (uid: number): string => props.members.find((m) => m.userId === uid)?.nickname || `角色${uid}`;
+
+const myEntries = computed(() => props.entries.filter((e) => e.userId === props.myId));
+const myBet = computed(() => myEntries.value.reduce((s, e) => s + (e.bet || 0), 0));
+const mySettled = computed(() => myEntries.value.filter((e) => e.delta !== null));
+const hasMySettled = computed(() => mySettled.value.length > 0);
+const myNet = computed(() => mySettled.value.reduce((s, e) => s + (e.delta || 0), 0));
+const myNetText = computed(() => (myNet.value > 0 ? `+${myNet.value}` : `${myNet.value}`));
 </script>
 
 <style scoped>
@@ -55,13 +67,6 @@ const netText = computed(() => (net.value > 0 ? `+${net.value}` : `${net.value}`
   margin-bottom: 8px;
   font-size: 12px;
   overflow: hidden;
-}
-
-.bet-ledger.theme-green {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.bet-ledger.theme-purple {
   background: rgba(255, 255, 255, 0.08);
 }
 
@@ -118,7 +123,7 @@ const netText = computed(() => (net.value > 0 ? `+${net.value}` : `${net.value}`
 
 .bl-list {
   padding: 2px 10px 7px;
-  max-height: 150px;
+  max-height: 168px;
   overflow-y: auto;
 }
 
@@ -129,6 +134,10 @@ const netText = computed(() => (net.value > 0 ? `+${net.value}` : `${net.value}`
   padding: 2px 0;
 }
 
+.bl-row.mine .bl-name {
+  color: #ffe27a;
+}
+
 .bl-round {
   color: #9fc4b6;
   white-space: nowrap;
@@ -136,6 +145,14 @@ const netText = computed(() => (net.value > 0 ? `+${net.value}` : `${net.value}`
 
 .theme-purple .bl-round {
   color: #d9c8ee;
+}
+
+.bl-name {
+  flex-shrink: 0;
+  max-width: 72px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .bl-bet {

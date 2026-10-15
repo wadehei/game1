@@ -23,7 +23,7 @@
       </div>
 
       <!-- 我的下注流水（整局累计） -->
-      <BetLedger v-if="myLedger.length" :entries="myLedger" theme="green" />
+      <BetLedger v-if="betLedger.length" :entries="betLedger" :members="members" :my-id="myId" theme="green" />
 
       <!-- 庄家区 -->
       <div class="banker-area" :class="{ turn: state?.phase === 'dealer' }">
@@ -110,7 +110,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useUserStore } from '@/store/user';
 import { soundManager } from '@/utils/sound';
 import BattleResultPanel from './BattleResultPanel.vue';
-import BetLedger, { type BetLedgerEntry } from './BetLedger.vue';
+import BetLedger from './BetLedger.vue';
 
 const props = defineProps<{
   state: any;
@@ -166,13 +166,14 @@ const othersView = computed<any[]>(() => {
 
 const lastResults = computed(() => props.state?.lastResults || null);
 
-// 我的下注流水：后端 myBetLog（每手 押注/加倍/输赢）转通用展示结构
-const myLedger = computed<BetLedgerEntry[]>(() =>
-  (props.state?.myBetLog || []).map((e: any) => ({
+// 投注明细（全员可见）：每手的押注/加倍与输赢，行高亮自己
+const betLedger = computed<any[]>(() =>
+  (props.state?.betLedger || []).map((e: any) => ({
+    userId: e.userId,
     round: e.round,
     bet: e.stake,
-    note: e.doubled ? '加倍' : '',
     delta: e.delta,
+    note: e.doubled ? '加倍' : '',
     tag: e.delta === null ? '' : outcomeText(e.outcome),
   }))
 );
@@ -336,13 +337,14 @@ onUnmounted(() => {
 
 .players-row {
   display: flex;
+  flex-wrap: wrap; /* 人数多时换行，竖屏也能看全所有玩家 */
   gap: 8px;
   overflow-x: auto;
   margin-bottom: 8px;
 }
 
 .p-cell {
-  flex: 1;
+  flex: 1 1 30%;
   min-width: 96px;
   background: rgba(255, 255, 255, 0.06);
   border-radius: 12px;

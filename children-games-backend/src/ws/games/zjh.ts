@@ -295,6 +295,7 @@ const doCompare = (room: Room, me: Member, target: Member): void => {
   const loser = win ? target : me;
   st.players.get(loser.userId)!.folded = true;
   const bus = getRoomBus();
+  // 比牌结果全员公布：双方牌面亮明（需求：看牌结果不能只有双方可见）
   bus.broadcast(room, {
     t: 'zjh_compare',
     from: me.userId,
@@ -302,7 +303,12 @@ const doCompare = (room: Room, me: Member, target: Member): void => {
     winner: winner.userId,
     loser: loser.userId,
     pot: st.pot,
+    cost,
     aliveCount: aliveSeats(room, st).length,
+    reveals: [
+      { userId: me.userId, nickname: me.nickname, cards: myCards.map(cardLabel), typeName: typeName(handRank(myCards)), result: win ? 'win' : 'lose' },
+      { userId: target.userId, nickname: target.nickname, cards: oppCards.map(cardLabel), typeName: typeName(handRank(oppCards)), result: win ? 'lose' : 'win' },
+    ],
   });
   bus.sendToUser(room, me.userId, {
     t: 'zjh_compare_cards',
@@ -676,7 +682,8 @@ export const zjhHandler: GameHandler<ZjhState> = {
       raiseSteps: RAISE_STEPS,
       stakeCap: STAKE_CAP,
       special235: st.config.special235,
-      myBetLog: st.betLog.get(viewer.userId) || [],
+      // 投注明细全员可见：每手的投入（底注/跟注/加注/比牌）与输赢
+      betLedger: [...st.betLog].flatMap(([uid, entries]) => entries.map((e) => ({ ...e, userId: uid }))),
       ended: st.ranking ? { ranking: st.ranking, reason: st.endReason } : null,
     };
   },

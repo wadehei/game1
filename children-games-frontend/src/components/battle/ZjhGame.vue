@@ -24,7 +24,7 @@
       </div>
 
       <!-- 我的下注流水（整局累计） -->
-      <BetLedger v-if="myLedger.length" :entries="myLedger" theme="purple" />
+      <BetLedger v-if="betLedger.length" :entries="betLedger" :members="members" :my-id="myId" theme="purple" />
 
       <!-- 亮牌区（摊牌） -->
       <div v-if="showdown" class="showdown">
@@ -44,6 +44,23 @@
             {{ o.folded ? '🚫 已弃' : o.allIn ? '💰 all-in' : o.seen ? '👀 已看' : '🙈 闷牌' }}
           </div>
           <div class="o-bet">投 {{ o.betTotal || 0 }}</div>
+        </div>
+      </div>
+
+      <!-- 比牌结果全员公布（动效面板，所有人可见双方牌面） -->
+      <div v-if="publicCompare" :key="publicCompare.seq" class="pub-cmp">
+        <div class="pc-title">🔍 验牌 · {{ nameOfUser(publicCompare.from) }} 向 {{ nameOfUser(publicCompare.to) }} 发起（{{ publicCompare.cost }} 分）</div>
+        <div v-for="r in publicCompare.reveals" :key="r.userId" class="pc-row" :class="{ win: r.result === 'win', lose: r.result === 'lose' }">
+          <span class="pc-name">{{ r.nickname }}</span>
+          <span
+            v-for="(c, i) in r.cards"
+            :key="i"
+            class="pcard sm pc-flip"
+            :class="{ red: isRed(c) }"
+            :style="{ animationDelay: `${0.15 + i * 0.14}s` }"
+          >{{ c }}</span>
+          <span class="pc-type">{{ r.typeName }}</span>
+          <span class="pc-flag">{{ r.result === 'win' ? '🏆 胜' : '✖ 弃' }}</span>
         </div>
       </div>
 
@@ -132,7 +149,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useUserStore } from '@/store/user';
 import { soundManager } from '@/utils/sound';
 import BattleResultPanel from './BattleResultPanel.vue';
-import BetLedger, { type BetLedgerEntry } from './BetLedger.vue';
+import BetLedger from './BetLedger.vue';
 
 const props = defineProps<{
   state: any;
@@ -181,14 +198,26 @@ watch(yanpai, (v) => {
   }, 2800);
 });
 
+// ── 比牌结果全员公布动效面板（5s 自动消失） ──
+const publicCompare = computed(() => (props.events.compare?.reveals ? props.events.compare : null));
+
+let pcTimer: ReturnType<typeof setTimeout> | null = null;
+watch(publicCompare, (v) => {
+  if (!v) return;
+  if (pcTimer) clearTimeout(pcTimer);
+  pcTimer = setTimeout(() => {
+    props.events.compare = null;
+  }, 5000);
+});
+
 const othersView = computed<any[]>(() => props.state?.others || []);
 
-// 我的下注流水：后端 myBetLog（每手 底注+跟注/加注/比牌 的投入与输赢）转通用展示结构
-const myLedger = computed<BetLedgerEntry[]>(() =>
-  (props.state?.myBetLog || []).map((e: any) => ({
+// 投注明细（全员可见）：每手的投入（底注+跟注/加注/比牌费）与输赢，行高亮自己
+const betLedger = computed<any[]>(() =>
+  (props.state?.betLedger || []).map((e: any) => ({
+    userId: e.userId,
     round: e.round,
     bet: e.betTotal,
-    note: '',
     delta: e.delta,
     tag: e.delta === null ? '' : e.ended === 'win' ? '赢' : e.ended === 'fold' ? '弃牌' : '开牌',
   }))
@@ -300,13 +329,14 @@ onUnmounted(() => {
 
 .others {
   display: flex;
+  flex-wrap: wrap; /* 人数多时换行，竖屏也能看全所有玩家 */
   gap: 8px;
   margin-bottom: 8px;
   overflow-x: auto;
 }
 
 .o-cell {
-  flex: 1;
+  flex: 1 1 30%;
   min-width: 88px;
   background: rgba(255, 255, 255, 0.06);
   border-radius: 10px;
@@ -445,6 +475,90 @@ onUnmounted(() => {
   color: #d9c8ee;
   margin-top: 6px;
   text-align: right;
+}
+
+/* ── 比牌结果全员公布（动效面板） ── */
+.pub-cmp {
+  background: rgba(0, 0, 0, 0.5);
+  border: 1.5px solid #ffe27a;
+  border-radius: 12px;
+  padding: 10px;
+  margin-bottom: 8px;
+  animation: pub-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+}
+
+.pc-title {
+  font-size: 13px;
+  font-weight: bold;
+  color: #ffe27a;
+  margin-bottom: 6px;
+}
+
+.pc-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 6px;
+  border-radius: 8px;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.pc-row.win {
+  background: rgba(123, 237, 159, 0.14);
+  outline: 1px solid rgba(123, 237, 159, 0.6);
+}
+
+.pc-row.lose {
+  opacity: 0.75;
+}
+
+.pc-name {
+  min-width: 52px;
+  font-weight: bold;
+}
+
+.pc-type {
+  color: #ffe27a;
+  font-weight: bold;
+  margin-left: 4px;
+}
+
+.pc-flag {
+  margin-left: auto;
+  font-weight: bold;
+}
+
+.pc-row.win .pc-flag {
+  color: #7bed9f;
+}
+
+.pc-row.lose .pc-flag {
+  color: #ff9f9f;
+}
+
+.pc-flip {
+  animation: pc-flip-in 0.4s ease backwards;
+}
+
+@keyframes pub-in {
+  from {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes pc-flip-in {
+  from {
+    transform: rotateY(90deg);
+  }
+  to {
+    transform: rotateY(0);
+  }
 }
 
 .settle-bar {

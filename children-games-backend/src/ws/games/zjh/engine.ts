@@ -59,8 +59,9 @@ export const compareZjh = (a: Card[], b: Card[], special235: boolean): number =>
   const ra = handRank(a);
   const rb = handRank(b);
   if (special235) {
-    if (ra.special235 && rb.type === 6) return 1;
-    if (rb.special235 && ra.type === 6) return -1;
+    // 特殊 235（不同花 2-3-5）通吃：压过除自身外的所有牌型；双方都是 235 时按同点规则比花色
+    if (ra.special235 && !rb.special235) return 1;
+    if (rb.special235 && !ra.special235) return -1;
   }
   if (ra.type !== rb.type) return ra.type > rb.type ? 1 : -1;
   for (let i = 0; i < ra.keys.length; i += 1) {

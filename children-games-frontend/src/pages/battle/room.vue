@@ -715,14 +715,14 @@ onMounted(() => {
   });
   // ── 21点 ──
   const seatOfUser = (userId: number): number => members.value.find((m) => m.userId === userId)?.seat ?? -1;
-  /** 我的下注流水：按手取条目（无则建），delta=null 表示未结算 */
-  const myBetEntry = (round: number) => {
+  /** 投注明细（全员可见）：按 玩家+手 取条目（无则建），delta=null 表示未结算 */
+  const bjEntry = (userId: number, round: number) => {
     if (!game.value || typeof game.value !== 'object') return null;
-    const log: any[] = game.value.myBetLog || [];
-    let entry = log.find((e) => e.round === round && e.delta === null);
+    const log: any[] = game.value.betLedger || [];
+    let entry = log.find((e) => e.userId === userId && e.round === round && e.delta === null);
     if (!entry) {
-      entry = { round, stake: 0, doubled: false, delta: null, outcome: null };
-      game.value.myBetLog = [...log, entry];
+      entry = { userId, round, stake: 0, doubled: false, delta: null, outcome: null };
+      game.value.betLedger = [...log, entry];
     }
     return entry;
   };
@@ -785,20 +785,18 @@ onMounted(() => {
     if (m.action === 'hit' || m.action === 'double') {
       if (m.userId === myId.value) {
         game.value.myCards = [...(game.value.myCards || []), m.card];
-        if (m.action === 'double') {
-          game.value.myStake = m.stake;
-          const entry = myBetEntry(game.value.round);
-          if (entry) {
-            entry.stake = m.stake;
-            entry.doubled = true;
-          }
-        }
+        if (m.action === 'double') game.value.myStake = m.stake;
         game.value.myDone = true;
         game.value.myBusted = !!m.busted;
       }
-      // 全房间「我要加倍」动态弹框 + 语音通知（BlackjackGame 消费）
       if (m.action === 'double') {
+        // 全房间「我要加倍」播报 + 投注明细（所有玩家可见）
         gameEvents.doubled = { userId: m.userId, stake: m.stake, seq: Date.now() };
+        const entry = bjEntry(m.userId, game.value.round);
+        if (entry) {
+          entry.stake = m.stake;
+          entry.doubled = true;
+        }
       }
       const item = (gameEvents.handsView || []).find((x: any) => x.userId === m.userId);
       if (item && m.userId !== myId.value) {
@@ -818,10 +816,8 @@ onMounted(() => {
       return;
     }
     if (m.action === 'bet' && m.stake) {
-      if (m.userId === myId.value) {
-        const entry = myBetEntry(game.value.round);
-        if (entry) entry.stake = m.stake;
-      }
+      const entry = bjEntry(m.userId, game.value.round);
+      if (entry) entry.stake = m.stake;
       const item = (gameEvents.handsView || []).find((x: any) => x.userId === m.userId);
       if (item) item.stake = m.stake;
     }
@@ -833,11 +829,13 @@ onMounted(() => {
       game.value.bankerCards = m.bankerCards || [];
       game.value.bankerValue = m.bankerValue ?? game.value.bankerValue;
       game.value.phase = 'settle';
-      const mine = (m.results || []).find((r: any) => r.userId === myId.value);
-      const entry = (game.value.myBetLog || []).find((e: any) => e.round === m.round && e.delta === null);
-      if (mine && entry) {
-        entry.delta = mine.delta;
-        entry.outcome = mine.outcome;
+      // 投注明细全员回填（每手结算的所有玩家结果）
+      for (const r of m.results || []) {
+        const entry = (game.value.betLedger || []).find((e: any) => e.userId === r.userId && e.round === m.round && e.delta === null);
+        if (entry) {
+          entry.delta = r.delta;
+          entry.outcome = r.outcome;
+        }
       }
       game.value.nextDeadline = m.nextDeadline || 0;
     }
@@ -888,10 +886,15 @@ onMounted(() => {
         gameEvents.settle = null;
         gameEvents.compareCards = null;
         resetZjhOthers();
-        // 我付了底注 → 新增本手流水（entrants=付底注入局的玩家）
-        const log: any[] = game.value.myBetLog || [];
-        if (Array.isArray(m.entrants) && m.entrants.includes(myId.value) && !log.some((e) => e.round === m.round)) {
-          game.value.myBetLog = [...log, { round: m.round, betTotal: 10, delta: null, ended: null }];
+        // 付底注入局的玩家（全员）→ 新增本手投注明细
+        if (Array.isArray(m.entrants)) {
+          const log: any[] = game.value.betLedger || [];
+          for (const uid of m.entrants) {
+            if (!log.some((e) => e.userId === uid && e.round === m.round)) {
+              log.push({ userId: uid, round: m.round, betTotal: 10, delta: null, ended: null });
+            }
+          }
+          game.value.betLedger = [...log];
         }
       }
     }
@@ -919,11 +922,9 @@ onMounted(() => {
         o.betTotal = (o.betTotal || 0) + (m.cost || 0);
         if (m.allIn) o.allIn = true;
       }
-      if (m.userId === myId.value) {
-        const log: any[] = game.value.myBetLog || [];
-        const entry = log.find((e) => e.round === game.value.round && e.delta === null);
-        if (entry) entry.betTotal += m.cost || 0;
-      }
+      // 投注明细（所有玩家）：跟注/加注花费累加
+      const entry = (game.value.betLedger || []).find((e: any) => e.userId === m.userId && e.round === game.value.round && e.delta === null);
+      if (entry) entry.betTotal += m.cost || 0;
       return;
     }
     if (m.action === 'fold' || m.action === 'timeout_fold') {
@@ -944,14 +945,14 @@ onMounted(() => {
       game.value.pot = m.pot ?? game.value.pot;
       game.value.aliveCount = m.aliveCount ?? game.value.aliveCount;
       if (m.loser === myId.value) game.value.myFolded = true;
-      // 发起比牌者的花费 = 池子增量（比牌广播不带 cost）
-      if (m.from === myId.value) {
-        const log: any[] = game.value.myBetLog || [];
-        const entry = log.find((e) => e.round === game.value.round && e.delta === null);
-        if (entry) entry.betTotal += Math.max(0, (m.pot || 0) - prevPot);
-      }
+      // 发起比牌者的花费入明细（新广播直接带 cost；旧格式用池子增量兜底）
+      const cmpLog: any[] = game.value.betLedger || [];
+      const cmpEntry = cmpLog.find((e) => e.userId === m.from && e.round === game.value.round && e.delta === null);
+      if (cmpEntry) cmpEntry.betTotal += typeof m.cost === 'number' ? m.cost : Math.max(0, (m.pot || 0) - prevPot);
       // 全房间「我要验牌」动态弹框 + 语音通知（ZjhGame 消费）
       gameEvents.yanpai = { from: m.from, to: m.to, seq: Date.now() };
+      // 比牌结果全员公布（含双方牌面，ZjhGame 渲染动效面板）
+      gameEvents.compare = { ...m, seq: Date.now() };
     }
   });
   ws.on('zjh_compare_cards', (m: any) => {
@@ -970,12 +971,15 @@ onMounted(() => {
       if (Array.isArray(m.deltas)) {
         game.value.chips = m.deltas.map((d: any) => ({ userId: d.userId, chips: d.chips }));
         const meDelta = m.deltas.find((d: any) => d.userId === myId.value);
-        if (meDelta) {
-          game.value.myChips = meDelta.chips;
-          const entry = (game.value.myBetLog || []).find((e: any) => e.round === m.round && e.delta === null);
+        if (meDelta) game.value.myChips = meDelta.chips;
+        // 投注明细全员回填：每人的本手净输赢与结束方式
+        const othersNow: any[] = game.value.others || [];
+        const isFolded = (uid: number) => (uid === myId.value ? game.value.myFolded : !!othersNow.find((x: any) => x.userId === uid)?.folded);
+        for (const d of m.deltas) {
+          const entry = (game.value.betLedger || []).find((e: any) => e.userId === d.userId && e.round === m.round && e.delta === null);
           if (entry) {
-            entry.delta = meDelta.delta;
-            entry.ended = m.winner === myId.value ? 'win' : game.value.myFolded ? 'fold' : 'showdown';
+            entry.delta = d.delta;
+            entry.ended = m.winner === d.userId ? 'win' : isFolded(d.userId) ? 'fold' : 'showdown';
           }
         }
       }
@@ -1223,6 +1227,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative; /* 表情/快捷语浮层弹框的定位锚点 */
 }
 
 .chat-list {
@@ -1324,8 +1329,17 @@ onMounted(() => {
 }
 
 .panel {
-  border-top: 1px dashed #e8ecf1;
+  /* 浮层弹框：悬浮在输入栏上方，不再把聊天区/页面撑高 */
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 58px;
+  background: #fff;
+  border: 1px solid #e8ecf1;
+  border-radius: 12px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
   padding: 10px;
+  z-index: 30;
 }
 
 .panel-grid {

@@ -27,10 +27,22 @@ export const useRecorder = () => {
   /** 开始录音；失败（无麦克风权限等）返回 false */
   const start = async (): Promise<boolean> => {
     error.value = '';
+    // HTTP 非安全上下文：mediaDevices 整个不可用（生产 http://IP:80 / 域名:90 都属此类）
+    if (!window.isSecureContext || !navigator.mediaDevices) {
+      error.value = '当前是 HTTP 页面，浏览器禁止使用麦克风。语音需要 HTTPS 环境（或在办备案后启用 https / 本机调试）';
+      return false;
+    }
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch {
-      error.value = '无法访问麦克风，请检查浏览器权限';
+    } catch (e) {
+      const err = e as DOMException;
+      if (err?.name === 'NotAllowedError' || err?.name === 'SecurityError' || err?.name === 'PermissionDeniedError') {
+        error.value = '麦克风权限被拒绝：点浏览器地址栏左侧的权限图标，允许麦克风后再试';
+      } else if (err?.name === 'NotFoundError' || err?.name === 'DevicesNotFoundError') {
+        error.value = '没有检测到麦克风设备';
+      } else {
+        error.value = `无法访问麦克风（${err?.name || '未知错误'}）`;
+      }
       return false;
     }
     chunks = [];

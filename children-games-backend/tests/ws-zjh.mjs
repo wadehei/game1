@@ -83,7 +83,13 @@ check('A23 算最小顺', typeName(handRank([c(14, '♠'), c(3, '♥'), c(2, '�
 check('A23 输给 QKA', compareZjh([c(14, '♠'), c(3, '♥'), c(2, '♦')], [c(12, '♠'), c(13, '♥'), c(14, '♦')], false) === -1);
 check('特殊235 反杀豹子（开）', compareZjh([c(2, '♠'), c(3, '♥'), c(5, '♦')], [c(9, '♠'), c(9, '♥'), c(9, '♦')], true) === 1);
 check('特殊235 关闭时输给豹子', compareZjh([c(2, '♠'), c(3, '♥'), c(5, '♦')], [c(9, '♠'), c(9, '♥'), c(9, '♦')], false) === -1);
-check('特殊235 不反杀金花', compareZjh([c(2, '♠'), c(3, '♥'), c(5, '♦')], [c(2, '♠'), c(3, '♠'), c(5, '♠')], true) === -1);
+check('特殊235 通吃：反杀金花', compareZjh([c(2, '♠'), c(3, '♥'), c(5, '♦')], [c(2, '♠'), c(3, '♠'), c(5, '♠')], true) === 1);
+check('特殊235 通吃：反杀顺金', compareZjh([c(2, '♠'), c(3, '♥'), c(5, '♦')], [c(9, '♠'), c(10, '♠'), c(11, '♠')], true) === 1);
+check('双方都是235 比花色决胜', (() => {
+  const a = compareZjh([c(2, '♥'), c(3, '♦'), c(5, '♣')], [c(2, '♠'), c(3, '♥'), c(5, '♦')], true) === 1;
+  const b = compareZjh([c(2, '♥'), c(3, '♦'), c(5, '♣')], [c(2, '♠'), c(3, '♥'), c(5, '♦')], true) === -1;
+  return !a && b; // 对方最大花色♠>♥，对方胜
+})());
 check('完全同点比花色决胜', compareZjh([c(13, '♦'), c(9, '♣'), c(2, '♥')], [c(13, '♠'), c(9, '♣'), c(2, '♥')], false) === -1);
 
 const SEAT_OF = { A: 0, P: 0, B: 1, Q: 1, C: 2, R: 2 };
@@ -230,9 +236,17 @@ for (let i = 0; i < 80 && !compared; i += 1) {
 const cmp = await P.waitNew('zjh_compare', 0, 15000);
 check('比牌广播含双方与胜负', typeof cmp.winner === 'number' && typeof cmp.loser === 'number' && cmp.loser !== cmp.winner);
 check('看牌玩家比牌费=4×单注（闷牌的2倍）', cmp.pot - preComparePot === preCompareStake * 4);
+check('比牌广播带费用 cost', typeof cmp.cost === 'number' && cmp.cost === preCompareStake * 4);
 const pCards = await P.waitNew('zjh_compare_cards', 0);
 check('发起者收到对方牌面', Array.isArray(pCards.oppCards) && pCards.oppCards.length === 3);
-check('旁观者收不到牌面', !JSON.stringify(Q.all('zjh_compare')).includes('"cards"') && !JSON.stringify(R.all('zjh_compare')).includes('"cards"'));
+// 需求：比牌结果向全员公布（旁观者也收到双方牌面与牌型）
+const qCmp = Q.all('zjh_compare').at(-1);
+const rCmp = R.all('zjh_compare').at(-1);
+check(
+  '比牌结果全员公布（旁观者收到双方牌面）',
+  Array.isArray(qCmp?.reveals) && qCmp.reveals.length === 2 && qCmp.reveals.every((r) => r.cards?.length === 3 && r.typeName) &&
+  Array.isArray(rCmp?.reveals) && rCmp.reveals.length === 2
+);
 
 // ── 挂机保护：timeoutFold=false 时连续 3 次超时自动跟注 → 强制弃牌 ──
 const createdIdle = await http('POST', '/api/room', { gameType: 'zjh', config: { roundLimit: 1, career: false, timeoutFold: false } }, tokens[0]);

@@ -338,7 +338,8 @@ class SoundManager {
     });
   }
 
-  /** 法语口音播报 — 用 fr-FR 语音念中文（「法国人说中文」热梗效果）；无法语语音时退回默认音色 */
+  /** 法语口音播报 — 设备装有 fr-FR 语音时念出「法国人说中文」的热梗效果；
+   *  无法语语音时不强制 lang（否则部分浏览器直接静音），退回默认音色保证一定有声 */
   speakFrench(text: string): void {
     if (this.muted) return;
     try {
@@ -346,10 +347,12 @@ class SoundManager {
       if (!synth) return;
       const u = new SpeechSynthesisUtterance(text);
       const fr = synth.getVoices().find((v) => v.lang?.toLowerCase().startsWith('fr'));
-      if (fr) u.voice = fr;
-      u.lang = 'fr-FR';
-      u.rate = 0.85;
-      u.pitch = 1.05;
+      if (fr) {
+        u.voice = fr;
+        u.lang = 'fr-FR';
+        u.rate = 0.85;
+        u.pitch = 1.05;
+      }
       u.volume = this.getVolume();
       synth.speak(u);
     } catch {

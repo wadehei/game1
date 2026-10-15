@@ -610,7 +610,8 @@ export const blackjackHandler: GameHandler<BJState> = {
       betOptions: BET_OPTIONS,
       canPassBank: st.config.bankerMode === 'keep' && st.handPhase === 'betting' && isBanker,
       lastResults: st.lastResults,
-      myBetLog: st.betLog.get(viewer.userId) || [],
+      // 投注明细全员可见：每手的押注（含加倍）与输赢
+      betLedger: [...st.betLog].flatMap(([uid, entries]) => entries.map((e) => ({ ...e, userId: uid }))),
       ended: st.ranking ? { ranking: st.ranking, reason: st.endReason } : null,
     };
   },
