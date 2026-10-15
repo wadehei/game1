@@ -114,6 +114,10 @@ const dealCards = (room: Room): void => {
   const st = room.game as BJState;
   if (st.handPhase !== 'betting') return; // 防重入（超时与全员下完竞态）
   clearTimer(st);
+  // 测试钩子：BLACKJACK_RIGGED=banker 时庄家固定 Blackjack（市面规则：庄家 BJ 立即开牌）
+  if (process.env.BLACKJACK_RIGGED === 'banker') {
+    st.banker.cards = [{ suit: '♠', rank: 1 }, { suit: '♥', rank: 13 }];
+  }
   st.handPhase = 'acting';
   // 闲家各 2 张明牌，庄家 1 明 1 暗
   const bus = getRoomBus();
@@ -126,8 +130,14 @@ const dealCards = (room: Room): void => {
   };
   const actives = activePlayers(room, st);
   for (const m of actives) dealCardsTo(m.userId);
-  st.banker.cards = [st.deck.pop()!];
-  st.banker.cards.push(st.deck.pop()!);
+  if (process.env.BLACKJACK_RIGGED !== 'banker') {
+    st.banker.cards = [st.deck.pop()!];
+    st.banker.cards.push(st.deck.pop()!);
+  }
+  // 庄家 Blackjack：立即亮牌开牌，闲家不再行动（玩家 BJ 平局退注，其余输原注）
+  if (isBlackjack(st.banker.cards)) {
+    for (const [, h] of st.hands) h.done = true;
+  }
 
   const publicHands = actives.map((m) => {
     const h = st.hands.get(m.userId)!;

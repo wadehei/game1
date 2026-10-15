@@ -28,9 +28,16 @@ export function useGameSounds() {
     }
   };
 
-  const play = (name: 'click' | 'success' | 'fail' | 'match' | 'pop' | 'shoot' | 'explosion' | 'levelUp' | 'bounce' | 'collect') => {
+  const play = (
+    name: 'click' | 'success' | 'fail' | 'match' | 'pop' | 'shoot' | 'explosion' | 'levelUp' | 'bounce' | 'collect',
+    options?: { pitch?: number }
+  ) => {
     if (isMuted.value) return;
     soundManager.resume();
+    if (name === 'match' && options?.pitch && options.pitch !== 1) {
+      soundManager.playMatch(options.pitch);
+      return;
+    }
     const method = `play${name.charAt(0).toUpperCase() + name.slice(1)}` as keyof typeof soundManager;
     (soundManager[method] as () => void)();
   };

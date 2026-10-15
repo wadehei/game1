@@ -9,6 +9,7 @@ import { logError } from '../utils/logger';
 import { User } from '../models';
 import {
   addChat,
+  allRooms,
   createRoom,
   disbandRoom,
   getRoom,
@@ -20,12 +21,13 @@ import {
   sweepIdle,
   TOTAL_MEMBER_LIMIT,
   clearRoomTimers,
+  addTimer,
   type ChatMsg,
   type Member,
 } from './roomManager';
 import { getHandler, gameHandlers } from './games/registry';
 import { setRoomBus } from './bus';
-import { settleRankingChips, applyChipDelta, CHIPS_JOIN_MIN, CHIPS_JOIN_REFILL } from '../services/battleChips';
+import { settleRankingChips, applyChipDelta, grantDailyRelief, CHIPS_JOIN_MIN } from '../services/battleChips';
 
 /** 牌类（blackjack/zjh）每手自行实时结算积分，game_over 时不再发排名分 */
 const CHIP_TABLE_GAMES = new Set(['blackjack', 'zjh']);
@@ -118,6 +120,9 @@ const startGame = (room: Room): void => {
   broadcast(room, { t: 'game_start', phase: room.phase });
 };
 
+/** 再来一局表决超时自动重开（未表态视为同意，市面标配防一人卡全场）；0=关闭 */
+const REMATCH_AUTO_MS = Math.max(0, Number(process.env.REMATCH_AUTO_SECONDS ?? 30)) * 1000;
+
 const endGame = (room: Room, winnerSeat: number, reason: string): void => {
   room.phase = 'ended';
   clearRoomTimers(room);
@@ -184,11 +189,10 @@ export const initWsServer = (server: Server): void => {
       ws.close(4002, '角色不存在');
       return;
     }
-    // 积分救济线：进房时低于 100 自动补足到 1000（防止破产后永远无法开局）
+    // 积分救济线：低于 100 触发每日救济（补足到 1000，同一天只补一次，防无限刷分）
     let chips = user.battleChips ?? 1000;
     if (chips < CHIPS_JOIN_MIN) {
-      chips = CHIPS_JOIN_REFILL;
-      void applyChipDelta(userId, CHIPS_JOIN_REFILL - (user.battleChips || 0));
+      chips = await grantDailyRelief(userId);
     }
     clients.set(ws, { userId, roomId: null });
     send(ws, { t: 'auth_ok', userId, chips });
@@ -206,6 +210,12 @@ export const initWsServer = (server: Server): void => {
       if (!room.members.has(userId) && room.members.size >= TOTAL_MEMBER_LIMIT) {
         send(ws, { t: 'error', message: `房间人满（最多 ${TOTAL_MEMBER_LIMIT} 人）` });
         return;
+      }
+      // 同一账号同时只在一桌：进新房间前自动退出其他房间（对局中按退出规则处置）
+      for (const other of allRooms()) {
+        if (other.id !== room.id && other.members.has(userId)) {
+          handleLeave(other, userId);
+        }
       }
       let member: Member;
       try {
@@ -263,8 +273,18 @@ export const initWsServer = (server: Server): void => {
           const players = [...room.members.values()].filter((m) => m.seat >= 0);
           if (players.length >= 2 && players.every((m) => m.rematch)) {
             restartGame(room);
-          } else {
-            broadcast(room, { t: 'rematch_vote', userIds: players.filter((m) => m.rematch).map((m) => m.userId) });
+            broadcastSnapshot(room); // 换座后的座位信息要随快照下发
+            break;
+          }
+          broadcast(room, { t: 'rematch_vote', userIds: players.filter((m) => m.rematch).map((m) => m.userId) });
+          // 首次表决起倒计时，到点自动重开（phase 守卫保证多人投票时只有一次生效）
+          if (REMATCH_AUTO_MS > 0) {
+            broadcast(room, { t: 'rematch_deadline', deadline: Date.now() + REMATCH_AUTO_MS });
+            const autoTimer = setTimeout(() => {
+              const r = getRoom(room.id);
+              if (r && r.phase === 'ended') restartGame(r);
+            }, REMATCH_AUTO_MS);
+            addTimer(room, autoTimer);
           }
           broadcastSnapshot(room);
           break;

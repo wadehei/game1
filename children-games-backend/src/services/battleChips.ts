@@ -5,8 +5,25 @@ import { User, BattleRecord } from '../models';
 
 export const CHIP_RANK_REWARDS = [30, 15, 5]; // 第1/2/3名奖励，第3名之后与第3名相同
 export const CHIP_DRAW_REWARD = 10;
-export const CHIPS_JOIN_MIN = 100; // 进房救济线：低于此值自动补足
+export const CHIPS_JOIN_MIN = 100; // 进房救济线：低于此值触发救济检查
 export const CHIPS_JOIN_REFILL = 1000;
+
+const localYmd = (): string => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+/** 每日救济：积分低于救济线时补足到 1000，同一自然日只补一次（市面救济金模式，防无限刷分） */
+export const grantDailyRelief = async (userId: number): Promise<number> => {
+  const today = localYmd();
+  const user = await User.findByPk(userId, { attributes: ['chipsReliefDate'] });
+  if (user?.chipsReliefDate === today) {
+    const cur = await User.findByPk(userId, { attributes: ['battleChips'] });
+    return cur?.battleChips ?? 0;
+  }
+  await User.update({ chipsReliefDate: today, battleChips: CHIPS_JOIN_REFILL }, { where: { id: userId } });
+  return CHIPS_JOIN_REFILL;
+};
 
 /** 竞技游戏（非牌类）的排名分发放：wsServer.game_over 拦截统一调用 */
 export const settleRankingChips = async (

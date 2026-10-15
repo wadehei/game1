@@ -129,6 +129,10 @@ check('重连者快照含全量笔迹', Array.isArray(snapStrokes) && snapStroke
 C = C2;
 
 // 猜词：B 先猜错（可见），再猜对
+// 市面画猜标配：时间过半揭示首字（后端 DRAW_SECONDS=8 时 4s 广播）
+const hint = await A.waitNew('draw_hint', 0, 20000);
+check('时间过半揭示首字', typeof hint.char === 'string' && hint.char.length === 1);
+
 B.send({ t: 'guess', content: '随便猜的错答案' });
 await sleep(200);
 const wrongChat = B.all('chat').at(-1);

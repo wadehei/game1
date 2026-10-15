@@ -14,11 +14,13 @@ interface UserAttributes {
   pinHash: string | null;
   /** 好友对战积分（账号资产，初始 1000，随账号永久跟随） */
   battleChips: number;
+  /** 最近一次积分救济的日期（YYYY-M-D），同日只救济一次 */
+  chipsReliefDate: string | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
-interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'totalStars' | 'level' | 'achievements' | 'pinHash' | 'avatarHistory' | 'battleChips'> {}
+interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'totalStars' | 'level' | 'achievements' | 'pinHash' | 'avatarHistory' | 'battleChips' | 'chipsReliefDate'> {}
 
 export class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
   public id!: number;
@@ -31,6 +33,7 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
   public achievements!: string;
   public pinHash!: string | null;
   public battleChips!: number;
+  public chipsReliefDate!: string | null;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -95,6 +98,12 @@ User.init(
       allowNull: false,
       defaultValue: 1000,
       comment: '好友对战积分（初始1000，随账号永久跟随）',
+    },
+    chipsReliefDate: {
+      type: DataTypes.STRING(10),
+      allowNull: true,
+      defaultValue: null,
+      comment: '最近积分救济日期（每日一次）',
     },
   },
   {

@@ -62,6 +62,10 @@ export const payoutMultiplier = (playerCards: Card[], bankerCards: Card[], natur
   if (isBusted(playerCards)) return 0;
   const p = handValue(playerCards).total;
   const b = handValue(bankerCards).total;
+  // 庄家 Blackjack（两张 21）：市面规则——玩家 Blackjack 平局退注，其余输原注（handler 会在发牌后立即开牌）
+  if (bankerCards.length === 2 && b === 21 && !isBusted(playerCards)) {
+    return natural ? 1 : 0;
+  }
   if (isBusted(bankerCards)) return natural ? 2.5 : 2; // 庄家爆牌：未爆闲家全赢（natural 仍按赔率）
   if (natural && p === 21) return 2.5;
   if (p > b) return 2;

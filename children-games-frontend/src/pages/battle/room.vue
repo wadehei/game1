@@ -69,6 +69,7 @@
         <button class="act ready" :disabled="myRematch" @click="send({ t: 'rematch' })">
           {{ myRematch ? '已表决，等对方…' : '再来一局' }}
         </button>
+        <span v-if="rematchCountdown > 0" class="rematch-timer">⏱ {{ rematchCountdown }}s 后自动重开</span>
       </template>
     </div>
 
@@ -244,8 +245,16 @@ const gameEvents = reactive<Record<string, any>>({
   showdown: null as any,
   settle: null as any,
   compareCards: null as any,
+  hint: null as any,
 });
 const lastWsError = ref('');
+const rematchDeadlineAt = ref(0);
+const nowTick = ref(0);
+const rematchCountdown = computed(() => {
+  if (!rematchDeadlineAt.value || phase.value !== 'ended') return 0;
+  return Math.max(0, Math.ceil((rematchDeadlineAt.value - nowTick.value) / 1000));
+});
+setInterval(() => (nowTick.value = Date.now()), 500);
 const myRematch = computed(() => rematchVotes.value.includes(myId.value));
 const players = computed(() => members.value.filter((m) => m.seat >= 0));
 // 终局数据：优先实时 final 事件，兜底快照里的 ended 摘要（刷新/重连后事件已丢）
@@ -255,6 +264,10 @@ const memberState = (m: { userId: number; seat: number; ready: boolean; online: 
   if (!m.online) return '离线';
   if (m.seat < 0) return '观战';
   if (phase.value === 'waiting') return m.ready ? '已准备' : '未准备';
+  if (chipTableGames.includes(gameType.value) && phase.value === 'playing') {
+    const chips = (game.value.chips || []).find((c: any) => c.userId === m.userId)?.chips;
+    if (chips !== undefined && chips <= 0) return '破产观战中';
+  }
   if (gameType.value === 'spy') {
     if (phase.value === 'ended') {
       const spies: number[] = finalData.value?.spyUserIds || [];
@@ -577,6 +590,7 @@ onMounted(() => {
     gameEvents.round = { ...m, ts: Date.now() };
     gameEvents.stroke = null;
     gameEvents.final = null;
+    gameEvents.hint = null;
     gameEvents.guessResult = []; // 新回合重置猜对名单
     // 同步回合状态到 game（DrawGame 模板按 state.phase 切换选词/作画）
     if (game.value && typeof game.value === 'object') {
@@ -610,6 +624,9 @@ onMounted(() => {
   ws.on('draw_word', (m: any) => {
     // 画家的词（私发）：同步到 state 供词牌显示
     if (game.value && typeof game.value === 'object') game.value.word = m.word;
+  });
+  ws.on('draw_hint', (m: any) => {
+    gameEvents.hint = m; // 时间过半揭示首字（市面画猜标配）
   });
   ws.on('draw_stroke', (m: any) => {
     gameEvents.stroke = m;
@@ -913,6 +930,9 @@ onMounted(() => {
   ws.on('rematch_vote', (m: any) => {
     rematchVotes.value = m.userIds || [];
   });
+  ws.on('rematch_deadline', (m: any) => {
+    rematchDeadlineAt.value = Number(m.deadline) || 0;
+  });
   ws.on('chat', (m: any) => {
     chatList.value.push(m);
     if (chatList.value.length > 100) chatList.value.shift();
@@ -1125,6 +1145,12 @@ onMounted(() => {
 
 .act:disabled {
   opacity: 0.5;
+}
+
+.rematch-timer {
+  font-size: 12px;
+  color: #e67e22;
+  align-self: center;
 }
 
 /* 聊天 */

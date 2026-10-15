@@ -7,7 +7,7 @@ import type { ActionResult, GameHandler } from './types';
 import { getRoomBus } from '../bus';
 
 const PICK_SECONDS = 10;
-const DRAW_SECONDS = 90;
+const DRAW_SECONDS = Math.max(10, Number(process.env.DRAW_SECONDS) || 90);
 const STROKE_INTERVAL_MS = 100; // 10Hz 节流
 const MAX_STROKES = 500;
 
@@ -158,6 +158,16 @@ const beginDrawing = (room: Room, word: string): void => {
   }, DRAW_SECONDS * 1000);
   st.roundTimer = timer;
   addTimer(room, timer);
+
+  // 市面画猜标配：时间过半自动揭示第一个字，帮猜词方破冰
+  const hintTimer = setTimeout(() => {
+    const r = getRoom(room.id);
+    const s2 = r?.game as DrawState | undefined;
+    if (r && s2 && s2.phase === 'drawing' && s2.round === st.round && s2.word) {
+      getRoomBus().broadcast(r, { t: 'draw_hint', char: s2.word[0] });
+    }
+  }, DRAW_SECONDS * 500);
+  addTimer(room, hintTimer);
 };
 
 export const drawHandler: GameHandler<DrawState> = {

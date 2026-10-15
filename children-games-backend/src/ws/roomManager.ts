@@ -60,6 +60,8 @@ const rooms = new Map<string, Room>();
 
 export const getRoom = (id: string): Room | undefined => rooms.get(id);
 
+export const allRooms = (): Iterable<Room> => rooms.values();
+
 export const roomCount = (): number => rooms.size;
 
 export const createRoom = (
@@ -104,11 +106,14 @@ export const joinRoom = (
   }
   const taken = new Set([...room.members.values()].map((m) => m.seat));
   const maxSeats = getHandler(room.gameType).maxPlayers;
+  // 对局/终局阶段加入一律观战（市面标准：本局已开始不下场，下一局可入座）
   let seat: Seat = -1;
-  for (let i = 0; i < maxSeats; i += 1) {
-    if (!taken.has(i as Seat)) {
-      seat = i as Seat;
-      break;
+  if (room.phase === 'waiting') {
+    for (let i = 0; i < maxSeats; i += 1) {
+      if (!taken.has(i as Seat)) {
+        seat = i as Seat;
+        break;
+      }
     }
   }
   const member: Member = {

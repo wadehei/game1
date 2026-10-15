@@ -13,6 +13,7 @@
         <span>
           🎨 {{ isDrawer ? '你来画！' : `${nameOf(state?.drawerSeat)} 正在画` }}
           · {{ state?.category }} · {{ state?.wordLen }} 个字
+          <template v-if="hintChar"> · 💡 首字「{{ hintChar }}」</template>
           <template v-if="state?.myGuessed"> · ✅ 你已猜对</template>
         </span>
         <span class="draw-timer" :class="{ hurry: remainSec <= 10 }">{{ remainSec }}s</span>
@@ -130,6 +131,8 @@ const guessedNames = computed(() => guessedIds.value.map(nameOfUser));
 
 // 终局：优先实时事件，兜底快照里的 ended 摘要（刷新/重连后事件已丢）
 const final = computed<any | null>(() => props.events.final || props.state?.ended || null);
+// 时间过半揭示的首字（画家不需要）
+const hintChar = computed(() => (isDrawer.value ? '' : props.events.hint?.char || ''));
 // 候选词用本地 ref 保存：draw_candidates 私发事件早于 game_start 到达，
 // 而 game_start 会把 events 全部清空，直接读 events.candidates 会丢
 const candidates = ref<any[]>([]);

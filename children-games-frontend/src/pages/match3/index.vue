@@ -14,8 +14,15 @@
     <!-- 状态栏 -->
     <div class="m3-status">
       <span class="m3-chip score">⭐ {{ score }} / {{ targetScore }}</span>
-      <span class="m3-chip moves">👣 剩余步数 {{ movesLeft }}</span>
+      <span class="m3-chip moves" :class="{ danger: movesLeft <= 5 }">👣 剩余步数 {{ movesLeft }}</span>
       <span v-if="combo > 1" class="m3-chip combo">🔥 连击 ×{{ combo }}</span>
+    </div>
+
+    <!-- 目标进度条 -->
+    <div class="m3-progress">
+      <div class="m3-progress-fill" :style="{ width: progressPct + '%' }">
+        <span v-if="progressPct >= 18" class="m3-progress-text">{{ progressPct }}%</span>
+      </div>
     </div>
 
     <!-- 棋盘 -->
@@ -135,6 +142,8 @@ const headerItems = computed(() => [
   { label: '分数', value: `${score.value}` },
   { label: '步数', value: `${movesLeft.value}` },
 ]);
+
+const progressPct = computed(() => Math.min(100, Math.floor((score.value / Math.max(1, targetScore.value)) * 100)));
 
 // ── 棋盘构建 ──
 const makeCell = (r: number, c: number, kind?: number): Cell => ({
@@ -344,6 +353,10 @@ const tapCell = async (r: number, c: number): Promise<void> => {
 
   busy.value = true;
   movesLeft.value -= 1; // 有效交换才扣步
+  if (movesLeft.value === 5) {
+    sounds.play('fail');
+    speak('只剩五步啦，抓紧时间！');
+  }
   await resolveBoard();
   if (!gameEnded) {
     busy.value = false;
@@ -486,6 +499,45 @@ onUnmounted(() => {
 @keyframes combo-pop {
   50% {
     transform: scale(1.25);
+  }
+}
+
+.m3-progress {
+  height: 12px;
+  background: rgba(107, 79, 42, 0.15);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 0 2px 10px;
+}
+
+.m3-progress-fill {
+  height: 100%;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #ffb347 0%, #ff5e62 100%);
+  transition: width 0.35s ease;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.m3-progress-text {
+  font-size: 9px;
+  color: #fff;
+  font-weight: bold;
+  padding-right: 6px;
+  white-space: nowrap;
+}
+
+.m3-chip.moves.danger {
+  background: #ffd9d9;
+  color: #c0392b;
+  animation: danger-blink 1s ease-in-out infinite;
+}
+
+@keyframes danger-blink {
+  50% {
+    transform: scale(1.08);
   }
 }
 

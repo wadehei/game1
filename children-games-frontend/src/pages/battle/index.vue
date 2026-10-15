@@ -73,6 +73,21 @@
           </div>
         </div>
         <div class="cfg-row">
+          <span class="cfg-label">庄家模式</span>
+          <div class="seg">
+            <button class="seg-btn" :class="{ on: zjhBankerMode === 'rotate' }" @click="zjhBankerMode = 'rotate'">轮庄</button>
+            <button class="seg-btn" :class="{ on: zjhBankerMode === 'winner' }" @click="zjhBankerMode = 'winner'">赢家坐庄</button>
+          </div>
+        </div>
+        <div class="cfg-row">
+          <span class="cfg-label">必闷轮数</span>
+          <div class="seg">
+            <button v-for="n in [0, 1, 2]" :key="n" class="seg-btn" :class="{ on: zjhMustBlind === n }" @click="zjhMustBlind = n">
+              {{ n === 0 ? '不限' : `前${n}轮` }}
+            </button>
+          </div>
+        </div>
+        <div class="cfg-row">
           <span class="cfg-label">局数</span>
           <input v-model.number="zjhRounds" class="cfg-num" type="number" min="2" max="30" />
           <span class="cfg-note">打满即结算（2~30 手）</span>
@@ -141,6 +156,8 @@ const bjRounds = ref(8);
 const zjhSpecial235 = ref(true);
 const zjhTimeoutFold = ref(true);
 const zjhRounds = ref(15);
+const zjhBankerMode = ref<'rotate' | 'winner'>('rotate');
+const zjhMustBlind = ref(0);
 const careerOn = ref(true);
 
 const buildConfig = (): Record<string, unknown> | undefined => {
@@ -148,7 +165,14 @@ const buildConfig = (): Record<string, unknown> | undefined => {
     return { bankerMode: bjBankerMode.value, roundLimit: clampRound(bjRounds.value, 2, 20, 8), career: careerOn.value };
   }
   if (selected.value === 'zjh') {
-    return { special235: zjhSpecial235.value, timeoutFold: zjhTimeoutFold.value, roundLimit: clampRound(zjhRounds.value, 2, 30, 15), career: careerOn.value };
+    return {
+      special235: zjhSpecial235.value,
+      timeoutFold: zjhTimeoutFold.value,
+      roundLimit: clampRound(zjhRounds.value, 2, 30, 15),
+      career: careerOn.value,
+      bankerMode: zjhBankerMode.value,
+      mustBlindRounds: zjhMustBlind.value,
+    };
   }
   return undefined;
 };

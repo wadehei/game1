@@ -22,6 +22,10 @@ export interface ZjhConfig {
   timeoutFold: boolean;
   roundLimit: number;
   career: boolean;
+  /** rotate=轮庄（默认） / winner=赢家坐庄（市面常见） */
+  bankerMode: 'rotate' | 'winner';
+  /** 前 N 轮强制闷牌（0=不限制） */
+  mustBlindRounds: number;
 }
 
 interface ZjhPlayer {
@@ -50,6 +54,7 @@ interface ZjhState {
   timer: NodeJS.Timeout | null;
   ranking: Array<{ userId: number; nickname: string; chips: number; delta: number; seat: number }> | null;
   endReason: string;
+  lastWinnerSeat: number | null; // winner 坐庄模式：本手赢家做下一手庄
   config: ZjhConfig;
 }
 
@@ -288,6 +293,7 @@ const winByFold = (room: Room, seat: number | undefined): void => {
     const winAmount = st.pot;
     st.chips.set(m.userId, (st.chips.get(m.userId) || 0) + winAmount);
     st.pot = 0;
+    st.lastWinnerSeat = seat;
     const deltas = [...st.chips]
       .filter(([uid]) => st.handStartChips.has(uid))
       .map(([uid, chips]) => ({
@@ -348,6 +354,7 @@ const settleHand = (
   const winAmount = st.pot;
   st.chips.set(winner.userId, (st.chips.get(winner.userId) || 0) + winAmount);
   st.pot = 0;
+  st.lastWinnerSeat = winner.seat;
   const wm = room.members.get(winner.userId);
   if (wm) wm.chips = st.chips.get(winner.userId) || 0;
 
@@ -392,8 +399,12 @@ const nextHand = (room: Room, expectRound: number): void => {
   }
   st.round += 1;
   const seats: number[] = funded.map((m) => m.seat);
-  const idx = seats.indexOf(st.dealerSeat);
-  st.dealerSeat = idx < 0 ? seats[0] : seats[(idx + 1) % seats.length];
+  if (st.config.bankerMode === 'winner' && st.lastWinnerSeat !== null && seats.includes(st.lastWinnerSeat)) {
+    st.dealerSeat = st.lastWinnerSeat; // 赢家坐庄
+  } else {
+    const idx = seats.indexOf(st.dealerSeat);
+    st.dealerSeat = idx < 0 ? seats[0] : seats[(idx + 1) % seats.length]; // 轮庄
+  }
   startHand(r);
 };
 
@@ -441,6 +452,10 @@ export const zjhHandler: GameHandler<ZjhState> = {
         ? Math.min(30, Math.max(2, Math.trunc(Number(config.roundLimit))))
         : DEFAULT_ROUNDS,
       career: config?.career !== false,
+      bankerMode: config?.bankerMode === 'winner' ? 'winner' : 'rotate',
+      mustBlindRounds: Number.isFinite(Number(config?.mustBlindRounds))
+        ? Math.min(3, Math.max(0, Math.trunc(Number(config.mustBlindRounds))))
+        : 0,
     };
   },
 
@@ -463,7 +478,8 @@ export const zjhHandler: GameHandler<ZjhState> = {
       timer: null,
       ranking: null,
       endReason: '',
-      config: { special235: true, timeoutFold: true, roundLimit: DEFAULT_ROUNDS, career: true },
+      lastWinnerSeat: null,
+      config: { special235: true, timeoutFold: true, roundLimit: DEFAULT_ROUNDS, career: true, bankerMode: 'rotate', mustBlindRounds: 0 },
     };
   },
 
@@ -516,6 +532,9 @@ export const zjhHandler: GameHandler<ZjhState> = {
 
     if (action === 'zjh_look') {
       if (p.seen) return { error: '你已经看过牌了' };
+      if (st.roundNo <= st.config.mustBlindRounds && st.config.mustBlindRounds > 0) {
+        return { error: `前 ${st.config.mustBlindRounds} 轮必须闷牌` };
+      }
       doLook(room, member);
       return {};
     }

@@ -144,10 +144,10 @@ class SoundManager {
   }
 
   /** 配对成功音 — C5+G5 和弦，200ms，sine */
-  playMatch(): void {
+  playMatch(pitch = 1): void {
     if (this.muted || !this.ctx) return;
     const t = this.ctx.currentTime;
-    const freqs = [523.25, 783.99]; // C5, G5
+    const freqs = [523.25 * pitch, 783.99 * pitch]; // C5, G5（pitch 随连锁倍增，音调递进）
 
     freqs.forEach((freq) => {
       const osc = this.ctx!.createOscillator();

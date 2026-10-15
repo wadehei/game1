@@ -76,6 +76,8 @@ check('A+A+9 = 21（软硬取优）', engine.handValue([{ suit: '♠', rank: 1 }
 check('爆牌判定', engine.isBusted([{ suit: '♠', rank: 10 }, { suit: '♥', rank: 10 }, { suit: '♦', rank: 5 }]));
 check('Blackjack = 两张21', engine.isBlackjack([{ suit: '♠', rank: 1 }, { suit: '♥', rank: 13 }]));
 check('庄家爆牌闲家赢 2 倍派彩', engine.payoutMultiplier([{ suit: '♠', rank: 5 }], [{ suit: '♥', rank: 10 }, { suit: '♦', rank: 10 }, { suit: '♣', rank: 9 }], false) === 2);
+check('两家 Blackjack 平局退注（市面规则）', engine.payoutMultiplier([{ suit: '♠', rank: 1 }, { suit: '♥', rank: 13 }], [{ suit: '♦', rank: 1 }, { suit: '♣', rank: 13 }], true) === 1);
+check('庄家 BJ 时普通玩家输原注', engine.payoutMultiplier([{ suit: '♠', rank: 9 }, { suit: '♥', rank: 9 }], [{ suit: '♦', rank: 1 }, { suit: '♣', rank: 13 }], false) === 0);
 
 // ── 主流程（3 人，rotate 模式，2 手，career 开） ──
 const tokens = [];
@@ -99,6 +101,12 @@ for (const c of [B, C, A]) c.send({ t: 'ready' });
 const start = await A.waitNew('blackjack_phase', 0);
 check('开局庄家=座位0（rotate 首庄）', start.bankerSeat === 0 && start.phase === 'betting' && start.round === 1);
 check('开局积分表（phase 事件）', Array.isArray(start.chips) && start.chips.length === 3);
+
+// 对局中加入一律观战（市面标准：本局已开始不下场）
+const D = new Client((await http('POST', '/api/user/login/family', { uid: 1 })).json.data.token, 'D');
+const jD = await D.connect(roomId);
+check('对局中加入自动转观战（seat=-1）', jD.yourSeat === -1);
+D.close();
 
 // 非法下注
 A.send({ t: 'blackjack_bet', amount: 20 });
@@ -158,6 +166,11 @@ const final = await A.waitNew('blackjack_final', 0, 20000);
 check('终局排名 3 人按积分降序', final.ranking.length === 3 && final.ranking[0].chips >= final.ranking[1].chips && final.ranking[1].chips >= final.ranking[2].chips);
 const over = await A.waitNew('game_over', 0);
 check('game_over 胜者=排名首位座位', over.winnerSeat === final.ranking[0].seat);
+
+// 再来一局表决倒计时（REMATCH_AUTO_SECONDS=3）：一人投票后到点自动重开
+B.send({ t: 'rematch' });
+const restartEvt = await A.waitNew('game_restart', 0, 15000);
+check('表决超时自动重开（未表态视为同意）', restartEvt.phase === 'playing');
 
 // 生涯记录（career:true 局）
 const career = await http('GET', '/api/user/battle/career', null, tokens[0]);
