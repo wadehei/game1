@@ -78,10 +78,16 @@ const startGame = (room: Room): void => {
     m.ready = false;
     m.rematch = false;
   }
-  const result = handler.start?.(room);
-  if (result?.broadcast) result.broadcast.forEach((msg) => busBroadcast(room, msg));
-  if (result?.toMember) result.toMember.forEach(({ userId, msg }) => busSendToUser(room, userId, msg));
-  if (result?.error) logError('ws', `${room.gameType} start 异常: ${result.error}`);
+  try {
+    const result = handler.start?.(room);
+    if (result?.broadcast) result.broadcast.forEach((msg) => busBroadcast(room, msg));
+    if (result?.toMember) result.toMember.forEach(({ userId, msg }) => busSendToUser(room, userId, msg));
+    if (result?.error) logError('ws', `${room.gameType} start 异常: ${result.error}`);
+  } catch (err) {
+    // 游戏开局异常不能静默吞掉（否则房间卡在无对局状态）
+    logError('ws', `${room.gameType} start 抛错: ${err instanceof Error ? err.stack : String(err)}`);
+    logError('server', `${room.gameType} start 抛错: ${err instanceof Error ? err.message : String(err)}`);
+  }
   broadcast(room, { t: 'game_start', phase: room.phase });
 };
 
@@ -262,7 +268,14 @@ export const initWsServer = (server: Server): void => {
         default: {
           // 游戏动作：路由到对应 handler
           const handler = getHandler(room.gameType);
-          const result = handler.onAction(room, me, msg.t, msg);
+          let result;
+          try {
+            result = handler.onAction(room, me, msg.t, msg);
+          } catch (err) {
+            logError('ws', `${room.gameType} action 抛错: ${err instanceof Error ? err.stack : String(err)}`);
+            send(ws, { t: 'error', message: '操作处理异常' });
+            return;
+          }
           if (result.error) {
             send(ws, { t: 'error', message: result.error });
             return;
