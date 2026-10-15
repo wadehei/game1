@@ -112,7 +112,8 @@ const drawnThisTurn = computed(() => {
 });
 const drawnLocal = ref(false);
 const myTurn = computed(() => props.phase === 'playing' && turnSeat.value === (props.members.find((m) => m.userId === myId.value)?.seat ?? -1));
-const final = computed(() => props.events.final);
+// 终局：优先实时事件，兜底快照里的 ended 摘要（刷新/重连后事件已丢）
+const final = computed<any | null>(() => props.events.final || props.state?.ended || null);
 const pickingColor = ref(false);
 const pendingCard = ref<Card | null>(null);
 

@@ -38,7 +38,7 @@
         {{ waitingText }}
       </template>
       <template v-else-if="phase === 'playing'">
-        {{ !mySeatHasPlayer ? '对局进行中，你正在观战' : gameType !== 'gomoku' ? '对局进行中' : game.turn === myColor ? '轮到你落子' : '等待对方落子…' }}
+        {{ playingStatusText }}
       </template>
       <template v-else>
         {{ overText }}
@@ -220,7 +220,6 @@ const ws = useRoomWs();
 
 const isHost = computed(() => hostUserId.value === myId.value);
 const myColor = computed(() => (mySeat.value === 0 ? BLACK : mySeat.value === 1 ? WHITE : 0));
-const mySeatHasPlayer = computed(() => mySeat.value >= 0);
 const myReady = computed(() => members.value.find((m) => m.userId === myId.value)?.ready || false);
 const rematchVotes = ref<number[]>([]);
 const gameEvents = reactive<Record<string, any>>({
@@ -241,16 +240,28 @@ const gameEvents = reactive<Record<string, any>>({
 });
 const lastWsError = ref('');
 const myRematch = computed(() => rematchVotes.value.includes(myId.value));
-const spectatorCount = computed(() => members.value.filter((m) => m.seat < 0).length);
 const players = computed(() => members.value.filter((m) => m.seat >= 0));
+// 终局数据：优先实时 final 事件，兜底快照里的 ended 摘要（刷新/重连后事件已丢）
+const finalData = computed<any | null>(() => gameEvents.final || game.value?.ended || null);
 
 const memberState = (m: { userId: number; seat: number; ready: boolean; online: boolean }): string => {
   if (!m.online) return '离线';
   if (m.seat < 0) return '观战';
   if (phase.value === 'waiting') return m.ready ? '已准备' : '未准备';
   if (gameType.value === 'spy') {
+    if (phase.value === 'ended') {
+      const spies: number[] = finalData.value?.spyUserIds || [];
+      return spies.includes(m.userId) ? '🕵️ 卧底' : '🙂 平民';
+    }
     const eliminated = (game.value.eliminated || []).some((e: any) => e.userId === m.userId);
     return eliminated ? '出局' : '存活';
+  }
+  if (phase.value === 'ended') {
+    if (gameType.value === 'gomoku') {
+      return game.value.winner === m.seat + 1 ? '获胜 🎉' : game.value.winner === 3 ? '平局' : '惜败';
+    }
+    const top = finalData.value?.ranking?.[0];
+    return top && top.userId === m.userId ? '🏆 第一名' : '已结束';
   }
   if (gameType.value === 'draw' && phase.value === 'playing') {
     return game.value.drawerSeat === m.seat ? '🎨 画中' : '猜词中';
@@ -258,9 +269,12 @@ const memberState = (m: { userId: number; seat: number; ready: boolean; online: 
   if (gameType.value === 'uno' && phase.value === 'playing') {
     return game.value.turnSeat === m.seat ? '出牌中' : '';
   }
-  if (gameType.value === 'gomoku') {
-    if (phase.value === 'playing') return m.seat === 0 ? '执黑' : '执白';
-    if (phase.value === 'ended') return game.value.winner === m.seat + 1 ? '获胜 🎉' : game.value.winner === 3 ? '平局' : '惜败';
+  if (gameType.value === 'quiz' && phase.value === 'playing') {
+    const s = (game.value.scores || []).find((x: any) => x.userId === m.userId);
+    return s ? `${s.total} 分` : '答题中';
+  }
+  if (gameType.value === 'gomoku' && phase.value === 'playing') {
+    return m.seat === 0 ? '执黑' : '执白';
   }
   return '';
 };
@@ -280,11 +294,47 @@ const waitingText = computed(() => {
 });
 
 const overText = computed(() => {
-  if (game.value.winner === 3) return '棋盘已满，平局！';
-  const winnerSeat = game.value.winner - 1;
-  const w = members.value.find((m) => m.seat === winnerSeat);
-  const who = w ? (w.userId === myId.value ? '你' : w.nickname) : '';
-  return `${who}获胜！（${overReason.value}）`;
+  if (gameType.value === 'gomoku') {
+    if (game.value.winner === 3) return overReason.value ? `平局！（${overReason.value}）` : '平局！';
+    const winnerSeat = game.value.winner - 1;
+    const w = members.value.find((m) => m.seat === winnerSeat);
+    const who = w ? (w.userId === myId.value ? '你' : w.nickname) : '';
+    const reason = overReason.value ? `（${overReason.value}）` : '';
+    return `${who}获胜！${reason}`;
+  }
+  if (gameType.value === 'spy') {
+    const f = finalData.value;
+    if (f?.winner === 'civilian') return '🎉 卧底全部出局，平民胜利！';
+    if (f?.winner === 'spy') return '🕵️ 卧底胜利，潜伏到了最后！';
+    return overReason.value ? `对局结束（${overReason.value}）` : '对局结束';
+  }
+  // 排名制游戏（你画我猜/答题对战/UNO）：取第一名
+  const top = finalData.value?.ranking?.[0];
+  if (top) {
+    const who = top.userId === myId.value ? '你' : top.nickname;
+    return gameType.value === 'draw' ? `🏆 ${who}以 ${top.total} 分夺冠！` : `🎉 ${who}获胜！`;
+  }
+  return overReason.value ? `对局结束（${overReason.value}）` : '对局结束';
+});
+
+const playingStatusText = computed(() => {
+  if (mySeat.value < 0) return '对局进行中，你正在观战';
+  const gt = gameType.value;
+  if (gt === 'gomoku') return game.value.turn === myColor.value ? '轮到你落子' : '等待对方落子…';
+  if (gt === 'uno') {
+    if (game.value.turnSeat === mySeat.value) return '轮到你出牌';
+    const name = members.value.find((m) => m.seat === game.value.turnSeat)?.nickname;
+    return name ? `等待 ${name} 出牌…` : '对局进行中';
+  }
+  if (gt === 'draw') {
+    if (game.value.drawerSeat === mySeat.value) return game.value.phase === 'picking' ? '轮到你选词' : '你来画，大家来猜';
+    return game.value.myGuessed ? '你已猜对，等其他小伙伴…' : '看画面猜词，在下方输入你的答案';
+  }
+  if (gt === 'spy') {
+    return game.value.phase === 'vote' ? '🗳️ 投票中，点击玩家名牌投票' : '🗣️ 描述阶段（线下口头描述）';
+  }
+  if (gt === 'quiz') return game.value.myAnswered ? '你已作答，等待出下一题…' : '答题进行中，拼手速！';
+  return '对局进行中';
 });
 
 const scrollChat = () => nextTick(() => chatListEl.value?.scrollTo({ top: chatListEl.value.scrollHeight }));
@@ -460,7 +510,10 @@ onMounted(() => {
   ws.on('game_over', (m: any) => {
     phase.value = 'ended';
     overReason.value = m.reason || '';
-    game.value.winner = m.winnerSeat === 0 ? 1 : m.winnerSeat === 1 ? 2 : 3;
+    // 五子棋用黑/白映射；其他游戏的结算文案走 final 事件（ranking/胜负方），不依赖 winner
+    if (gameType.value === 'gomoku') {
+      game.value.winner = m.winnerSeat === 0 ? 1 : m.winnerSeat === 1 ? 2 : 3;
+    }
     rematchVotes.value = [];
   });
   ws.on('quiz_question', (m: any) => {
@@ -478,10 +531,12 @@ onMounted(() => {
     gameEvents.round = { ...m, ts: Date.now() };
     gameEvents.stroke = null;
     gameEvents.final = null;
+    gameEvents.guessResult = []; // 新回合重置猜对名单
     // 同步回合状态到 game（DrawGame 模板按 state.phase 切换选词/作画）
     if (game.value && typeof game.value === 'object') {
       game.value.phase = m.phase;
       game.value.drawerSeat = m.drawerSeat;
+      game.value.isDrawer = mySeat.value >= 0 && m.drawerSeat === mySeat.value;
       game.value.round = m.round;
       game.value.totalRounds = m.totalRounds;
       game.value.deadline = m.deadline || 0;
@@ -490,11 +545,18 @@ onMounted(() => {
       game.value.word = null;
       game.value.strokes = [];
       game.value.myGuessed = false;
+      game.value.guessedUserIds = [];
     }
   });
   ws.on('guess_result', (m: any) => {
-    gameEvents.guessResult = m;
-    if (m.userId === myId.value && game.value && typeof game.value === 'object') game.value.myGuessed = true;
+    // 累积成本回合猜对名单（DrawGame 按数组渲染）
+    const list = Array.isArray(gameEvents.guessResult) ? gameEvents.guessResult : [];
+    list.push(m);
+    gameEvents.guessResult = list;
+    if (m.userId === myId.value && game.value && typeof game.value === 'object') {
+      game.value.myGuessed = true;
+      if (Array.isArray(game.value.guessedUserIds)) game.value.guessedUserIds.push(m.userId);
+    }
   });
   ws.on('draw_candidates', (m: any) => {
     gameEvents.candidates = m.words || [];
@@ -522,12 +584,26 @@ onMounted(() => {
   });
   ws.on('spy_phase', (m: any) => {
     gameEvents.phase = m;
+    // 阶段切换同步进 state（SpyGame 模板按 state.phase 切换描述/投票 UI，快照只在建房/大事件时发）
+    if (game.value && typeof game.value === 'object') {
+      game.value.phase = m.phase;
+      game.value.deadline = m.deadline || 0;
+      game.value.alive = m.alive || game.value.alive;
+      game.value.isRevote = !!m.isRevote;
+      game.value.revotePool = m.revotePool || null;
+      game.value.votedCount = 0;
+      game.value.total = (m.alive || []).length;
+    }
   });
   ws.on('spy_deal', (m: any) => {
     gameEvents.deal = m;
   });
   ws.on('spy_vote_update', (m: any) => {
     gameEvents.voteUpdate = m;
+    if (game.value && typeof game.value === 'object') {
+      game.value.votedCount = m.votedCount;
+      game.value.total = m.total;
+    }
   });
   ws.on('spy_vote_result', (m: any) => {
     gameEvents.voteResult = m;
@@ -565,14 +641,8 @@ onMounted(() => {
   ws.on('uno_hand', (m: any) => {
     gameEvents.uno_hand = m;
   });
-  ws.on('uno_turn', (m: any) => {
-    gameEvents.turn = { ...m, seq: Date.now() };
-  });
   ws.on('uno_drew', (m: any) => {
     gameEvents.drew = { ...m, seq: Date.now() };
-  });
-  ws.on('uno_played', (m: any) => {
-    gameEvents.uno_played = m;
   });
   ws.on('uno_final', (m: any) => {
     gameEvents.final = m;

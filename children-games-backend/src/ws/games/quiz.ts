@@ -162,11 +162,24 @@ export const quizHandler: GameHandler<QuizState> = {
 
   serializeFor(room: Room, viewer: Member): Record<string, unknown> {
     const st = room.game as QuizState;
+    // 终局摘要随快照走：刷新/重连后排名面板不依赖一次性事件
+    const ended =
+      room.phase === 'ended'
+        ? {
+            ranking: [...st.scores]
+              .map(([userId, total]) => {
+                const m = room.members.get(userId);
+                return { userId, nickname: m?.nickname || `角色${userId}`, total };
+              })
+              .sort((a, b) => b.total - a.total),
+          }
+        : null;
     if (st.index < 0 || st.index >= st.total) {
       return {
         total: st.total,
         index: st.index,
         scores: [...st.scores].map(([userId, total]) => ({ userId, total })),
+        ended,
       };
     }
     const q = st.questions[st.index];
@@ -179,6 +192,7 @@ export const quizHandler: GameHandler<QuizState> = {
       options: q.options,
       myAnswered: st.answers.get(st.index)?.has(viewer.userId) || false,
       scores: [...st.scores].map(([userId, total]) => ({ userId, total })),
+      ended,
     };
   },
 };

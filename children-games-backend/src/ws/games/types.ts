@@ -22,6 +22,7 @@ export interface GameHandler<S = any> {
   create(): S; // 初始游戏状态
   start?(room: Room): ActionResult | void; // ready→playing 时调用（抽题/发牌/发词）
   onPlayerQuit?(room: Room, member: Member): ActionResult | void; // 对局中成员退出
+  onMemberOffline?(room: Room, member: Member): void; // 对局中成员掉线（还有 60s 重连期，游戏可提前处置如结束当前回合）
   onAction(room: Room, member: Member, action: string, payload: any): ActionResult;
   serializeFor(room: Room, viewer: Member): Record<string, unknown>; // 按观看者序列化游戏状态
 }

@@ -43,6 +43,7 @@ interface SpyState {
   isRevote: boolean;
   revotePool: number[] | null;
   pair: WordPair;
+  finalSummary: { winner: string; spyUserIds: number[]; words: { civilian: string; spy: string } } | null;
 }
 
 const aliveIds = (room: Room): number[] =>
@@ -67,11 +68,12 @@ const evaluateWinner = (room: Room): 'civilian' | 'spy' | null => {
 
 const finish = (room: Room, winner: 'civilian' | 'spy'): void => {
   const st = room.game as SpyState;
-  void st;
   clearRoomTimers(room);
   st.phase = 'ended';
   room.phase = 'ended';
   const spyUserIds = [...st.roles].filter(([, r]) => r.role === 'spy').map(([userId]) => userId);
+  // 存进 state：刷新/重连后 serializeFor 仍能给出终局信息
+  st.finalSummary = { winner, spyUserIds, words: { civilian: st.pair.civilian, spy: st.pair.spy } };
   const bus = getRoomBus();
   bus.broadcast(room, {
     t: 'spy_final',
@@ -221,6 +223,7 @@ export const spyHandler: GameHandler<SpyState> = {
       isRevote: false,
       revotePool: null,
       pair: PAIRS[0],
+      finalSummary: null,
     };
   },
 
@@ -229,6 +232,7 @@ export const spyHandler: GameHandler<SpyState> = {
     const st = room.game as SpyState;
     const players = [...room.members.values()].filter((m) => m.seat >= 0);
     st.pair = PAIRS[Math.floor(Math.random() * PAIRS.length)];
+    st.deadline = Date.now() + TALK_SECONDS * 1000; // 快照要带开局倒计时（否则描述阶段显示剩 0s）
 
     const spyCount = players.length >= 7 ? 2 : 1;
     const spies = new Set(shuffle(players.map((m) => m.userId)).slice(0, spyCount));
@@ -316,8 +320,9 @@ export const spyHandler: GameHandler<SpyState> = {
     const votedCount = [...st.votes.keys()].filter((v) => ids.includes(v)).length;
     getRoomBus().broadcast(room, { t: 'spy_vote_update', votedCount, total: ids.length });
 
-    // 全员投完立即结算
-    if (ids.every((id) => st.votes.has(id))) {
+    // 在线玩家全部投完立即结算（掉线玩家不等，超时兜底）
+    const onlineIds = ids.filter((id) => room.members.get(id)?.online);
+    if (onlineIds.length > 0 && onlineIds.every((id) => st.votes.has(id))) {
       const timer = setTimeout(() => {
         const r = getRoom(room.id);
         if (r && (r.game as SpyState).phase === 'vote') {
@@ -349,6 +354,7 @@ export const spyHandler: GameHandler<SpyState> = {
       votedCount,
       total: ids.length,
       pairCategory: st.pair.category,
+      ended: st.finalSummary,
     };
   },
 };

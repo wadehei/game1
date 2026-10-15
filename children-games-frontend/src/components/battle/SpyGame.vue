@@ -1,11 +1,11 @@
 <template>
   <div class="spy-wrap">
     <!-- 终局 -->
-    <template v-if="phase === 'ended' && events.final">
+    <template v-if="phase === 'ended' && final">
       <div class="spy-final">
-        <div class="sf-title">{{ events.final?.winner === 'civilian' ? '🎉 平民胜利' : '🕵️ 卧底胜利' }}</div>
-        <div class="sf-words">平民词「{{ events.final?.words.civilian }}」 vs 卧底词「{{ events.final?.words.spy }}」</div>
-        <div class="sf-spies">卧底是：{{ spyNames(events.final?.spyUserIds || []) || '无' }}</div>
+        <div class="sf-title">{{ final?.winner === 'civilian' ? '🎉 平民胜利' : '🕵️ 卧底胜利' }}</div>
+        <div class="sf-words">平民词「{{ final?.words.civilian }}」 vs 卧底词「{{ final?.words.spy }}」</div>
+        <div class="sf-spies">卧底是：{{ spyNames(final?.spyUserIds || []) || '无' }}</div>
         <div class="sf-tip">等待房主发起「再来一局」</div>
       </div>
     </template>
@@ -100,6 +100,8 @@ let tickTimer: ReturnType<typeof setInterval> | null = null;
 const me = computed(() => props.state?.me || null);
 const voteResult = computed(() => props.events.voteResult);
 const eliminatedList = computed(() => props.state?.eliminated || []);
+// 终局：优先实时事件，兜底快照里的 ended 摘要（刷新/重连后事件已丢）
+const final = computed<any | null>(() => props.events.final || props.state?.ended || null);
 
 const nameOf = (userId: number): string => {
   if (userId === myId.value) return '我';

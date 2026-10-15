@@ -10,7 +10,7 @@
     v-else-if="gameType === 'quiz'"
     :question="events.question"
     :result="events.result"
-    :final="events.final"
+    :final="events.final || gameState?.ended || null"
     :members="members"
     :phase="phase"
     :my-seat="mySeat"

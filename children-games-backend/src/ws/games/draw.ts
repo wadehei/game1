@@ -1,8 +1,8 @@
 // 你画我猜 handler：轮流作画 + 实时笔迹转发 + 猜词判定
 // 笔迹坐标为 0~1 归一化，各端按画布尺寸换算；服务端存全量 strokes 供重连/新进重放
 import wordsJson from './draw-words.json';
-import { getRoom, type Room, type Member } from '../roomManager';
-import { addTimer, clearRoomTimers } from '../roomManager';
+import { getRoom, type Room, type Member, type ChatMsg } from '../roomManager';
+import { addTimer, clearRoomTimers, addChat } from '../roomManager';
 import type { ActionResult, GameHandler } from './types';
 import { getRoomBus } from '../bus';
 
@@ -32,6 +32,10 @@ const normalize = (s: string): string => String(s || '').trim().toLowerCase().re
 
 const players = (room: Room): Member[] => [...room.members.values()].filter((m) => m.seat >= 0);
 
+/** 还没猜对的在线猜词玩家（掉线的人猜不了，不该阻塞回合结束） */
+const remainingGuessers = (room: Room, st: DrawState): Member[] =>
+  players(room).filter((m) => m.seat !== st.drawerSeat && !st.guessed.has(m.userId) && m.online);
+
 interface DrawState {
   round: number; // 当前第几回合（从 1 开始）
   totalRounds: number;
@@ -48,6 +52,7 @@ interface DrawState {
   lastStrokeAt: number;
   roundTimer: NodeJS.Timeout | null;
   drawSeq: number;
+  ranking: Array<{ userId: number; nickname: string; total: number }> | null;
 }
 
 const endRound = (room: Room, reason: string): void => {
@@ -74,18 +79,26 @@ const endRound = (room: Room, reason: string): void => {
     bus.broadcast(room, { t: 'draw_final', ranking });
     room.phase = 'ended';
     clearRoomTimers(room);
-    room.game = { ...st, ranking };
+    st.ranking = ranking;
+    room.game = { ...st };
     return;
   }
 
-  // 下一回合：按下座位顺序找下一位还在房间里的玩家
+  // 下一回合：按座位顺序找下一位画家（优先在线玩家，避免掉线成员霸着画家位卡满回合时长）
   const seats = players(room).map((m) => m.seat).sort((a, b) => a - b);
+  const onlineSeats = players(room).filter((m) => m.online).map((m) => m.seat).sort((a, b) => a - b);
+  const pool = onlineSeats.length ? onlineSeats : seats;
   let next = st.drawerSeat;
-  for (const s2 of [...seats, ...seats]) {
+  for (const s2 of pool) {
     if (s2 > st.drawerSeat) {
       next = s2;
       break;
     }
+  }
+  if (next === st.drawerSeat) {
+    // 没有更大座位的在线玩家：绕回最小的在线座位
+    const others = pool.filter((s2) => s2 !== st.drawerSeat);
+    if (others.length) next = others[0];
   }
   st.round += 1;
   st.drawerSeat = next;
@@ -174,6 +187,7 @@ export const drawHandler: GameHandler<DrawState> = {
       lastStrokeAt: 0,
       roundTimer: null,
       drawSeq: 0,
+      ranking: null,
     };
   },
 
@@ -230,7 +244,8 @@ export const drawHandler: GameHandler<DrawState> = {
         .sort((a, b) => b.total - a.total);
       clearRoomTimers(room);
       room.phase = 'ended';
-      room.game = { ...st, ranking };
+      st.ranking = ranking;
+      room.game = { ...st };
       getRoomBus().broadcast(room, { t: 'draw_final', ranking, reason: '人数不足，提前结束' });
       return { ended: { winnerSeat: ranking[0] ? (room.members.get(ranking[0].userId)?.seat ?? -1) : -1, reason: '人数不足，提前结束' } };
     }
@@ -239,6 +254,19 @@ export const drawHandler: GameHandler<DrawState> = {
       endRound(room, '画家离开了');
     }
     return undefined;
+  },
+
+  // 掉线立即处置：画家掉线当前回合没意义，直接结束轮到下一位；猜词方全掉线同理
+  onMemberOffline(room: Room, member: Member): void {
+    const st = room.game as DrawState;
+    if (room.phase !== 'playing') return;
+    if (member.seat === st.drawerSeat && (st.phase === 'picking' || st.phase === 'drawing')) {
+      endRound(room, '画家掉线了');
+      return;
+    }
+    if (st.phase === 'drawing' && remainingGuessers(room, st).length === 0) {
+      endRound(room, '猜词玩家都掉线了');
+    }
   },
 
   onAction(room: Room, member: Member, action: string, payload: any): ActionResult {
@@ -308,18 +336,22 @@ export const drawHandler: GameHandler<DrawState> = {
         const drawerUserId = players(room).find((m) => m.seat === st.drawerSeat)?.userId;
         if (drawerUserId) st.scores.set(drawerUserId, (st.scores.get(drawerUserId) || 0) + 3);
         bus.broadcast(room, { t: 'guess_result', userId: member.userId, nickname: member.nickname, correct: true });
-        bus.broadcast(room, { t: 'chat', userId: 0, nickname: '系统', kind: 'text', content: `${member.nickname} 猜对了！`, ts: Date.now() });
+        // 猜对消息入聊天记录（重连/刷新不丢）
+        const sysMsg: ChatMsg = { userId: 0, nickname: '系统', kind: 'text', content: `${member.nickname} 猜对了！`, ts: Date.now() };
+        addChat(room, sysMsg);
+        bus.broadcast(room, { t: 'chat', ...sysMsg });
 
-        // 全部猜对 → 提前结束回合
-        const remaining = players(room).filter((m) => m.seat !== st.drawerSeat && !st.guessed.has(m.userId));
-        if (remaining.length === 0) {
+        // 全部在线猜词者都猜对 → 提前结束回合（掉线玩家不阻塞）
+        if (remainingGuessers(room, st).length === 0) {
           endRound(room, '所有人都猜对了');
         }
         return {};
       }
 
-      // 未猜对：作为普通聊天下转
-      bus.broadcast(room, { t: 'chat', userId: member.userId, nickname: member.nickname, kind: 'text', content: raw, ts: Date.now() });
+      // 未猜对：作为普通聊天下转（入聊天记录）
+      const wrongMsg: ChatMsg = { userId: member.userId, nickname: member.nickname, kind: 'text', content: raw, ts: Date.now() };
+      addChat(room, wrongMsg);
+      bus.broadcast(room, { t: 'chat', ...wrongMsg });
       return {};
     }
 
@@ -340,8 +372,11 @@ export const drawHandler: GameHandler<DrawState> = {
       isDrawer,
       word: isDrawer ? st.word : null, // 词只有画家能拿到
       myGuessed: st.guessed.has(viewer.userId),
+      guessedUserIds: [...st.guessed],
       strokes: st.strokes,
       scores: [...st.scores].map(([userId, total]) => ({ userId, total })),
+      // 终局摘要随快照走：刷新/重连后结算面板不依赖一次性事件
+      ended: st.ranking ? { ranking: st.ranking } : null,
     };
   },
 };

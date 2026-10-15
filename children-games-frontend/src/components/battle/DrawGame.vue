@@ -5,11 +5,11 @@
       <template v-if="phase === 'ended' && final">
         <span class="df-title">🏁 你画我猜结束</span>
       </template>
-      <template v-else-if="state?.phase === 'picking'">
+      <template v-else-if="phase === 'playing' && state?.phase === 'picking'">
         <span v-if="!(isDrawer && candidates.length)">✏️ {{ nameOf(state?.drawerSeat) }} 正在选词…（第 {{ state?.round }}/{{ state?.totalRounds }} 回合）</span>
         <span v-else class="pick-tip">选一个词来画：</span>
       </template>
-      <template v-else-if="state?.phase === 'drawing'">
+      <template v-else-if="phase === 'playing' && state?.phase === 'drawing'">
         <span>
           🎨 {{ isDrawer ? '你来画！' : `${nameOf(state?.drawerSeat)} 正在画` }}
           · {{ state?.category }} · {{ state?.wordLen }} 个字
@@ -33,20 +33,20 @@
         @pointerup.prevent="onUp"
         @pointercancel.prevent="onUp"
       />
-      <div v-if="isDrawer && state?.phase === 'drawing'" class="drawer-word">
+      <div v-if="phase === 'playing' && isDrawer && state?.phase === 'drawing'" class="drawer-word">
         【{{ state?.word }}】
       </div>
     </div>
 
     <!-- 画家选词 -->
-    <div v-if="isDrawer && state?.phase === 'picking' && candidates.length" class="pick-row">
+    <div v-if="phase === 'playing' && isDrawer && state?.phase === 'picking' && candidates.length" class="pick-row">
       <button v-for="(w, i) in candidates" :key="w" class="pick-btn" @click="emit('action', { t: 'draw_pick', index: i })">
         {{ w }}
       </button>
     </div>
 
     <!-- 画家工具条 -->
-    <div v-if="isDrawer && state?.phase === 'drawing'" class="tools">
+    <div v-if="phase === 'playing' && isDrawer && state?.phase === 'drawing'" class="tools">
       <button
         v-for="c in COLORS"
         :key="c"
@@ -70,7 +70,7 @@
     </div>
 
     <!-- 猜对名单 -->
-    <div v-if="state?.phase === 'drawing'" class="guessed-bar">
+    <div v-if="phase === 'playing' && state?.phase === 'drawing'" class="guessed-bar">
       已猜对 {{ guessedCount }} 人
       <span v-for="g in guessedNames" :key="g" class="guessed-name">{{ g }}</span>
     </div>
@@ -117,28 +117,40 @@ const myId = computed(() => userStore.userInfo?.id || 0);
 
 const isDrawer = computed(() => !!props.state?.isDrawer);
 const canDraw = computed(() => isDrawer.value && props.state?.phase === 'drawing' && props.phase === 'playing');
-const guessedCount = computed(() => props.events.guessResult?.filter((g: any) => g.correct).length ?? 0);
-
-const guessedNames = computed(() => {
-  const seen = new Set<string>();
-  const names: string[] = [];
-  for (const g of props.events.guessResult || []) {
-    if (g.correct && !seen.has(g.nickname)) {
-      seen.add(g.nickname);
-      names.push(g.nickname);
-    }
+// 猜对名单：快照带 guessedUserIds（重连恢复），guess_result 事件实时追加
+const guessedIds = computed<number[]>(() => {
+  const ids = new Set<number>((props.state?.guessedUserIds as number[]) || []);
+  for (const g of Array.isArray(props.events.guessResult) ? props.events.guessResult : []) {
+    if (g.correct) ids.add(g.userId);
   }
-  return names;
+  return [...ids];
 });
+const guessedCount = computed(() => guessedIds.value.length);
+const guessedNames = computed(() => guessedIds.value.map(nameOfUser));
 
-const final = computed(() => props.events.final);
-const candidates = computed<any[]>(() => props.events.candidates || []);
+// 终局：优先实时事件，兜底快照里的 ended 摘要（刷新/重连后事件已丢）
+const final = computed<any | null>(() => props.events.final || props.state?.ended || null);
+// 候选词用本地 ref 保存：draw_candidates 私发事件早于 game_start 到达，
+// 而 game_start 会把 events 全部清空，直接读 events.candidates 会丢
+const candidates = ref<any[]>([]);
+watch(
+  () => props.events.candidates,
+  (v: any) => {
+    if (Array.isArray(v) && v.length) candidates.value = v;
+  },
+  { immediate: true }
+);
 const remainSec = computed(() => Math.max(0, Math.ceil(((props.state?.deadline || 0) - Date.now()) / 1000)));
 
 const nameOf = (seat: number): string => {
   const m = props.members?.find((x) => x.seat === seat);
   if (!m) return `座位${seat + 1}`;
   return m.userId === myId.value ? `${m.nickname}（我）` : m.nickname;
+};
+
+const nameOfUser = (userId: number): string => {
+  if (userId === myId.value) return '我';
+  return props.members?.find((x) => x.userId === userId)?.nickname || `角色${userId}`;
 };
 
 // ── 画布 ──
@@ -212,25 +224,28 @@ const toNorm = (e: PointerEvent): number[] => {
 };
 
 let drawing = false;
+let lastSentPoint: number[] | null = null; // 上一批发出的最后一个点：续批带上它，其他端笔迹才能无缝衔接
 const onDown = (e: PointerEvent) => {
   if (!canDraw.value) return;
   drawing = true;
+  lastSentPoint = null;
   const p = toNorm(e);
   currentBatch = { points: [p], color: curColor.value, width: curWidth.value, cont: false };
   batches.value.push(currentBatch);
-  pendingPoints = [];
+  pendingPoints = [p]; // 落点也入队：纯点击（不成笔画）也要发给其他端显示为圆点
   renderAll();
   lastEmitAt = Date.now();
   if (!flushTimer) {
     flushTimer = setInterval(() => {
-      if (!drawing || !currentBatch || pendingPoints.length === 0) return;
+      const batch = currentBatch;
+      if (!drawing || !batch || pendingPoints.length === 0) return;
       const now = Date.now();
       if (now - lastEmitAt < 100) return; // 10Hz
       lastEmitAt = now;
-      const points = pendingPoints;
+      const points = lastSentPoint ? [lastSentPoint, ...pendingPoints] : pendingPoints;
+      lastSentPoint = pendingPoints[pendingPoints.length - 1];
       pendingPoints = [];
-      // 后续批次与上一批连续
-      emit('action', { t: 'draw_stroke', points, color: currentBatch.color, width: currentBatch.width, cont: true });
+      emit('action', { t: 'draw_stroke', points, color: batch.color, width: batch.width });
     }, 100);
   }
 };
@@ -253,14 +268,14 @@ const onUp = () => {
     clearInterval(flushTimer);
     flushTimer = null;
   }
-  // 把余下的点补发（标记新笔画结束）
+  // 把余下的点补发（带上衔接点，服务端每批独立存档，快照重放可还原完整笔迹）
   if (currentBatch && pendingPoints.length > 0) {
-    emit('action', { t: 'draw_stroke', points: pendingPoints, color: currentBatch.color, width: currentBatch.width, cont: true, last: true });
-  } else if (currentBatch) {
-    emit('action', { t: 'draw_stroke', points: currentBatch.points.slice(-1), color: currentBatch.color, width: currentBatch.width, cont: false, last: true });
+    const pts = lastSentPoint ? [lastSentPoint, ...pendingPoints] : pendingPoints;
+    emit('action', { t: 'draw_stroke', points: pts, color: currentBatch.color, width: currentBatch.width });
   }
   pendingPoints = [];
   currentBatch = null;
+  lastSentPoint = null;
   renderAll();
 };
 
@@ -298,11 +313,13 @@ watch(
   },
   { deep: false }
 );
-// 新回合清空画布
+// 新回合清空画布与候选词（仅真实 round 事件触发；game_start 置 null 时不清，候选词本地副本要保留）
 watch(
   () => props.events.round,
-  () => {
+  (m: any) => {
+    if (!m) return;
     batches.value = [];
+    candidates.value = [];
     renderAll();
   }
 );

@@ -21,6 +21,7 @@ interface UnoState {
   drawnThisTurn: boolean;
   turnTimer: NodeJS.Timeout | null;
   ranking: Array<{ userId: number; nickname: string; penalty: number }> | null;
+  endReason: string;
 }
 
 const seatPlayers = (room: Room): { userId: number; nickname: string; seat: number }[] =>
@@ -117,6 +118,7 @@ export const unoHandler: GameHandler<UnoState> = {
       drawnThisTurn: false,
       turnTimer: null,
       ranking: null,
+      endReason: '',
     };
   },
 
@@ -196,6 +198,7 @@ export const unoHandler: GameHandler<UnoState> = {
       st.ranking = [
         { userId: last?.userId || 0, nickname: last?.nickname || '', penalty },
       ];
+      st.endReason = '人数不足，提前结束';
       clearRoomTimers(room);
       if (st.turnTimer) clearTimeout(st.turnTimer);
       room.phase = 'ended';
@@ -251,6 +254,7 @@ export const unoHandler: GameHandler<UnoState> = {
           .sort((a, b) => a.penalty - b.penalty);
         ranking.unshift({ userId: member.userId, nickname: member.nickname, penalty: 0 });
         st.ranking = ranking;
+        st.endReason = `${member.nickname} 出完了手牌`;
         clearRoomTimers(room);
         if (st.turnTimer) clearTimeout(st.turnTimer);
         room.phase = 'ended';
@@ -341,6 +345,8 @@ export const unoHandler: GameHandler<UnoState> = {
       counts: seatPlayers(room).map((p) => ({ userId: p.userId, count: (st.hands.get(p.userId) || []).length })),
       myHand: st.hands.get(viewer.userId) || [],
       ranking: st.ranking,
+      // 终局摘要随快照走：刷新/重连后结算面板不依赖一次性事件
+      ended: st.ranking ? { ranking: st.ranking, reason: st.endReason } : null,
     };
   },
 };

@@ -299,11 +299,19 @@ export const initWsServer = (server: Server): void => {
       if (!room) return;
       const me = room.members.get(ctx.userId);
       if (!me) return;
+      // 同账号新连接已接管（m.ws 换人）时，旧连接关闭不能抹掉新连接的注册
+      if (me.ws && me.ws !== ws) return;
       // 断线不立刻踢：保留成员 60 秒等重连；对局中超时按游戏规则处置（五子棋判负）
       me.online = false;
       me.ws = null;
       me.offlineAt = Date.now();
       broadcast(room, { t: 'member_update', members: memberList(room) });
+      // 游戏可对掉线立即处置（如画猜画家掉线提前结束回合），不必等 60s 判离场
+      try {
+        getHandler(room.gameType).onMemberOffline?.(room, me);
+      } catch (err) {
+        logError('ws', `${room.gameType} offline 处理抛错: ${err instanceof Error ? err.stack : String(err)}`);
+      }
       const timer = setTimeout(() => {
         const r = getRoom(room.id);
         const m = r?.members.get(ctx.userId);
