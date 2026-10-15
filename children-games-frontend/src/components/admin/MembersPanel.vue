@@ -78,11 +78,13 @@ const openChips = (u: AdminUser) => {
 
 const applyChips = async (u: AdminUser, mode: 'delta' | 'set') => {
   const n = Math.trunc(Number(chipsInput.value));
-  if (!Number.isFinite(n)) return;
+  if (!Number.isFinite(n) || (mode === 'delta' && n === 0)) return;
   const payload = mode === 'delta' ? { delta: n } : { set: Math.max(0, n) };
   const res = await adjustUserChips(u.id, payload).catch(() => null);
   if (res && typeof res.battleChips === 'number') {
     u.battleChips = res.battleChips;
+  } else {
+    alert(`积分发放失败，请稍后重试（${u.nickname}）`);
   }
   chipsEditId.value = null;
 };

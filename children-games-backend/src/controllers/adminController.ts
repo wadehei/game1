@@ -4,7 +4,7 @@ import path from 'path';
 import { Op } from 'sequelize';
 import jwt from 'jsonwebtoken';
 import { config } from '../config';
-import { User, GameProgress, DailyTask, AppSetting, UserPlaytime, LevelConfig, QuizQuestion } from '../models';
+import { User, GameProgress, DailyTask, AppSetting, UserPlaytime, LevelConfig, QuizQuestion, Feedback, FeedbackReply, BattleRecord } from '../models';
 import { AdminRequest } from '../middleware/adminAuth';
 import { success, fail, asyncHandler } from '../utils/response';
 import { LEVEL_FIELDS } from './levelController';
@@ -93,7 +93,7 @@ export const getOverview = asyncHandler(async (req: AdminRequest, res: Response)
 /** 全部用户（含游客），带游玩统计 */
 export const getUsers = asyncHandler(async (req: AdminRequest, res: Response) => {
   const users = await User.findAll({
-    attributes: ['id', 'openid', 'nickname', 'avatar', 'level', 'totalStars', 'createdAt'],
+    attributes: ['id', 'openid', 'nickname', 'avatar', 'level', 'totalStars', 'battleChips', 'createdAt'],
     order: [['createdAt', 'ASC']],
   });
 
@@ -159,8 +159,8 @@ export const adjustUserChips = asyncHandler(async (req: AdminRequest, res: Respo
     fail(res, '用户不存在', 404);
     return;
   }
-  if (typeof set !== 'number' && typeof delta !== 'number') {
-    fail(res, '请提供 delta（增减）或 set（设定）');
+  if (typeof set !== 'number' && (typeof delta !== 'number' || delta === 0)) {
+    fail(res, '请提供 delta（非 0 增减）或 set（设定）');
     return;
   }
   const chips = await adminAdjustChips(userId, {
@@ -208,6 +208,10 @@ export const deleteUser = asyncHandler(async (req: AdminRequest, res: Response) 
     fs.existsSync(p) && fs.unlinkSync(p);
   }
 
+  // 有外键约束的关联数据必须先删（feedbacks/feedback_replies → users），否则删除报 500
+  await FeedbackReply.destroy({ where: { userId } });
+  await Feedback.destroy({ where: { userId } });
+  await BattleRecord.destroy({ where: { userId } });
   await GameProgress.destroy({ where: { userId } });
   await DailyTask.destroy({ where: { userId } });
   await UserPlaytime.destroy({ where: { userId } });
@@ -348,7 +352,18 @@ const sqlEscape = (value: unknown): string => {
   return `'${String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '')}'`;
 };
 
-const BACKUP_TABLES = ['users', 'game_progress', 'daily_tasks', 'level_configs', 'app_settings', 'user_playtime'];
+const BACKUP_TABLES = [
+  'users',
+  'game_progress',
+  'daily_tasks',
+  'level_configs',
+  'app_settings',
+  'user_playtime',
+  'battle_records',
+  'quiz_questions',
+  'feedbacks',
+  'feedback_replies',
+];
 
 /** 导出全部业务数据为 .sql（数据 INSERT 语句） */
 export const downloadBackup = asyncHandler(async (req: AdminRequest, res: Response) => {
