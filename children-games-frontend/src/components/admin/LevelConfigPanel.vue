@@ -87,6 +87,7 @@ import {
   type LevelOverrideRow,
 } from '@/api/admin';
 import { GAMES } from '@/utils/gameMeta';
+import { confirmAction } from '@/utils/confirmBus';
 import {
   defaultLevelConfig,
   formatLevelConfig,
@@ -222,7 +223,8 @@ const save = async () => {
 };
 
 const removeRow = async (level: number) => {
-  if (!confirm(`删除第 ${level} 关的自定义配置，恢复内置默认难度？`)) return;
+  const ok = await confirmAction({ title: `删除第 ${level} 关的自定义配置？`, detail: '恢复内置默认难度。', danger: true, confirmText: '删除' });
+  if (!ok) return;
   await deleteLevelOverride(gameId.value, level).catch(() => {});
   showMessage(`第 ${level} 关已恢复默认难度`);
   if (editingLevel.value === level) {

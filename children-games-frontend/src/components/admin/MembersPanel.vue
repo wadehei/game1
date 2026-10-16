@@ -59,6 +59,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { getUsers, updateUser, resetUserProgress, deleteUser, clearUserPin, adjustUserChips, type AdminUser } from '@/api/admin';
+import { showToast } from '@/utils/toastBus';
+import { confirmAction } from '@/utils/confirmBus';
 import PlayerAvatar from '@/components/PlayerAvatar.vue';
 
 const EMOJIS = ['🐰', '🐻', '🐼', '🦊', '🐸', '🐵', '🐯', '🦁', '🐷', '🐨', '👑', '🦄', '🌟', '🌸', '🤖', '😊'];
@@ -84,7 +86,7 @@ const applyChips = async (u: AdminUser, mode: 'delta' | 'set') => {
   if (res && typeof res.battleChips === 'number') {
     u.battleChips = res.battleChips;
   } else {
-    alert(`积分发放失败，请稍后重试（${u.nickname}）`);
+    showToast(`积分发放失败，请稍后重试（${u.nickname}）`, 'error');
   }
   chipsEditId.value = null;
 };
@@ -108,19 +110,32 @@ const saveEdit = async (id: number) => {
 };
 
 const clearPin = async (u: AdminUser) => {
-  if (!confirm(`清除「${u.nickname}」的角色口令？清除后任何人都能直接进入该角色。`)) return;
+  const ok = await confirmAction({ title: `清除「${u.nickname}」的角色口令？`, detail: '清除后任何人都能直接进入该角色。' });
+  if (!ok) return;
   await clearUserPin(u.id).catch(() => {});
   await load();
 };
 
 const resetProgress = async (u: AdminUser) => {
-  if (!confirm(`确定重置「${u.nickname}」的全部游戏进度吗？星星和关卡会清零，角色保留。`)) return;
+  const ok = await confirmAction({
+    title: `重置「${u.nickname}」的全部游戏进度？`,
+    detail: '星星和关卡会清零，角色保留。',
+    danger: true,
+    confirmText: '重置',
+  });
+  if (!ok) return;
   await resetUserProgress(u.id).catch(() => {});
   await load();
 };
 
 const removeUser = async (u: AdminUser) => {
-  if (!confirm(`确定删除「${u.nickname}」吗？其全部数据（进度/星星/时长）将不可恢复。`)) return;
+  const ok = await confirmAction({
+    title: `删除「${u.nickname}」？`,
+    detail: '其全部数据（进度/星星/时长）将不可恢复。',
+    danger: true,
+    confirmText: '删除',
+  });
+  if (!ok) return;
   await deleteUser(u.id).catch(() => {});
   await load();
 };

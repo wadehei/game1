@@ -109,6 +109,7 @@ import {
   adminQuizImport,
   type AdminQuizQuestion,
 } from '@/api/admin';
+import { confirmAction } from '@/utils/confirmBus';
 
 const CATEGORIES = ['综合', '科学', '影视', '历史', '地理'];
 const LIMIT = 20;
@@ -176,7 +177,8 @@ const save = async () => {
 };
 
 const remove = async (q: AdminQuizQuestion) => {
-  if (!confirm(`确定删除「${q.text.slice(0, 20)}…」？`)) return;
+  const ok = await confirmAction({ title: `删除「${q.text.slice(0, 20)}…」？`, danger: true, confirmText: '删除' });
+  if (!ok) return;
   await adminQuizDelete(q.id).catch(() => {});
   await load();
 };

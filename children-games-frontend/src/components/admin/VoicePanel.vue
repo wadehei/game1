@@ -58,6 +58,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, reactive, ref } from 'vue';
 import { listVoiceLines, uploadVoice, deleteVoice, type VoiceLineStatus } from '@/api/admin';
+import { confirmAction } from '@/utils/confirmBus';
 
 const LINES = [
   { key: 'memory_intro', scene: '记忆翻牌 · 入场', text: '翻一翻卡片，找出两个一样的图案' },
@@ -190,7 +191,8 @@ const save = async (key: string) => {
 };
 
 const remove = async (key: string) => {
-  if (!confirm('删除这条录音？删除后该台词回退为系统语音。')) return;
+  const ok = await confirmAction({ title: '删除这条录音？', detail: '删除后该台词回退为系统语音。', danger: true, confirmText: '删除' });
+  if (!ok) return;
   await deleteVoice(key).catch(() => {});
   recordedKeys.delete(key);
   flash('已删除，回退系统语音');

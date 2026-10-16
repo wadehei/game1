@@ -27,6 +27,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { getErrorLogs, clearErrorLogs, type AdminErrorLog } from '@/api/admin';
+import { confirmAction } from '@/utils/confirmBus';
 
 const logs = ref<AdminErrorLog[]>([]);
 const loading = ref(true);
@@ -38,7 +39,8 @@ const load = async () => {
 };
 
 const clearAll = async () => {
-  if (!confirm('确定清空全部错误日志吗？')) return;
+  const ok = await confirmAction({ title: '清空全部错误日志？', danger: true, confirmText: '清空' });
+  if (!ok) return;
   await clearErrorLogs().catch(() => {});
   await load();
 };

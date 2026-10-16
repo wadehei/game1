@@ -160,6 +160,7 @@ import { useRoomWs } from '@/composables/useRoomWs';
 import { useRecorder } from '@/composables/useRecorder';
 import { fetchRoomVoice, uploadRoomVoice } from '@/api/room';
 import { QUICK_PHRASES, ROOM_EMOJIS } from '@/utils/quickChat';
+import { showToast } from '@/utils/toastBus';
 import { soundManager } from '@/utils/sound';
 import GamePanel from '@/components/battle/GamePanel.vue';
 
@@ -1012,13 +1013,13 @@ onMounted(() => {
     scrollChat();
   });
   ws.on('closed', (m: any) => {
-    alert(m.reason || '房间已解散');
+    showToast(m.reason || '房间已解散');
     ws.close();
     leaveToLobby();
   });
   ws.on('error', (m: any) => {
     if (m.message?.includes('房间不存在')) {
-      alert(m.message);
+      showToast(m.message, 'error');
       ws.close();
       leaveToLobby();
     }

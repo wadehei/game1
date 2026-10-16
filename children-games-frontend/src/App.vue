@@ -3,6 +3,8 @@
     <router-view />
     <RestOverlay :show="restShow" :countdown="restCountdown" @skip="skipRest" />
     <AchievementToast />
+    <AppToast />
+    <AppConfirm />
   </div>
 </template>
 
@@ -10,6 +12,8 @@
 import { useRoute } from 'vue-router';
 import RestOverlay from '@/components/RestOverlay.vue';
 import AchievementToast from '@/components/AchievementToast.vue';
+import AppToast from '@/components/AppToast.vue';
+import AppConfirm from '@/components/AppConfirm.vue';
 import { usePlayTimeGuard } from '@/composables/usePlayTimeGuard';
 import { initVoice } from '@/utils/voice';
 

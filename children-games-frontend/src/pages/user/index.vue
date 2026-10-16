@@ -305,6 +305,7 @@ import {
 } from "@/api/user";
 import { uploadPhotoAvatar } from "@/utils/avatarUpload";
 import { soundManager } from "@/utils/sound";
+import { confirmAction } from "@/utils/confirmBus";
 import { getGameMeta, formatScore } from "@/utils/gameMeta";
 import {
   getRestIntervalMinutes,
@@ -415,11 +416,11 @@ const getGameLevel = (gameId: string): number => {
   return progress?.currentLevel || 1;
 };
 
-const handleLogout = () => {
-  if (confirm("确定要退出登录吗？")) {
-    userStore.logout();
-    router.push("/profiles");
-  }
+const handleLogout = async () => {
+  const ok = await confirmAction({ title: '退出登录？', detail: '返回选角页，进度不会丢失。', confirmText: '退出' });
+  if (!ok) return;
+  userStore.logout();
+  router.push('/profiles');
 };
 
 // ─── 我的资料 + 角色口令 ────────────────────────────────
