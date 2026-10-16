@@ -105,5 +105,46 @@ check('成员列表不再包含被删用户', listAfter?.code === 200 && !listAf
 const delAgain = await api('DELETE', `/api/admin/users/${tempUid}`, null, token);
 check('重复删除返回 404', delAgain?.code === 404);
 
+// ── 全模块 smoke：看板/护眼/难度/题库/反馈/备份/日志（改动均自清理） ──
+const overview = await api('GET', '/api/admin/overview', null, token);
+check('数据看板返回', overview?.code === 200 && typeof overview.data.familyMembers === 'number' && Array.isArray(overview.data.activity));
+
+const settingsBefore = await api('GET', '/api/admin/settings', null, token);
+const settingsPut = await api('PUT', '/api/admin/settings', { restIntervalMinutes: 25 }, token);
+check('护眼策略保存', settingsPut?.code === 200 && settingsPut.data.restIntervalMinutes === 25);
+const settingsBack = await api('PUT', '/api/admin/settings', { restIntervalMinutes: settingsBefore.data.restIntervalMinutes }, token);
+check('护眼策略还原', settingsBack?.code === 200);
+const badSettings = await api('PUT', '/api/admin/settings', { restIntervalMinutes: 999 }, token);
+check('护眼间隔越界被拒绝', badSettings?.code !== 200);
+
+const qText = '【临时】回归测试题：1+1=?';
+const qCreate = await api('POST', '/api/admin/quiz', { text: qText, options: ['2', '3', '4', '5'], answer: 0, category: '综合', difficulty: 1 }, token);
+check('题库新增题目', qCreate?.code === 200 && !!qCreate.data?.id);
+const qDup = await api('POST', '/api/admin/quiz', { text: qText, options: ['2', '3', '4', '5'], answer: 0, category: '综合', difficulty: 1 }, token);
+check('重复题干被拒绝', qDup?.code !== 200);
+const qBad = await api('POST', '/api/admin/quiz', { text: '坏题', options: ['只有', '三个'], answer: 0 }, token);
+check('选项数量校验', qBad?.code !== 200);
+const qUpdate = await api('PUT', `/api/admin/quiz/${qCreate.data.id}`, { text: qText, options: ['2', '3', '4', '5'], answer: 1, category: '综合', difficulty: 2 }, token);
+check('题库更新答案', qUpdate?.code === 200);
+const qDel = await api('DELETE', `/api/admin/quiz/${qCreate.data.id}`, null, token);
+check('题库删除临时题', qDel?.code === 200);
+
+const levelsPut = await api('PUT', '/api/admin/levels/memory/999', { config: { pairs: 8 } }, token);
+check('难度覆盖保存', levelsPut?.code === 200);
+const levelsGet = await api('GET', '/api/admin/levels/memory', null, token);
+check('难度覆盖查询', levelsGet?.code === 200 && levelsGet.data.some((l) => l.level === 999));
+const levelsDel = await api('DELETE', '/api/admin/levels/memory/999', null, token);
+check('难度覆盖删除（恢复内置默认）', levelsDel?.code === 200);
+
+const feedback = await api('GET', '/api/admin/feedback', null, token);
+check('反馈列表返回', feedback?.code === 200 && Array.isArray(feedback.data));
+
+const backup = await fetch(`${BASE}/api/admin/backup`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.text());
+const backupTables = ['users', 'game_progress', 'battle_records', 'quiz_questions', 'feedbacks', 'feedback_replies'];
+check('备份包含全部业务表', backupTables.every((t) => backup.includes(`-- ${t}（`)));
+
+const logs = await api('GET', '/api/admin/logs?limit=10', null, token);
+check('错误日志接口返回', logs?.code === 200 && Array.isArray(logs.data));
+
 console.log(`\n结果: ${pass} 通过, ${failCount} 失败`);
 process.exit(failCount ? 1 : 0);

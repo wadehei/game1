@@ -31,8 +31,9 @@
               <template v-if="u.lastActiveAt"> · 最近 {{ timeAgo(u.lastActiveAt) }}</template>
             </div>
             <div v-if="chipsEditId === u.id" class="chips-edit">
-              <input v-model.number="chipsInput" class="chips-input" type="number" placeholder="数值" />
-              <button class="act-btn save" @click="applyChips(u, 'delta')">增减</button>
+              <input v-model.number="chipsInput" class="chips-input" type="number" min="0" placeholder="数量" />
+              <button class="act-btn save" @click="applyChips(u, 'add')">＋增加</button>
+              <button class="act-btn warn" @click="applyChips(u, 'sub')">－减少</button>
               <button class="act-btn" @click="applyChips(u, 'set')">设为</button>
               <button class="act-btn" @click="chipsEditId = null">取消</button>
             </div>
@@ -78,18 +79,19 @@ const openChips = (u: AdminUser) => {
   chipsInput.value = u.battleChips ?? 100; // 打开时显示当前真实积分，而不是固定值
 };
 
-const applyChips = async (u: AdminUser, mode: 'delta' | 'set') => {
+const applyChips = async (u: AdminUser, mode: 'add' | 'sub' | 'set') => {
   const n = Math.trunc(Number(chipsInput.value));
-  if (!Number.isFinite(n) || (mode === 'delta' && n === 0)) return;
-  const payload = mode === 'delta' ? { delta: n } : { set: Math.max(0, n) };
+  if (!Number.isFinite(n) || (mode !== 'set' && n <= 0)) return;
+  const payload = mode === 'add' ? { delta: n } : mode === 'sub' ? { delta: -n } : { set: Math.max(0, n) };
   const res = await adjustUserChips(u.id, payload).catch(() => null);
   if (res && typeof res.battleChips === 'number') {
     u.battleChips = res.battleChips;
     // 不关闭编辑行：连续调整不用反复点开；输入框同步为最新余额
     chipsInput.value = res.battleChips;
-    showToast(`已${mode === 'delta' ? '调整' : '设为'} ${res.battleChips} 积分（${u.nickname}）`);
+    const verb = mode === 'add' ? '已增加' : mode === 'sub' ? '已减少' : '已设为';
+    showToast(`${verb}，${u.nickname} 现有 ${res.battleChips} 积分`);
   } else {
-    showToast(`积分发放失败，请稍后重试（${u.nickname}）`, 'error');
+    showToast(`积分操作失败，请稍后重试（${u.nickname}）`, 'error');
   }
 };
 

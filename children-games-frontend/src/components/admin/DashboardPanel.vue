@@ -1,6 +1,9 @@
 <template>
   <div class="panel">
-    <h2 class="panel-title">📊 数据看板</h2>
+    <div class="panel-head">
+      <h2 class="panel-title">📊 数据看板</h2>
+      <button class="refresh-btn" :disabled="loading" @click="load">{{ loading ? '刷新中…' : '🔄 刷新' }}</button>
+    </div>
 
     <!-- 指标卡 -->
     <div class="stat-grid">
@@ -57,6 +60,13 @@ import { getGameMeta } from '@/utils/gameMeta';
 import PlayerAvatar from '@/components/PlayerAvatar.vue';
 
 const overview = ref<Overview | null>(null);
+const loading = ref(false);
+
+const load = async () => {
+  loading.value = true;
+  overview.value = await getOverview().catch(() => null);
+  loading.value = false;
+};
 
 const todayPlayText = computed(() => {
   const s = overview.value?.todayPlaySeconds || 0;
@@ -80,15 +90,43 @@ const timeAgo = (iso: string): string => {
   return `${Math.floor(h / 24)} 天前`;
 };
 
-onMounted(async () => {
-  overview.value = await getOverview().catch(() => null);
-});
+onMounted(load);
 </script>
 
 <style scoped>
 .panel-title {
   font-size: 19px;
   margin: 0 0 16px;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.panel-head .panel-title {
+  margin: 0;
+}
+
+.refresh-btn {
+  border: none;
+  background: #eef1f4;
+  color: #555;
+  font-size: 12px;
+  padding: 7px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.refresh-btn:hover {
+  background: #e0e5e9;
+}
+
+.refresh-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .stat-grid {

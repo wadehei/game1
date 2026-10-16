@@ -113,6 +113,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
 import PlayerAvatar from "@/components/PlayerAvatar.vue";
+import { showToast } from "@/utils/toastBus";
 import {
   adminGetFeedbacks,
   adminUpdateFeedback,
@@ -172,11 +173,18 @@ const load = async () => {
 const setStatus = async (f: FeedbackItem, status: FeedbackStatus) => {
   if (f.status === status) return;
   const updated = await adminUpdateFeedback(f.id, { status }).catch(() => null);
-  if (updated) f.status = updated.status;
+  if (updated) {
+    f.status = updated.status;
+    showToast(`已标记为「${statusLabel(status)}」`);
+  } else {
+    showToast('状态更新失败，请重试', 'error');
+  }
 };
 
 const saveNote = async (f: FeedbackItem) => {
-  await adminUpdateFeedback(f.id, { adminNote: f.adminNote }).catch(() => {});
+  const updated = await adminUpdateFeedback(f.id, { adminNote: f.adminNote }).catch(() => null);
+  if (updated) showToast('内部备注已保存');
+  else showToast('备注保存失败，请重试', 'error');
 };
 
 const sendReply = async (f: FeedbackItem) => {

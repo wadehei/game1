@@ -34,6 +34,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { getSettings, updateSettings } from '@/api/admin';
+import { showToast } from '@/utils/toastBus';
 import { speak, currentVoiceName } from '@/utils/voice';
 
 const OPTIONS = [
@@ -74,6 +75,8 @@ const save = async () => {
     setTimeout(() => {
       saved.value = false;
     }, 2500);
+  } catch {
+    showToast('保存失败，请稍后重试', 'error');
   } finally {
     saving.value = false;
   }

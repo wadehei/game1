@@ -4,7 +4,7 @@
 
     <div class="card">
       <p class="desc">
-        备份包含全部业务数据：成员档案、游戏进度、星星、成就、每日任务、游玩时长。
+        备份包含全部业务数据：成员档案（含对战积分）、游戏进度、星星、成就、每日任务、游玩时长、对战流水、题库、意见反馈。
         下载的 <code>.sql</code> 文件请妥善保存，需要时可通过 MySQL 导入恢复。
       </p>
       <button class="dl-btn" :disabled="downloading" @click="download">
