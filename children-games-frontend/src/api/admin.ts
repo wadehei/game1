@@ -13,12 +13,15 @@ client.interceptors.request.use((config) => {
   return config;
 });
 
-// 401 时清除本地凭证，由调用方回到登录页
+// 401 时清除本地凭证并回到后台登录页（凭证过期后页面停留在旧数据上，所有操作会静默失败）
 client.interceptors.response.use(
   (response) => response.data.data,
   (error) => {
     if (error?.response?.status === 401) {
       localStorage.removeItem(TOKEN_KEY);
+      if (!window.location.hash.startsWith('#/admin/login')) {
+        window.location.hash = '#/admin/login';
+      }
     }
     throw error;
   }
