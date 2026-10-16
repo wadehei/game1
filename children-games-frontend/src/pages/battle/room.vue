@@ -857,7 +857,7 @@ onMounted(() => {
     phase.value = 'ended';
   });
 
-  // ── 三张牌比大小 ──
+  // ── 比大小 ──
   const resetZjhOthers = () => {
     game.value.others = members.value
       .filter((m) => m.seat >= 0 && m.userId !== myId.value)

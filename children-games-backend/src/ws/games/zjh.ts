@@ -1,4 +1,4 @@
-// 三张牌比大小 handler：发 3 张闷牌（look 才私发，防客户端偷看）、闷/看双轨注码、比牌/弃牌/强制开牌
+// 比大小 handler：发 3 张闷牌（look 才私发，防客户端偷看）、闷/看双轨注码、比牌/弃牌/强制开牌
 // 积分每手实时落库；超时动作建房可选（弃牌/跟注）；特殊 235 建房开关
 import type { Room, Member } from '../roomManager';
 import { addTimer, clearRoomTimers, getRoom } from '../roomManager';
@@ -492,7 +492,7 @@ const finish = (room: Room, reason: string): void => {
 
 export const zjhHandler: GameHandler<ZjhState> = {
   type: 'zjh',
-  title: '三张牌比大小',
+  title: '比大小',
   emoji: '♠️',
   desc: '闷看加注比牌，积分随账号永久跟随',
   minPlayers: 2,

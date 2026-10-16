@@ -3,7 +3,7 @@
     <!-- 终局：全员胜利结算面板（带动画） -->
     <BattleResultPanel
       v-if="phase === 'ended' && final"
-      title="♠️ 三张牌比大小 战局结算"
+      title="♠️ 比大小 战局结算"
       :ranking="final.ranking"
       :my-id="myId"
       :reason="final.reason"

@@ -1,5 +1,5 @@
 // 下注流水专项测试（需后端在线；加速定时器启动）
-// 覆盖：21点与三张牌比大小 全员投注明细 betLedger（押注/加倍/结算回填/庄家无条目/让庄退款/entrants）
+// 覆盖：21点与比大小 全员投注明细 betLedger（押注/加倍/结算回填/庄家无条目/让庄退款/entrants）
 import WebSocket from 'ws';
 
 const BASE = process.env.BASE || 'http://localhost:3002';
@@ -211,7 +211,7 @@ const freshSnapshot = async (token, roomId) => {
   await http('POST', '/api/room/leave', { roomId }, tokens[2]).catch(() => {});
 }
 
-// ════════ 三张牌比大小：2 人 rotate，2 手 ════════
+// ════════ 比大小：2 人 rotate，2 手 ════════
 {
   const tokens = [];
   for (const uid of [2, 4]) tokens.push((await http('POST', '/api/user/login/family', { uid })).json.data.token);
@@ -224,7 +224,7 @@ const freshSnapshot = async (token, roomId) => {
 
   for (const c of [B, A]) c.send({ t: 'ready' });
   const phase1 = await A.waitNew('zjh_phase', 0);
-  check('三张牌比大小 开局 entrants=两人（phase 事件）', Array.isArray(phase1.entrants) && phase1.entrants.length === 2);
+  check('比大小 开局 entrants=两人（phase 事件）', Array.isArray(phase1.entrants) && phase1.entrants.length === 2);
 
   // 轮流跟注直到本手结束（按 轮数:座位 防重发；超时也有自动跟注兜底）
   const actedKeys = new Set();
@@ -245,14 +245,14 @@ const freshSnapshot = async (token, roomId) => {
     await sleep(150);
   }
   const settle1 = await A.waitNew('zjh_settle', 0, 20000);
-  check('三张牌比大小 第1手已结算', typeof settle1.winAmount === 'number');
+  check('比大小 第1手已结算', typeof settle1.winAmount === 'number');
 
   // 第2手开始后：B 闷跟一手
   await B.waitNew('zjh_phase', B.all('zjh_phase').length, 15000);
   const logMid = ((await freshSnapshot(tokens[1], roomId)).game?.betLedger || []).filter((e) => e.userId === 4);
-  check('三张牌比大小 中途快照带 betLedger（B 的条目）', Array.isArray(logMid) && logMid.length >= 1);
+  check('比大小 中途快照带 betLedger（B 的条目）', Array.isArray(logMid) && logMid.length >= 1);
   const first = logMid[0];
-  check('三张牌比大小 第1手流水已回填（底注+跟注，delta=±）', first.round === 1 && first.betTotal >= 10 && first.delta !== null && typeof first.ended === 'string');
+  check('比大小 第1手流水已回填（底注+跟注，delta=±）', first.round === 1 && first.betTotal >= 10 && first.delta !== null && typeof first.ended === 'string');
 
   A.close();
   B.close();

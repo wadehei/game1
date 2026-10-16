@@ -1,5 +1,5 @@
-// 浏览器实测陪玩脚本（21点/三张牌比大小）：node tests/helpers/card-copilot.mjs blackjack|zjh <roomId>
-// 行为：join+ready；21点自动下最小注+轮到就停牌；三张牌比大小自动跟注；事件摘要打到 stdout
+// 浏览器实测陪玩脚本（21点/比大小）：node tests/helpers/card-copilot.mjs blackjack|zjh <roomId>
+// 行为：join+ready；21点自动下最小注+轮到就停牌；比大小自动跟注；事件摘要打到 stdout
 import WebSocket from 'ws';
 
 const [, , mode, roomId] = process.argv;

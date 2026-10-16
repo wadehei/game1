@@ -1,4 +1,4 @@
-// 多玩家对战模拟器：对指定服务器模拟多个机器人完整玩三张牌比大小 / 21点，校验结算逻辑
+// 多玩家对战模拟器：对指定服务器模拟多个机器人完整玩比大小 / 21点，校验结算逻辑
 // 用法：BASE=http://49.232.231.35 node tests/sim-battle.mjs zjh [玩家数=4] [局数=2]
 //       BASE=http://49.232.231.35 node tests/sim-battle.mjs blackjack [玩家数=3] [局数=2]
 // 校验：三张牌=每手零和(Σ净变动=0)+全员结算+明细条目齐全；21点=每人 delta 严格符合赔率公式（本地引擎重算）
@@ -74,7 +74,7 @@ class Bot {
 const rand = (n) => Math.floor(Math.random() * n);
 const pick = (arr) => arr[rand(arr.length)];
 
-// ── 三张牌比大小模拟 ──
+// ── 比大小模拟 ──
 async function simZjh() {
   const engine = await import('../dist/ws/games/zjh/engine.js');
   const datas = [];
