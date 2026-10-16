@@ -159,9 +159,9 @@ const handleLeave = (room: Room, userId: number): void => {
     return;
   }
   if (result === 'resign' && quitter) {
+    // 是否终局由各游戏 handler 判定（返回 ended=人数不足等终局；undefined=对局继续，退出者按弃牌处置）
     const quitResult = getHandler(room.gameType).onPlayerQuit?.(room, quitter);
-    const ended = quitResult?.ended;
-    endGame(room, ended ? ended.winnerSeat : -1, ended ? ended.reason : '对方退出了对局');
+    if (quitResult?.ended) endGame(room, quitResult.ended.winnerSeat, quitResult.ended.reason);
   }
   broadcast(room, { t: 'member_left', userId });
   broadcastSnapshot(room);

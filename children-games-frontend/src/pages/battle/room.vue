@@ -783,10 +783,12 @@ onMounted(() => {
       return;
     }
     if (m.action === 'hit' || m.action === 'double') {
+      // hit 后只有爆牌或到 21 才算完成（否则还能继续要牌）；double 必然完成
+      const finished = m.action === 'double' || !!m.busted || m.total === 21;
       if (m.userId === myId.value) {
         game.value.myCards = [...(game.value.myCards || []), m.card];
         if (m.action === 'double') game.value.myStake = m.stake;
-        game.value.myDone = true;
+        game.value.myDone = finished;
         game.value.myBusted = !!m.busted;
       }
       if (m.action === 'double') {
@@ -801,10 +803,10 @@ onMounted(() => {
       const item = (gameEvents.handsView || []).find((x: any) => x.userId === m.userId);
       if (item && m.userId !== myId.value) {
         item.cards = [...(item.cards || []), m.card];
-        item.done = true;
+        item.done = finished;
         item.busted = !!m.busted;
       } else if (item) {
-        item.done = true;
+        item.done = finished;
         item.busted = !!m.busted;
       }
       return;

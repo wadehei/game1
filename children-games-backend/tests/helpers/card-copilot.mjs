@@ -7,8 +7,8 @@ if (!mode || !roomId) {
   console.error('用法: node card-copilot.mjs blackjack|zjh <roomId>');
   process.exit(1);
 }
-const BASE = 'http://localhost:3002';
-const uid = 4;
+const BASE = process.env.COPILOT_BASE || 'http://localhost:3002';
+const uid = Number(process.env.COPILOT_UID) || 4;
 
 const login = async (uid) => {
   const res = await fetch(`${BASE}/api/user/login/family`, {

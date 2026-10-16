@@ -466,16 +466,14 @@ export const blackjackHandler: GameHandler<BJState> = {
       return { ended: { winnerSeat: st.ranking?.[0]?.seat ?? -1, reason: '人数不足，提前结束' } };
     }
     if (member.seat === st.bankerSeat && room.phase === 'playing' && st.handPhase !== 'settle') {
-      // 庄家退出：退还未结算注金，庄位顺移重开本手
+      // 庄家退出：本手作废，全员退注（与让庄同规则——已停牌的手也退，防止残留手牌叠加到重发的这手）
       for (const [uid, hh] of st.hands) {
-        if (!hh.done) {
-          st.chips.set(uid, (st.chips.get(uid) || 0) + hh.stake);
-          st.hands.delete(uid);
-          const log = st.betLog.get(uid);
-          const idx = log ? log.findIndex((e) => e.round === st.round && e.delta === null) : -1;
-          if (idx >= 0) log!.splice(idx, 1);
-        }
+        st.chips.set(uid, (st.chips.get(uid) || 0) + hh.stake);
+        const log = st.betLog.get(uid);
+        const idx = log ? log.findIndex((e) => e.round === st.round && e.delta === null) : -1;
+        if (idx >= 0) log!.splice(idx, 1);
       }
+      st.hands = new Map();
       st.bankerSeat = nextBanker(room, st);
       enterBetting(room, st, true);
     }
