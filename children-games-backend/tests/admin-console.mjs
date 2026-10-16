@@ -56,5 +56,54 @@ check('缺参数被拒绝', badNone?.code !== 200);
 const restore = await api('PUT', `/api/admin/users/${target.id}/chips`, { set: target.battleChips }, token);
 check('测试后积分还原', restore?.code === 200 && restore.data.battleChips === target.battleChips);
 
+// ── 删除在房成员：立即请出（不等 60s 掉线判定） ──
+const WebSocket = (await import('ws')).default;
+const tempLogin = await api('POST', '/api/user/login/family', { nickname: '删除测试临时', avatar: '🤖' });
+check('临时测试成员创建', tempLogin?.code === 200 && !!tempLogin.data?.token);
+const tempUid = tempLogin.data.userInfo.id;
+const tempRoom = await api('POST', '/api/room', { gameType: 'zjh', config: { career: false } }, tempLogin.data.token);
+check('临时成员建房', tempRoom?.code === 200 && !!tempRoom.data.roomId);
+
+const tempWs = new WebSocket(`ws://localhost:3002/ws?token=${tempLogin.data.token}&roomId=${tempRoom.data.roomId}`);
+const tempEvents = [];
+await new Promise((resolve, reject) => {
+  const t = setTimeout(() => reject(new Error('连接超时')), 6000);
+  tempWs.on('message', (d) => {
+    const m = JSON.parse(d.toString());
+    tempEvents.push(m);
+    if (m.t === 'joined') { clearTimeout(t); resolve(m); }
+  });
+  tempWs.on('error', (e) => { clearTimeout(t); reject(e); });
+});
+check('临时成员已进房', tempEvents.some((e) => e.t === 'joined'));
+
+const del = await api('DELETE', `/api/admin/users/${tempUid}`, null, token);
+check('删除在房成员成功', del?.code === 200);
+
+// WS 应收到 closed（含删除原因），连接被服务端断开
+// 消息可能先于 DELETE 响应到达：先查缓存，再挂监听兜底
+let closedEvt = tempEvents.find((e) => e.t === 'closed') || null;
+if (!closedEvt) {
+  closedEvt = await new Promise((resolve) => {
+    const t = setTimeout(() => resolve(null), 5000);
+    tempWs.on('message', (d) => {
+      const m = JSON.parse(d.toString());
+      tempEvents.push(m);
+      if (m.t === 'closed') { clearTimeout(t); resolve(m); }
+    });
+    tempWs.on('close', () => { clearTimeout(t); resolve(tempEvents.find((e) => e.t === 'closed') || null); });
+  });
+}
+check('被删成员立即收到 closed 通知并断开', !!closedEvt && (closedEvt.reason || '').includes('删除'));
+if (!closedEvt || !(closedEvt.reason || '').includes('删除')) {
+  console.log('[dbg] tempEvents:', JSON.stringify(tempEvents.map((e) => ({ t: e.t, reason: e.reason }))), '| closedEvt:', JSON.stringify(closedEvt));
+}
+tempWs.close();
+
+const listAfter = await api('GET', '/api/admin/users', null, token);
+check('成员列表不再包含被删用户', listAfter?.code === 200 && !listAfter.data.some((u) => u.id === tempUid));
+const delAgain = await api('DELETE', `/api/admin/users/${tempUid}`, null, token);
+check('重复删除返回 404', delAgain?.code === 404);
+
 console.log(`\n结果: ${pass} 通过, ${failCount} 失败`);
 process.exit(failCount ? 1 : 0);

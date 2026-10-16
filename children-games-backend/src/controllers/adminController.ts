@@ -200,6 +200,10 @@ export const deleteUser = asyncHandler(async (req: AdminRequest, res: Response) 
     return;
   }
 
+  // 在房/在线的成员先立即请出（按游戏规则弃牌处置，此时账号还在、积分入账正常），不等 60s 掉线判定
+  const { kickUserEverywhere } = await import('../ws/wsServer');
+  kickUserEverywhere(userId, '该角色已被家长删除');
+
   // 清理其上传的照片头像文件
   const avatar = String(user.avatar || '');
   const avMatch = avatar.match(/^\/api\/avatars\/([A-Za-z0-9_-]+\.(?:jpg|png|webp|gif))$/);

@@ -167,6 +167,27 @@ const handleLeave = (room: Room, userId: number): void => {
   broadcastSnapshot(room);
 };
 
+/** 管理端删除成员等场景：立即请出该用户所在的所有房间并断开连接（不等 60s 掉线判定） */
+export const kickUserEverywhere = (userId: number, reason: string): void => {
+  for (const room of allRooms()) {
+    const me = room.members.get(userId);
+    if (!me) continue;
+    // 先直发本人（handleLeave 可能解散房间导致后续广播无人接收）
+    try {
+      me.ws?.send(JSON.stringify({ t: 'closed', reason }));
+    } catch {
+      // 忽略发送失败
+    }
+    handleLeave(room, userId); // 按各游戏规则处置（弃牌/终局），并广播 member_left + 快照
+    broadcast(room, { t: 'closed', reason }); // 房间若还有其他成员一并告知
+    try {
+      me.ws?.close(4008, reason);
+    } catch {
+      // 连接可能已关闭
+    }
+  }
+};
+
 export const initWsServer = (server: Server): void => {
   const wss = new WebSocketServer({ server, path: '/ws' });
 

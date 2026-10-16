@@ -2,6 +2,7 @@
 // 红线：仅站内娱乐资产，无充值/提现/兑换；牌类每手实时落库（防中途解散丢账），竞技游戏局终按排名发放
 import { fn, col, literal } from 'sequelize';
 import { User, BattleRecord } from '../models';
+import { logError } from '../utils/logger';
 
 export const CHIP_RANK_REWARDS = [30, 15, 5]; // 第1/2/3名奖励，第3名之后与第3名相同
 export const CHIP_DRAW_REWARD = 10;
@@ -60,15 +61,31 @@ export const writeCareerRecords = async (
   }
 };
 
-/** 单人积分变动（原子 +delta，下限 0）；返回新值，用户不存在返回 null */
+/** 单人积分变动（原子 +delta，下限 0）；返回新值，用户不存在返回 null。
+ *  内置 3 次退避重试——DB 抖动不再静默丢账，最终失败落盘告警（桌面分与账号分的差异可凭日志核对） */
 export const applyChipDelta = async (userId: number, delta: number): Promise<number | null> => {
-  const [affected] = await User.update(
-    { battleChips: literal(`GREATEST(0, battleChips + ${Math.trunc(delta)})`) },
-    { where: { id: userId } }
+  const n = Math.trunc(delta);
+  let lastErr: unknown = null;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const [affected] = await User.update(
+        { battleChips: literal(`GREATEST(0, battleChips + ${n})`) },
+        { where: { id: userId } }
+      );
+      if (!affected) return null; // 用户不存在，重试无意义
+      const user = await User.findByPk(userId, { attributes: ['battleChips'] });
+      return user?.battleChips ?? null;
+    } catch (err) {
+      lastErr = err;
+      if (attempt < 3) await new Promise((r) => setTimeout(r, 200 * attempt));
+    }
+  }
+  logError(
+    'chips',
+    `积分入账重试 3 次仍失败: userId=${userId} delta=${n}（该笔变动未落库，需人工核对）`,
+    lastErr instanceof Error ? lastErr.stack : String(lastErr)
   );
-  if (!affected) return null;
-  const user = await User.findByPk(userId, { attributes: ['battleChips'] });
-  return user?.battleChips ?? null;
+  return null;
 };
 
 const writeRecord = async (userId: number, gameType: string, result: string, chipsDelta: number): Promise<void> => {
