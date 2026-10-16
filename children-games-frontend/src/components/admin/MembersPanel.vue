@@ -75,7 +75,7 @@ const chipsInput = ref<number>(100);
 
 const openChips = (u: AdminUser) => {
   chipsEditId.value = u.id;
-  chipsInput.value = 100;
+  chipsInput.value = u.battleChips ?? 100; // 打开时显示当前真实积分，而不是固定值
 };
 
 const applyChips = async (u: AdminUser, mode: 'delta' | 'set') => {
@@ -85,10 +85,12 @@ const applyChips = async (u: AdminUser, mode: 'delta' | 'set') => {
   const res = await adjustUserChips(u.id, payload).catch(() => null);
   if (res && typeof res.battleChips === 'number') {
     u.battleChips = res.battleChips;
+    // 不关闭编辑行：连续调整不用反复点开；输入框同步为最新余额
+    chipsInput.value = res.battleChips;
+    showToast(`已${mode === 'delta' ? '调整' : '设为'} ${res.battleChips} 积分（${u.nickname}）`);
   } else {
     showToast(`积分发放失败，请稍后重试（${u.nickname}）`, 'error');
   }
-  chipsEditId.value = null;
 };
 
 const load = async () => {
