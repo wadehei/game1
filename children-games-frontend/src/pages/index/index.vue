@@ -36,6 +36,19 @@
         <span class="sp-num">{{ Math.round(volume * 100) }}%</span>
       </div>
       <button class="sp-test" @click="testSound">点一下试听</button>
+      <div class="sp-row" style="margin-top: 10px">
+        <span class="sp-icon">🎨</span>
+        <span class="sp-label">主题</span>
+        <div class="theme-chips">
+          <button
+            v-for="opt in THEME_OPTIONS"
+            :key="opt.value"
+            class="theme-chip"
+            :class="{ picked: themeChoice === opt.value }"
+            @click="pickTheme(opt.value)"
+          >{{ opt.label }}</button>
+        </div>
+      </div>
       <div class="sp-tip">背景音乐功能即将上线</div>
     </div>
 
@@ -163,6 +176,7 @@ import iconSimonSvg from "@/static/images/games/lobby/icon-simon.svg";
 import iconMathSvg from "@/static/images/games/lobby/icon-math.svg";
 import iconMatchSvg from "@/static/images/games/lobby/icon-match.svg";
 import iconMatch3Svg from "@/static/images/games/lobby/icon-match3.svg";
+import iconBrickSvg from "@/static/images/games/lobby/icon-brick.svg";
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -271,6 +285,13 @@ const games = [
     icon: iconMatch3Svg,
     bgColor: "linear-gradient(135deg, #ff9966 0%, #ff5e62 100%)",
   },
+  {
+    id: "brick",
+    name: "打砖块",
+    totalLevels: 20,
+    icon: iconBrickSvg,
+    bgColor: "linear-gradient(135deg, #4D96FF 0%, #6BCB77 100%)",
+  },
 ];
 
 const getGameLevel = (gameId: string): number => {
@@ -314,6 +335,19 @@ const onVolumeInput = (e: Event) => {
   soundManager.setVolume(volume.value);
 };
 const testSound = () => soundManager.playSuccess();
+
+// 主题切换（夜间/日间/跟随系统）
+import { getThemeChoice, setTheme, type ThemeChoice } from "@/utils/theme";
+const themeChoice = ref<ThemeChoice>(getThemeChoice());
+const THEME_OPTIONS = [
+  { value: "auto" as ThemeChoice, label: "跟随系统" },
+  { value: "light" as ThemeChoice, label: "日间" },
+  { value: "dark" as ThemeChoice, label: "夜间" },
+];
+const pickTheme = (v: ThemeChoice) => {
+  themeChoice.value = v;
+  setTheme(v);
+};
 
 const goBattle = () => {
   soundManager.playClick();
@@ -725,6 +759,29 @@ onMounted(async () => {
   padding: 5px 14px;
   border-radius: 10px;
   cursor: pointer;
+}
+
+.theme-chips {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+}
+
+.theme-chip {
+  border: 2px solid #e3e8ef;
+  background: #fafbfc;
+  color: #666;
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.theme-chip.picked {
+  border-color: #667eea;
+  background: rgba(102, 126, 234, 0.08);
+  color: #667eea;
+  font-weight: 600;
 }
 
 .sp-tip {

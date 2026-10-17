@@ -96,6 +96,11 @@ const routes = [
     name: 'Math',
     component: () => import('@/pages/math/index.vue'),
   },
+  {
+    path: '/brick',
+    name: 'Brick',
+    component: () => import('@/pages/brick/index.vue'),
+  },
 ];
 
 const router = createRouter({

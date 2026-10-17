@@ -18,6 +18,8 @@ const GAME_RULES: Record<string, { lowerScoreIsBetter: boolean }> = {
   math: { lowerScoreIsBetter: true },
   // 消消乐的成绩是通关用掉的步数，越少越好
   match3: { lowerScoreIsBetter: true },
+  // 打砖块的成绩是砖块得分，越高越好
+  brick: { lowerScoreIsBetter: false },
 };
 
 // 每 15 颗星升一级
@@ -44,7 +46,7 @@ const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'memory_master', name: '记忆大师', icon: '🧠', desc: '记忆翻牌通关第 10 关', check: (c) => (c.levels.memory || 0) >= 10 },
   { id: 'sharp_shooter', name: '神枪手', icon: '🎯', desc: '坦克大战通关第 10 关', check: (c) => (c.levels.tank || 0) >= 10 },
   { id: 'math_talent', name: '数学小达人', icon: '➕', desc: '数学小怪兽通关第 10 关', check: (c) => (c.levels.math || 0) >= 10 },
-  { id: 'all_rounder', name: '全能玩家', icon: '🏅', desc: '玩过全部 8 个游戏', check: (c) => c.distinctGames >= Object.keys(GAME_RULES).length },
+  { id: 'all_rounder', name: '全能玩家', icon: '🏅', desc: '玩过全部 11 个游戏', check: (c) => c.distinctGames >= Object.keys(GAME_RULES).length },
   { id: 'daily_done', name: '任务达成', icon: '📅', desc: '完成一次每日任务', check: (c) => c.dailyRewardClaimed },
 ];
 

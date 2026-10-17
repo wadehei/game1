@@ -1,0 +1,85 @@
+/**
+ * 夜间模式全局覆盖：挂 html[data-theme='dark'] 后，
+ * 对外壳页面（首页/选角色/个人中心/反馈/对战大厅/对战房间）做集中深色适配。
+ *
+ * 设计取舍：儿童游戏页（canvas+固定美术配色）与后台保持原样；
+ * 对战房间的牌桌面板本身已是深色，仅适配其浅色外壳（成员卡/聊天卡/输入栏）。
+ */
+
+/* ── 页面底色 ── */
+html[data-theme='dark'] .home-page,
+html[data-theme='dark'] .battle-page,
+html[data-theme='dark'] .room-page,
+html[data-theme='dark'] .profiles-page,
+html[data-theme='dark'] .user-page,
+html[data-theme='dark'] .feedback-page,
+html[data-theme='dark'] .profile-page {
+  background: linear-gradient(180deg, #151a24 0%, #0f131b 100%);
+}
+
+/* ── 通用白卡/白底容器 ── */
+html[data-theme='dark'] .home-page .header,
+html[data-theme='dark'] .home-page .settings-panel,
+html[data-theme='dark'] .home-page .game-card,
+html[data-theme='dark'] .home-page .daily-task,
+html[data-theme='dark'] .battle-page .section,
+html[data-theme='dark'] .room-page .member-card,
+html[data-theme='dark'] .room-page .chat-card,
+html[data-theme='dark'] .room-page .settings-panel,
+html[data-theme='dark'] .feedback-page .fb-card,
+html[data-theme='dark'] .feedback-page .fb-form,
+html[data-theme='dark'] .profile-page .card,
+html[data-theme='dark'] .user-page .uc-card,
+html[data-theme='dark'] .profiles-page .profile-card {
+  background: #1c2330;
+  color: #e6eaf2;
+}
+
+/* ── 房间成员卡/聊天卡文字 ── */
+html[data-theme='dark'] .room-page .member-name,
+html[data-theme='dark'] .room-page .chat-nick,
+html[data-theme='dark'] .home-page .member-name {
+  color: #e6eaf2;
+}
+
+html[data-theme='dark'] .room-page .chat-input,
+html[data-theme='dark'] .home-page .edit-input,
+html[data-theme='dark'] .home-page .sp-slider {
+  background: #12161f;
+  color: #e6eaf2;
+  border-color: #2a3242;
+}
+
+html[data-theme='dark'] .room-page .panel {
+  background: #1c2330;
+  border-color: #2a3242;
+}
+
+html[data-theme='dark'] .room-page .chat-empty,
+html[data-theme='dark'] .room-page .idle-tip,
+html[data-theme='dark'] .home-page .sp-tip {
+  color: #8b95a8;
+}
+
+/* ── 首页游戏卡文字与排行榜等弹层 ── */
+html[data-theme='dark'] .home-page .game-name,
+html[data-theme='dark'] .home-page .sp-label,
+html[data-theme='dark'] .home-page .sp-num {
+  color: #e6eaf2;
+}
+
+html[data-theme='dark'] .home-page .settings-btn {
+  background: #1c2330;
+}
+
+html[data-theme='dark'] .home-page .section-title,
+html[data-theme='dark'] .home-page .daily-title {
+  color: #c8d0de;
+}
+
+/* ── 选角色/个人中心/反馈次级文字 ── */
+html[data-theme='dark'] .profiles-page .p-name,
+html[data-theme='dark'] .user-page .uc-label,
+html[data-theme='dark'] .feedback-page .fb-title {
+  color: #e6eaf2;
+}

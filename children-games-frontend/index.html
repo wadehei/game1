@@ -12,6 +12,23 @@
     <meta name="apple-mobile-web-app-title" content="游戏乐园" />
     <link rel="apple-touch-icon" href="/icons/icon-180.png" />
     <title>儿童游戏乐园</title>
+    <script>
+      // 主题尽早应用，避免夜间模式闪白（跟随系统或用户选择，详见 utils/theme.ts）
+      (function () {
+        try {
+          var c = localStorage.getItem('theme') || 'auto';
+          var dark = c === 'dark' || (c === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+        } catch (e) { /* ignore */ }
+        window.__earlyErrs = [];
+        window.addEventListener('error', function (e) {
+          window.__earlyErrs.push((e.message || 'error') + ' @ ' + (e.filename || '') + ':' + (e.lineno || 0));
+        });
+        window.addEventListener('unhandledrejection', function (e) {
+          window.__earlyErrs.push('rejection: ' + (e.reason && e.reason.message ? e.reason.message : String(e.reason)).slice(0, 300));
+        });
+      })();
+    </script>
     <style>
       #splash {
         position: fixed; inset: 0; z-index: 9999;

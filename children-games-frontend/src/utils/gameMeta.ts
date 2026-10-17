@@ -23,6 +23,7 @@ export const GAMES: GameMeta[] = [
   { id: 'math', name: '数学小怪兽', totalLevels: 20, scoreLabel: '最快 {v} 秒', lowerBetter: true },
   { id: 'match', name: '快乐连线', totalLevels: 20, scoreLabel: '剩余 {v} 秒' },
   { id: 'match3', name: '消消乐', totalLevels: 20, scoreLabel: '最少 {v} 步', lowerBetter: true },
+  { id: 'brick', name: '打砖块', totalLevels: 20, scoreLabel: '最高 {v} 分' },
 ];
 
 export const getGameMeta = (gameId: string): GameMeta | undefined =>

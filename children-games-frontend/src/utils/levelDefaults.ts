@@ -82,6 +82,13 @@ const FORMULAS: Record<string, Formula> = {
     moves: Math.max(22 - Math.floor((level - 1) / 3), 14),
     kinds: level <= 3 ? 4 : level <= 8 ? 5 : 6,
   }),
+  // 打砖块：砖排数每 2 关 +1（3→8 封顶），球速每关 +12，拍宽每关 -4（下限 70）
+  brick: (level) => ({
+    rows: Math.min(3 + Math.floor((level - 1) / 2), 8),
+    ballSpeed: 170 + (level - 1) * 12,
+    paddleWidth: Math.max(110 - (level - 1) * 4, 70),
+    lives: 3,
+  }),
 };
 
 /** 某游戏某关的内置默认配置（数值/布尔混合表，调用方按需取用） */
@@ -154,6 +161,12 @@ export const LEVEL_FIELD_DEFS: Record<string, FieldDef[]> = {
     { key: 'targetScore', label: '目标分数' },
     { key: 'moves', label: '步数' },
     { key: 'kinds', label: 'emoji 种类（4~6）' },
+  ],
+  brick: [
+    { key: 'rows', label: '砖块排数（3~8）' },
+    { key: 'ballSpeed', label: '球速' },
+    { key: 'paddleWidth', label: '球拍宽度' },
+    { key: 'lives', label: '生命值（可掉球次数）' },
   ],
 };
 
