@@ -46,6 +46,9 @@ export const getOverview = asyncHandler(async (req: AdminRequest, res: Response)
   const familyMembers = users.filter((u) => u.openid.startsWith('family_'));
   const totalStars = users.reduce((sum, u) => sum + u.totalStars, 0);
 
+  // 积分入账失败告警（applyChipDelta 重试仍失败的记录，见错误日志 source=chips）
+  const chipFailures = readRecentErrors(500).filter((e) => e.source === 'chips').length;
+
   const todayPlaytime = await UserPlaytime.findAll({
     where: { date: today },
     attributes: ['userId', 'seconds'],
@@ -76,6 +79,7 @@ export const getOverview = asyncHandler(async (req: AdminRequest, res: Response)
     totalStars,
     todayActiveUsers: todayPlaytime.length,
     todayPlaySeconds,
+    chipFailures,
     members: familyMembers.map((u) => ({
       id: u.id,
       nickname: u.nickname,
@@ -347,59 +351,24 @@ export const clearErrorLogs = asyncHandler(async (req: AdminRequest, res: Respon
   success(res, { ok: true });
 });
 
-// ─── 数据备份（纯 Node 导出，无外部依赖） ────────────────────────────────
-
-const sqlEscape = (value: unknown): string => {
-  if (value === null || value === undefined) return 'NULL';
-  if (typeof value === 'number') return String(value);
-  if (value instanceof Date) return `'${value.toISOString().slice(0, 19).replace('T', ' ')}'`;
-  return `'${String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '')}'`;
-};
-
-const BACKUP_TABLES = [
-  'users',
-  'game_progress',
-  'daily_tasks',
-  'level_configs',
-  'app_settings',
-  'user_playtime',
-  'battle_records',
-  'quiz_questions',
-  'feedbacks',
-  'feedback_replies',
-];
+// ─── 数据备份（SQL 构建在 services/backupService，与管理端下载/每日自动备份共用） ────────────────────────────────
 
 /** 导出全部业务数据为 .sql（数据 INSERT 语句） */
 export const downloadBackup = asyncHandler(async (req: AdminRequest, res: Response) => {
-  const { sequelize } = await import('../config/database');
-  const lines: string[] = [
-    '-- 儿童游戏乐园 数据备份',
-    `-- 生成时间: ${new Date().toISOString()}`,
-    'SET NAMES utf8mb4;',
-    'SET FOREIGN_KEY_CHECKS = 0;',
-    '',
-  ];
-
-  for (const table of BACKUP_TABLES) {
-    const [rows] = await sequelize.query(`SELECT * FROM \`${table}\``) as [any[], unknown];
-    lines.push(`-- ${table}（${rows.length} 行）`);
-    lines.push(`DELETE FROM \`${table}\`;`);
-    for (const row of rows) {
-      const cols = Object.keys(row);
-      const vals = cols.map((c) => sqlEscape(row[c]));
-      lines.push(`INSERT INTO \`${table}\` (${cols.map((c) => `\`${c}\``).join(', ')}) VALUES (${vals.join(', ')});`);
-    }
-    lines.push('');
-  }
-
-  lines.push('SET FOREIGN_KEY_CHECKS = 1;');
-
+  const { buildBackupSql } = await import('../services/backupService');
+  const sql = await buildBackupSql();
   res.setHeader('Content-Type', 'application/sql; charset=utf-8');
   res.setHeader(
     'Content-Disposition',
     `attachment; filename="children_games_backup_${localDateString()}.sql"`
   );
-  res.send(lines.join('\n'));
+  res.send(sql);
+});
+
+/** 磁盘自动备份列表（新→旧） */
+export const listAutoBackups = asyncHandler(async (req: AdminRequest, res: Response) => {
+  const { listAutoBackups: list } = await import('../services/backupService');
+  success(res, list());
 });
 
 

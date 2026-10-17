@@ -754,6 +754,7 @@ onMounted(() => {
     }
   });
   ws.on('blackjack_deal', (m: any) => {
+    soundManager.playDeal();
     gameEvents.handsView = (m.hands || []).map((h: any) => ({
       ...h,
       seat: seatOfUser(h.userId),
@@ -819,6 +820,7 @@ onMounted(() => {
       return;
     }
     if (m.action === 'bet' && m.stake) {
+      soundManager.playChip();
       const entry = bjEntry(m.userId, game.value.round);
       if (entry) entry.stake = m.stake;
       const item = (gameEvents.handsView || []).find((x: any) => x.userId === m.userId);
@@ -841,6 +843,12 @@ onMounted(() => {
         }
       }
       game.value.nextDeadline = m.nextDeadline || 0;
+      // 我的输赢音效（只对自己响，避免全场吵）
+      const mySettle = (m.results || []).find((r: any) => r.userId === myId.value);
+      if (mySettle) {
+        if (mySettle.delta > 0) soundManager.playSuccess();
+        else if (mySettle.delta < 0) soundManager.playFail();
+      }
     }
     // 结算同步爆牌/自然杰克状态到视图
     for (const r of m.results || []) {
@@ -907,6 +915,7 @@ onMounted(() => {
       game.value.myCards = m.cards || [];
       game.value.mySeen = true;
       game.value.myRank = m.rank || null;
+      soundManager.playFlip();
     }
   });
   ws.on('zjh_action', (m: any) => {
@@ -920,6 +929,7 @@ onMounted(() => {
     if (m.action === 'call' || m.action === 'timeout_call') {
       game.value.pot = m.pot ?? game.value.pot;
       game.value.stake = m.stake ?? game.value.stake;
+      if (m.action === 'call') soundManager.playChip(); // 主动跟注/加注有筹码声，超时兜底静默
       const o = others.find((x: any) => x.userId === m.userId);
       if (o) {
         o.betTotal = (o.betTotal || 0) + (m.cost || 0);
@@ -956,6 +966,11 @@ onMounted(() => {
       gameEvents.yanpai = { from: m.from, to: m.to, seq: Date.now() };
       // 比牌结果全员公布（含双方牌面，ZjhGame 渲染动效面板）
       gameEvents.compare = { ...m, seq: Date.now() };
+      // 验牌记录常驻（整局累计，ZjhGame 投注明细下方展示）
+      game.value.compareLog = [
+        ...(game.value.compareLog || []),
+        { round: game.value.round, from: m.from, to: m.to, winner: m.winner, seq: Date.now() },
+      ];
     }
   });
   ws.on('zjh_compare_cards', (m: any) => {
@@ -985,6 +1000,12 @@ onMounted(() => {
             entry.ended = m.winner === d.userId ? 'win' : isFolded(d.userId) ? 'fold' : 'showdown';
           }
         }
+      }
+      // 我的输赢音效
+      const meInDeltas = Array.isArray(m.deltas) ? m.deltas.find((d: any) => d.userId === myId.value) : null;
+      if (meInDeltas) {
+        if (meInDeltas.delta > 0) soundManager.playSuccess();
+        else if (meInDeltas.delta < 0) soundManager.playFail();
       }
     }
   });

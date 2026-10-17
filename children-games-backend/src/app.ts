@@ -40,6 +40,10 @@ const startServer = async () => {
     // 初始化错误日志（清理过期文件）
     initLogger();
 
+    // 每日自动备份到磁盘（03:05，保留最近 7 份），启动时补一份当天
+    const { initBackupScheduler } = await import('./services/backupService');
+    initBackupScheduler();
+
     // 测试数据库连接
     await testConnection();
 

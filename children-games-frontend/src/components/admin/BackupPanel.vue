@@ -12,17 +12,31 @@
       </button>
       <div v-if="done" class="done-tip">✅ 备份文件已开始下载</div>
       <div v-if="error" class="err-tip">导出失败，请稍后再试</div>
+
+      <div class="auto-section">
+        <div class="auto-title">🕐 每日自动备份（服务器磁盘，保留最近 7 份，每天 03:05 生成）</div>
+        <div v-if="!autos.length" class="auto-empty">暂无自动备份</div>
+        <div v-for="a in autos" :key="a.file" class="auto-row">
+          <span class="auto-file">{{ a.file }}</span>
+          <span class="auto-size">{{ (a.size / 1024).toFixed(1) }} KB</span>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import { downloadBackup } from '@/api/admin';
+import { onMounted, ref } from 'vue';
+import { downloadBackup, listAutoBackups, type AutoBackup } from '@/api/admin';
 
 const downloading = ref(false);
 const done = ref(false);
 const error = ref(false);
+const autos = ref<AutoBackup[]>([]);
+
+const load = async () => {
+  autos.value = await listAutoBackups().catch(() => []);
+};
 
 const download = async () => {
   downloading.value = true;
@@ -31,12 +45,15 @@ const download = async () => {
   try {
     await downloadBackup();
     done.value = true;
+    await load();
   } catch {
     error.value = true;
   } finally {
     downloading.value = false;
   }
 };
+
+onMounted(load);
 </script>
 
 <style scoped>
@@ -93,5 +110,40 @@ code {
   margin-top: 12px;
   font-size: 13px;
   color: #e74c3c;
+}
+
+.auto-section {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.auto-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.auto-empty {
+  font-size: 12px;
+  color: #bbb;
+}
+
+.auto-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 12px;
+  color: #666;
+  border-bottom: 1px dashed #f0f0f0;
+}
+
+.auto-file {
+  font-family: monospace;
+}
+
+.auto-size {
+  color: #999;
 }
 </style>

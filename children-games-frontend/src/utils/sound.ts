@@ -360,6 +360,62 @@ class SoundManager {
     }
   }
 
+  /** 发牌音 — 快速下滑白噪"唰"，120ms */
+  playDeal(): void {
+    if (this.muted || !this.ctx) return;
+    const t = this.ctx.currentTime;
+    const bufferSize = Math.floor(this.ctx.sampleRate * 0.12);
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i += 1) {
+      data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+    }
+    const source = this.ctx.createBufferSource();
+    const gain = this.ctx.createGain();
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(2400, t);
+    filter.frequency.exponentialRampToValueAtTime(800, t + 0.12);
+    gain.gain.setValueAtTime(0.22, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    source.buffer = buffer;
+    source.connect(filter).connect(gain).connect(this.out());
+    source.start(t);
+  }
+
+  /** 翻牌音 — 快速上滑 500→900Hz，90ms */
+  playFlip(): void {
+    if (this.muted || !this.ctx) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(500, t);
+    osc.frequency.exponentialRampToValueAtTime(900, t + 0.09);
+    gain.gain.setValueAtTime(0.18, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+    osc.connect(gain).connect(this.out());
+    osc.start(t);
+    osc.stop(t + 0.09);
+  }
+
+  /** 筹码音 — 两声短促高频 click（筹码碰撞） */
+  playChip(): void {
+    if (this.muted || !this.ctx) return;
+    const t = this.ctx.currentTime;
+    [0, 0.055].forEach((offset, i) => {
+      const osc = this.ctx!.createOscillator();
+      const gain = this.ctx!.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(i === 0 ? 1800 : 1400, t + offset);
+      gain.gain.setValueAtTime(0.12, t + offset);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + offset + 0.04);
+      osc.connect(gain).connect(this.out());
+      osc.start(t + offset);
+      osc.stop(t + offset + 0.04);
+    });
+  }
+
   /** 收集音 — 铃铛效果 A5 + 泛音, 150ms */
   playCollect(): void {
     if (this.muted || !this.ctx) return;

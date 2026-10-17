@@ -44,3 +44,4 @@ pw-check*
 uploads/
 cleanup-result.txt
 users-dump.txt
+backups/

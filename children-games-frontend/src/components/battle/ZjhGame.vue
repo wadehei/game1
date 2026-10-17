@@ -64,6 +64,21 @@
         </div>
       </div>
 
+      <!-- 验牌记录（常驻，整局累计） -->
+      <div v-if="compareLog.length" class="cmp-log">
+        <button class="cl-head" @click="cmpOpen = !cmpOpen">
+          <span>🔍 验牌记录（{{ compareLog.length }}）</span>
+          <span class="cl-toggle">{{ cmpOpen ? '收起 ▲' : '展开 ▼' }}</span>
+        </button>
+        <div v-if="cmpOpen" class="cl-list">
+          <div v-for="c in compareLog" :key="c.seq" class="cl-row">
+            <span class="cl-round">第{{ c.round }}手</span>
+            <span class="cl-names">{{ nameOfUser(c.from) }} ⇄ {{ nameOfUser(c.to) }}</span>
+            <span class="cl-winner" :class="{ mine: c.winner === myId }">🏆 {{ nameOfUser(c.winner) }}</span>
+          </div>
+        </div>
+      </div>
+
       <!-- 我的手牌 -->
       <div class="my-cards" @click="!state?.mySeen && canActNow && doLook()">
         <template v-if="state?.myCards?.length">
@@ -211,6 +226,10 @@ watch(publicCompare, (v) => {
 });
 
 const othersView = computed<any[]>(() => props.state?.others || []);
+
+// ── 验牌记录（常驻，整局累计） ──
+const cmpOpen = ref(false);
+const compareLog = computed<any[]>(() => props.state?.compareLog || []);
 
 // 投注明细（全员可见）：每手的投入（底注+跟注/加注/比牌费）与输赢，行高亮自己
 const betLedger = computed<any[]>(() =>
@@ -559,6 +578,70 @@ onUnmounted(() => {
   to {
     transform: rotateY(0);
   }
+}
+
+/* ── 验牌记录（常驻列表） ── */
+.cmp-log {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  overflow: hidden;
+}
+
+.cl-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: inherit;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.cl-toggle {
+  color: #d9c8ee;
+  font-size: 11px;
+}
+
+.cl-list {
+  padding: 0 10px 7px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.cl-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.cl-round {
+  color: #d9c8ee;
+  white-space: nowrap;
+}
+
+.cl-names {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cl-winner {
+  color: #7bed9f;
+  white-space: nowrap;
+}
+
+.cl-winner.mine {
+  color: #ffe27a;
+  font-weight: bold;
 }
 
 .settle-bar {

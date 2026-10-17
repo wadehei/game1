@@ -16,6 +16,7 @@ import {
   getErrorLogs,
   clearErrorLogs,
   downloadBackup,
+  listAutoBackups,
   quizList,
   quizCreate,
   quizUpdate,
@@ -47,6 +48,7 @@ router.delete('/levels/:gameId/:level', deleteLevelOverride);
 router.get('/logs', getErrorLogs);
 router.delete('/logs', clearErrorLogs);
 router.get('/backup', downloadBackup);
+router.get('/backups', listAutoBackups);
 
 // 题库管理（答题对战）
 router.get('/quiz', quizList);

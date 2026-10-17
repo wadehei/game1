@@ -67,6 +67,8 @@ export interface Overview {
   totalStars: number;
   todayActiveUsers: number;
   todayPlaySeconds: number;
+  /** 积分入账失败记录数（applyChipDelta 重试仍失败，source=chips 日志条数） */
+  chipFailures: number;
   members: AdminMember[];
   activity: ActivityItem[];
 }
@@ -188,6 +190,15 @@ export const downloadBackup = async (): Promise<void> => {
   link.click();
   URL.revokeObjectURL(url);
 };
+
+export interface AutoBackup {
+  file: string;
+  size: number;
+  createdAt: string;
+}
+
+/** 磁盘自动备份列表（每日 03:05 生成，保留 7 份） */
+export const listAutoBackups = (): Promise<AutoBackup[]> => client.get('/backups');
 
 // ─── 意见反馈 ────────────────────────────────
 

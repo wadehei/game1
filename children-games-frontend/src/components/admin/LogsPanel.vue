@@ -3,16 +3,23 @@
     <div class="panel-head">
       <h2 class="panel-title">🐞 错误日志</h2>
       <div class="head-actions">
+        <button
+          v-for="s in SOURCES"
+          :key="s.value"
+          class="act-btn"
+          :class="{ on: sourceFilter === s.value }"
+          @click="sourceFilter = s.value"
+        >{{ s.label }}</button>
         <button class="act-btn" @click="load">刷新</button>
         <button class="act-btn danger" @click="clearAll">清空</button>
       </div>
     </div>
 
     <div v-if="loading" class="empty">加载中…</div>
-    <div v-else-if="logs.length === 0" class="empty">🎉 没有任何错误记录</div>
+    <div v-else-if="filtered.length === 0" class="empty">🎉 没有任何错误记录</div>
 
     <div v-else class="log-list">
-      <div v-for="(log, i) in logs" :key="i" class="log-row" :class="`src-${log.source}`">
+      <div v-for="(log, i) in filtered" :key="i" class="log-row" :class="`src-${log.source}`">
         <div class="log-line1">
           <span class="log-source">{{ sourceLabel(log.source) }}</span>
           <span class="log-time">{{ formatTime(log.time) }}</span>
@@ -25,12 +32,23 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { getErrorLogs, clearErrorLogs, type AdminErrorLog } from '@/api/admin';
 import { confirmAction } from '@/utils/confirmBus';
 
 const logs = ref<AdminErrorLog[]>([]);
 const loading = ref(true);
+const sourceFilter = ref('all');
+
+const SOURCES = [
+  { value: 'all', label: '全部' },
+  { value: 'chips', label: '💰 积分入账' },
+  { value: 'server', label: '服务器' },
+  { value: 'client', label: '客户端' },
+  { value: 'process', label: '进程' },
+];
+
+const filtered = computed(() => (sourceFilter.value === 'all' ? logs.value : logs.value.filter((l) => l.source === sourceFilter.value)));
 
 const load = async () => {
   loading.value = true;
@@ -46,7 +64,7 @@ const clearAll = async () => {
 };
 
 const sourceLabel = (source: string): string =>
-  ({ server: '服务器', client: '客户端', process: '进程', raw: '原始' })[source] || source;
+  ({ chips: '💰 积分入账', server: '服务器', client: '客户端', process: '进程', raw: '原始' })[source] || source;
 
 const formatTime = (iso: string): string => {
   if (!iso) return '';
@@ -82,6 +100,12 @@ onMounted(load);
   padding: 7px 14px;
   border-radius: 10px;
   cursor: pointer;
+}
+
+.act-btn.on {
+  background: #3498db;
+  color: #fff;
+  font-weight: 600;
 }
 
 .act-btn.danger {
