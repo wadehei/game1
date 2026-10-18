@@ -52,18 +52,46 @@
       <div class="sp-tip">背景音乐功能即将上线</div>
     </div>
 
-    <!-- 好友对战入口 -->
-    <div class="battle-entry" @click="goBattle">
-      <span class="battle-icon">♟️</span>
-      <div class="battle-text">
-        <div class="battle-title">好友对战</div>
-        <div class="battle-desc">和朋友实时连线，聊天开黑</div>
-      </div>
-      <span class="battle-arrow">›</span>
+    <!-- 模式入口切换：小朋友游戏 / 好友对战 -->
+    <div class="mode-tabs">
+      <button
+        class="mode-tab kids"
+        :class="{ active: homeMode === 'kids' }"
+        @click="pickMode('kids')"
+      >
+        <span class="mode-icon">🧒</span>
+        <span class="mode-label">小朋友游戏</span>
+      </button>
+      <button
+        class="mode-tab battle"
+        :class="{ active: homeMode === 'battle' }"
+        @click="pickMode('battle')"
+      >
+        <span class="mode-icon">⚔️</span>
+        <span class="mode-label">好友对战</span>
+      </button>
     </div>
 
-    <!-- 游戏列表 -->
-    <div class="game-list">
+    <!-- 好友对战模式内容 -->
+    <div v-if="homeMode === 'battle'" class="battle-mode">
+      <div class="battle-entry" @click="goBattle">
+        <span class="battle-icon">♟️</span>
+        <div class="battle-text">
+          <div class="battle-title">对战大厅</div>
+          <div class="battle-desc">创建房间，把房间码发给朋友；或输入房间码加入</div>
+        </div>
+        <span class="battle-arrow">›</span>
+      </div>
+      <div class="battle-tips card">
+        <div class="battle-tip-line">🎲 已上线：比大小 · 21点 · 五子棋 · 答题对战 · 你画我猜 · 谁是卧底 · UNO</div>
+        <div class="battle-tip-line">💬 房间内可文字/表情/语音聊天</div>
+        <div class="battle-tip-line">🔒 积分仅站内娱乐，随账号永久跟随</div>
+      </div>
+      <button class="go-battle-btn" @click="goBattle">⚔️ 进入对战大厅</button>
+    </div>
+
+    <!-- 游戏列表（小朋友模式） -->
+    <div v-else class="game-list">
       <div
         v-for="game in games"
         :key="game.id"
@@ -118,8 +146,8 @@
       @close="boardGame = null"
     />
 
-    <!-- 每日任务 -->
-    <div class="daily-task card">
+    <!-- 每日任务（小朋友模式内容） -->
+    <div v-if="homeMode === 'kids'" class="daily-task card">
       <div class="task-header">
         <span class="task-title">📋 每日任务</span>
         <span class="task-progress"
@@ -347,6 +375,20 @@ const THEME_OPTIONS = [
 const pickTheme = (v: ThemeChoice) => {
   themeChoice.value = v;
   setTheme(v);
+};
+
+// 首页双入口：小朋友游戏 / 好友对战（选择持久化，默认小朋友游戏）
+type HomeMode = "kids" | "battle";
+const MODE_KEY = "home_mode";
+const homeMode = ref<HomeMode>((localStorage.getItem(MODE_KEY) as HomeMode) || "kids");
+const pickMode = (m: HomeMode) => {
+  homeMode.value = m;
+  soundManager.playClick();
+  try {
+    localStorage.setItem(MODE_KEY, m);
+  } catch {
+    // ignore
+  }
 };
 
 const goBattle = () => {
@@ -782,6 +824,81 @@ onMounted(async () => {
   background: rgba(102, 126, 234, 0.08);
   color: #667eea;
   font-weight: 600;
+}
+
+/* ── 模式入口切换 ── */
+.mode-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.mode-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 14px 8px;
+  border: 2px solid #e3e8ef;
+  border-radius: 16px;
+  background: #fff;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mode-tab .mode-icon {
+  font-size: 26px;
+}
+
+.mode-tab .mode-label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mode-tab.kids.active {
+  border-color: #6BCB77;
+  background: rgba(107, 203, 119, 0.08);
+  color: #2d9d7a;
+}
+
+.mode-tab.battle.active {
+  border-color: #667eea;
+  background: rgba(102, 126, 234, 0.08);
+  color: #667eea;
+}
+
+/* ── 好友对战模式内容 ── */
+.battle-mode .battle-entry {
+  margin-bottom: 12px;
+}
+
+.battle-tips {
+  background: #fff;
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  margin-bottom: 14px;
+}
+
+.battle-tip-line {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.9;
+}
+
+.go-battle-btn {
+  width: 100%;
+  padding: 15px;
+  border: none;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.35);
 }
 
 .sp-tip {

@@ -83,3 +83,42 @@ html[data-theme='dark'] .user-page .uc-label,
 html[data-theme='dark'] .feedback-page .fb-title {
   color: #e6eaf2;
 }
+
+/* ── 首页模式切换与对战模式内容 ── */
+html[data-theme='dark'] .home-page .mode-tab {
+  background: #1c2330;
+  border-color: #2a3242;
+  color: #8b95a8;
+}
+
+html[data-theme='dark'] .home-page .mode-tab.kids.active {
+  border-color: #6bcb77;
+  background: rgba(107, 203, 119, 0.1);
+  color: #6bcb77;
+}
+
+html[data-theme='dark'] .home-page .mode-tab.battle.active {
+  border-color: #7ea0ff;
+  background: rgba(126, 160, 255, 0.1);
+  color: #a5b9ff;
+}
+
+html[data-theme='dark'] .home-page .battle-tips {
+  background: #1c2330;
+}
+
+html[data-theme='dark'] .home-page .battle-tip-line {
+  color: #a8b2c4;
+}
+
+html[data-theme='dark'] .home-page .theme-chip {
+  background: #12161f;
+  border-color: #2a3242;
+  color: #8b95a8;
+}
+
+html[data-theme='dark'] .home-page .theme-chip.picked {
+  border-color: #7ea0ff;
+  background: rgba(126, 160, 255, 0.1);
+  color: #a5b9ff;
+}
