@@ -9,6 +9,7 @@ export { FeedbackReply } from './FeedbackReply';
 export { QuizQuestion } from './QuizQuestion';
 export { BattleRecord } from './BattleRecord';
 
+import { Model } from 'sequelize';
 import { sequelize } from '../config/database';
 import { User } from './User';
 import { GameProgress } from './GameProgress';
@@ -20,6 +21,7 @@ import { Feedback } from './Feedback';
 import { FeedbackReply } from './FeedbackReply';
 import { QuizQuestion } from './QuizQuestion';
 import { BattleRecord } from './BattleRecord';
+import { logInfo, logError } from '../utils/logger';
 
 // 定义模型关联关系
 User.hasMany(GameProgress, { foreignKey: 'userId', as: 'gameProgress' });
@@ -48,21 +50,21 @@ export const initModels = async (): Promise<void> => {
     await QuizQuestion.sync();
     await BattleRecord.sync();
     // sync 不会给旧表补列，逐一对比真实表结构补齐缺失列（防表结构漂移）
-    await syncMissingColumns(User);
-    await syncMissingColumns(GameProgress);
-    await syncMissingColumns(LevelConfig);
-    await syncMissingColumns(DailyTask);
-    await syncMissingColumns(AppSetting);
-    await syncMissingColumns(UserPlaytime);
-    await syncMissingColumns(Feedback);
-    await syncMissingColumns(FeedbackReply);
-    await syncMissingColumns(QuizQuestion);
-    await syncMissingColumns(BattleRecord);
+    await syncMissingColumns(User as any);
+    await syncMissingColumns(GameProgress as any);
+    await syncMissingColumns(LevelConfig as any);
+    await syncMissingColumns(DailyTask as any);
+    await syncMissingColumns(AppSetting as any);
+    await syncMissingColumns(UserPlaytime as any);
+    await syncMissingColumns(Feedback as any);
+    await syncMissingColumns(FeedbackReply as any);
+    await syncMissingColumns(QuizQuestion as any);
+    await syncMissingColumns(BattleRecord as any);
     // sync 也不会给旧表补索引，手动检查并补齐缺失索引
     await syncMissingIndexes();
-    console.log('✅ 数据表同步成功');
+    logInfo('database', '✅ 数据表同步成功');
   } catch (error) {
-    console.error('❌ 数据表同步失败:', error);
+    logError('database', '❌ 数据表同步失败', error instanceof Error ? error.stack : String(error));
     throw error;
   }
 };
@@ -70,14 +72,14 @@ export const initModels = async (): Promise<void> => {
 /** 对比模型定义与数据库实际索引，自动补齐缺失索引 */
 const syncMissingIndexes = async (): Promise<void> => {
   const queryInterface = sequelize.getQueryInterface();
-  const models = [
-    { model: GameProgress, tableName: 'game_progress' },
-    { model: UserPlaytime, tableName: 'user_playtime' },
-    { model: FeedbackReply, tableName: 'feedback_replies' },
+  const models: Array<{ model: typeof Model & { _indexes?: any[] }; tableName: string }> = [
+    { model: GameProgress as any, tableName: 'game_progress' },
+    { model: UserPlaytime as any, tableName: 'user_playtime' },
+    { model: FeedbackReply as any, tableName: 'feedback_replies' },
   ];
 
   for (const { model, tableName } of models) {
-    const indexes = (model as any)._indexes || [];
+    const indexes = model._indexes || [];
     const existingIndexes = await queryInterface.showIndex(tableName) as Array<{ name: string }>;
     const existingNames = new Set(existingIndexes.map((idx) => idx.name));
 
@@ -90,7 +92,7 @@ const syncMissingIndexes = async (): Promise<void> => {
       await sequelize.query(
         `ALTER TABLE \`${tableName}\` ADD ${uq}INDEX \`${indexName}\` (${cols})`
       );
-      console.log(`✅ 已补充索引: ${tableName}.${indexName}`);
+      logInfo('database', `✅ 已补充索引: ${tableName}.${indexName}`);
     }
   }
 };
@@ -106,6 +108,6 @@ const syncMissingColumns = async (model: any): Promise<void> => {
       continue;
     }
     await queryInterface.addColumn(tableName, field, attr);
-    console.log(`✅ 已补充数据列: ${tableName}.${field}`);
+    logInfo('database', `✅ 已补充数据列: ${tableName}.${field}`);
   }
 };
