@@ -9,12 +9,49 @@ import avatarRoutes from './routes/avatar';
 import { initWsServer } from './ws/wsServer';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { logError, initLogger } from './utils/logger';
+import { globalLimiter } from './middleware/rateLimiter';
 
 const app = express();
 
-// 中间件
+// 安全中间件
 app.use(helmet());
-app.use(cors());
+
+// CORS 配置：生产环境使用白名单，开发环境允许本地地址
+const corsOptions = {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    // 允许没有 origin 的请求（如服务端请求、Postman）
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    const allowedOrigins = config.cors.allowedOrigins;
+
+    // 生产环境：严格白名单
+    if (config.isProduction) {
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS 策略不允许来源 ${origin}`));
+      }
+    } else {
+      // 开发环境：允许配置的来源（默认包含 localhost）
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(null, false);
+      }
+    }
+  },
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
+
+// 速率限制：全局应用
+app.use(globalLimiter);
+
+// 请求体解析
 app.use(express.json({ limit: '64kb' }));
 app.use(express.urlencoded({ extended: true }));
 

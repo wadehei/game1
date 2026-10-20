@@ -25,23 +25,26 @@ import {
 } from '../controllers/adminController';
 import { listFeedbacks, updateFeedback, addFeedbackReply } from '../controllers/feedbackController';
 import { adminMiddleware } from '../middleware/adminAuth';
+import { adminLoginLimiter } from '../middleware/rateLimiter';
+import { validateBody } from '../middleware/validate';
+import { adminLoginSchema, adjustChipsSchema, updateSettingsSchema, addReplySchema, quizSchema } from '../validators/schemas';
 
 const router = Router();
 
-// 登录（公开）
-router.post('/login', adminLogin);
+// 登录（公开，使用更严格的速率限制 + 输入验证）
+router.post('/login', adminLoginLimiter, validateBody(adminLoginSchema), adminLogin);
 
 // 以下均需管理员凭证
 router.use(adminMiddleware);
 router.get('/overview', getOverview);
 router.get('/users', getUsers);
 router.put('/users/:id', updateUser);
-router.put('/users/:id/chips', adjustUserChips);
+router.put('/users/:id/chips', validateBody(adjustChipsSchema), adjustUserChips);
 router.post('/users/:id/reset', resetUserProgress);
 router.post('/users/:id/clear-pin', clearUserPin);
 router.delete('/users/:id', deleteUser);
 router.get('/settings', getSettings);
-router.put('/settings', updateSettings);
+router.put('/settings', validateBody(updateSettingsSchema), updateSettings);
 router.get('/levels/:gameId', getLevelOverrides);
 router.put('/levels/:gameId/:level', saveLevelOverride);
 router.delete('/levels/:gameId/:level', deleteLevelOverride);
@@ -52,8 +55,8 @@ router.get('/backups', listAutoBackups);
 
 // 题库管理（答题对战）
 router.get('/quiz', quizList);
-router.post('/quiz', quizCreate);
-router.put('/quiz/:id', quizUpdate);
+router.post('/quiz', validateBody(quizSchema), quizCreate);
+router.put('/quiz/:id', validateBody(quizSchema), quizUpdate);
 router.delete('/quiz/:id', quizDelete);
 router.post('/quiz/import', quizImport);
 
@@ -61,6 +64,6 @@ router.post('/quiz/import', quizImport);
 router.get('/feedback', listFeedbacks);
 router.put('/feedback/:id', updateFeedback);
 // 官方回复（所有用户可见）
-router.post('/feedback/:id/reply', addFeedbackReply);
+router.post('/feedback/:id/reply', validateBody(addReplySchema), addFeedbackReply);
 
 export default router;
