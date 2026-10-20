@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { Op } from 'sequelize';
 import jwt from 'jsonwebtoken';
 import { config } from '../config';
@@ -9,6 +10,7 @@ import { AdminRequest } from '../middleware/adminAuth';
 import { success, fail, asyncHandler } from '../utils/response';
 import { LEVEL_FIELDS } from './levelController';
 import { readRecentErrors, clearErrors } from '../utils/logger';
+import { withTransaction } from '../utils/transaction';
 
 const localDateString = (): string => {
   const now = new Date();
@@ -27,7 +29,10 @@ export const adminLogin = asyncHandler(async (req: Request, res: Response) => {
     fail(res, '未配置 ADMIN_PASSWORD，请在后端 .env 中设置', 500);
     return;
   }
-  if (password !== expected) {
+  // 使用 timingSafeEqual 防止计时攻击
+  const actual = Buffer.from(String(password || ''), 'utf-8');
+  const expectedBuf = Buffer.from(expected, 'utf-8');
+  if (actual.length !== expectedBuf.length || !crypto.timingSafeEqual(actual, expectedBuf)) {
     fail(res, '密码不正确', 401);
     return;
   }
@@ -178,18 +183,23 @@ export const adjustUserChips = asyncHandler(async (req: AdminRequest, res: Respo
 export const resetUserProgress = asyncHandler(async (req: AdminRequest, res: Response) => {
   const userId = parseInt(String(req.params.id), 10);
 
-  const user = await User.findByPk(userId);
-  if (!user) {
-    fail(res, '用户不存在', 404);
-    return;
-  }
+  // 所有写操作包在事务中，保证原子性
+  const user = await withTransaction(async (t) => {
+    // 在事务内加锁重读，防并发覆盖
+    const user = await User.findByPk(userId, { transaction: t, lock: t.LOCK.UPDATE });
+    if (!user) {
+      throw new Error('用户不存在');
+    }
 
-  await GameProgress.destroy({ where: { userId } });
-  await DailyTask.destroy({ where: { userId } });
-  user.totalStars = 0;
-  user.level = 1;
-  user.achievements = '[]';
-  await user.save();
+    await GameProgress.destroy({ where: { userId }, transaction: t });
+    await DailyTask.destroy({ where: { userId }, transaction: t });
+    user.totalStars = 0;
+    user.level = 1;
+    user.achievements = '[]';
+    await user.save({ transaction: t });
+
+    return user;
+  }, 'resetUserProgress');
 
   success(res, { id: userId, nickname: user.nickname });
 });
@@ -208,22 +218,30 @@ export const deleteUser = asyncHandler(async (req: AdminRequest, res: Response) 
   const { kickUserEverywhere } = await import('../ws/wsServer');
   kickUserEverywhere(userId, '该角色已被家长删除');
 
-  // 清理其上传的照片头像文件
+  // 清理其上传的照片头像文件（文件系统操作不可回滚，放在事务前执行）
+  // 即使文件删除后事务失败，最坏情况是多一个孤儿文件，下次可清理
   const avatar = String(user.avatar || '');
   const avMatch = avatar.match(/^\/api\/avatars\/([A-Za-z0-9_-]+\.(?:jpg|png|webp|gif))$/);
   if (avMatch) {
     const p = path.resolve(process.cwd(), 'uploads', 'avatars', avMatch[1]);
-    fs.existsSync(p) && fs.unlinkSync(p);
+    try {
+      fs.existsSync(p) && fs.unlinkSync(p);
+    } catch {
+      // 文件删除失败不阻断主流程
+    }
   }
 
-  // 有外键约束的关联数据必须先删（feedbacks/feedback_replies → users），否则删除报 500
-  await FeedbackReply.destroy({ where: { userId } });
-  await Feedback.destroy({ where: { userId } });
-  await BattleRecord.destroy({ where: { userId } });
-  await GameProgress.destroy({ where: { userId } });
-  await DailyTask.destroy({ where: { userId } });
-  await UserPlaytime.destroy({ where: { userId } });
-  await user.destroy();
+  // 所有数据库删除操作包在事务中，保证原子性
+  await withTransaction(async (t) => {
+    // 有外键约束的关联数据必须先删（feedbacks/feedback_replies → users）
+    await FeedbackReply.destroy({ where: { userId }, transaction: t });
+    await Feedback.destroy({ where: { userId }, transaction: t });
+    await BattleRecord.destroy({ where: { userId }, transaction: t });
+    await GameProgress.destroy({ where: { userId }, transaction: t });
+    await DailyTask.destroy({ where: { userId }, transaction: t });
+    await UserPlaytime.destroy({ where: { userId }, transaction: t });
+    await user.destroy({ transaction: t });
+  }, 'deleteUser');
 
   success(res, { id: userId });
 });
@@ -428,21 +446,30 @@ export const quizDelete = asyncHandler(async (req: Request, res: Response) => {
 export const quizImport = asyncHandler(async (req: Request, res: Response) => {
   const list = Array.isArray(req.body?.questions) ? req.body.questions : [];
   if (list.length === 0) return fail(res, '导入内容为空');
-  let created = 0;
+
+  // 先在事务外做校验，过滤无效条目
+  const validItems: Array<{ text: string; options: string[]; answer: number; category: string; difficulty: number }> = [];
   let skipped = 0;
   for (const item of list) {
     const v = validateQuestion(item);
-    if (v.error) {
-      skipped += 1;
-      continue;
-    }
-    const dup = await QuizQuestion.findOne({ where: { text: v.data.text } });
-    if (dup) {
-      skipped += 1;
-      continue;
-    }
-    await QuizQuestion.create(v.data);
-    created += 1;
+    if (v.error) { skipped++; continue; }
+    validItems.push(v.data);
   }
+
+  // 事务内一次性完成去重 + 插入，保证原子性
+  const { created } = await withTransaction(async (t) => {
+    let createdCount = 0;
+    for (const data of validItems) {
+      const dup = await QuizQuestion.findOne({
+        where: { text: data.text },
+        transaction: t,
+      });
+      if (dup) { skipped++; continue; }
+      await QuizQuestion.create(data, { transaction: t });
+      createdCount++;
+    }
+    return { created: createdCount };
+  }, 'quizImport');
+
   success(res, { created, skipped }, `导入完成：新增 ${created}，跳过 ${skipped}`);
 });

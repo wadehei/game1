@@ -60,6 +60,10 @@ FeedbackReply.init(
       {
         fields: ['feedbackId'],
       },
+      {
+        fields: ['userId'],
+        name: 'idx_fr_user',
+      },
     ],
   }
 );

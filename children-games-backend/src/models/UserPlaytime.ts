@@ -55,6 +55,10 @@ UserPlaytime.init(
         unique: true,
         fields: ['userId', 'date'],
       },
+      {
+        fields: ['date'],
+        name: 'idx_playtime_date',
+      },
     ],
   }
 );

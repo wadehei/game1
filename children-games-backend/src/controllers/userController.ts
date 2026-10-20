@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { Op } from 'sequelize';
 import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
+import bcrypt from 'bcrypt';
 import { User, UserPlaytime, GameProgress, DailyTask } from '../models';
 import { config } from '../config';
 import { AuthRequest } from '../middleware/auth';
@@ -9,14 +9,29 @@ import { success, fail, asyncHandler } from '../utils/response';
 
 // ─── 角色口令（PIN） ────────────────────────────────
 
-const hashPin = (pin: string): string =>
-  crypto.createHash('sha256').update(`${pin}:${config.jwt.secret}`).digest('hex');
+const PIN_HASH_ROUNDS = 12;
+const hashPin = async (pin: string): Promise<string> =>
+  bcrypt.hash(pin, PIN_HASH_ROUNDS);
+
+const verifyPin = async (pin: string, hash: string): Promise<boolean> =>
+  bcrypt.compare(pin, hash);
 
 const isValidPin = (pin: unknown): pin is string =>
   typeof pin === 'string' && /^\d{4}$/.test(pin);
 
-// 简单防爆破：同一角色 1 分钟内错 5 次锁定 60 秒
+// 防爆破：同一角色 1 分钟内错 5 次锁定 60 秒，递增惩罚
 const pinAttempts = new Map<number, { count: number; lockedUntil: number }>();
+
+// 定期清理过期条目，防止内存泄漏（每 2 分钟扫描一次）
+setInterval(() => {
+  const now = Date.now();
+  for (const [uid, rec] of pinAttempts) {
+    // 锁定已过期 且 失败次数未达阈值 → 清除
+    if (rec.lockedUntil < now && rec.count < 5) {
+      pinAttempts.delete(uid);
+    }
+  }
+}, 120_000).unref(); // .unref() 不阻止进程退出
 
 const checkThrottle = (userId: number): number | null => {
   const rec = pinAttempts.get(userId);
@@ -28,7 +43,9 @@ const recordFail = (userId: number): void => {
   const rec = pinAttempts.get(userId) || { count: 0, lockedUntil: 0 };
   rec.count += 1;
   if (rec.count >= 5) {
-    rec.lockedUntil = Date.now() + 60 * 1000;
+    // 递增锁定：5次→60s，10次→5min，15次→30min
+    const lockDuration = rec.count >= 15 ? 30 * 60_000 : rec.count >= 10 ? 5 * 60_000 : 60_000;
+    rec.lockedUntil = Date.now() + lockDuration;
     rec.count = 0;
   }
   pinAttempts.set(userId, rec);
@@ -139,7 +156,7 @@ export const familyLogin = asyncHandler(async (req: Request, res: Response) => {
         return;
       }
       const pin = req.body?.pin;
-      if (!isValidPin(pin) || hashPin(pin) !== user.pinHash) {
+      if (!isValidPin(pin) || !(await verifyPin(pin, user.pinHash))) {
         recordFail(user.id);
         fail(res, '口令不正确', 401);
         return;
@@ -211,7 +228,7 @@ export const updateMyPin = asyncHandler(async (req: AuthRequest, res: Response) 
   const { oldPin, newPin } = req.body || {};
 
   if (user.pinHash) {
-    if (!isValidPin(oldPin) || hashPin(oldPin) !== user.pinHash) {
+    if (!isValidPin(oldPin) || !(await verifyPin(oldPin, user.pinHash))) {
       fail(res, '当前口令不正确', 401);
       return;
     }
@@ -227,7 +244,7 @@ export const updateMyPin = asyncHandler(async (req: AuthRequest, res: Response) 
     fail(res, '新口令需为 4 位数字');
     return;
   }
-  user.pinHash = hashPin(newPin);
+  user.pinHash = await hashPin(newPin);
   await user.save();
   success(res, { hasPin: true });
 });

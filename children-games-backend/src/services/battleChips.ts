@@ -65,9 +65,11 @@ export const writeCareerRecords = async (
  *  内置 3 次退避重试——DB 抖动不再静默丢账，最终失败落盘告警（桌面分与账号分的差异可凭日志核对） */
 export const applyChipDelta = async (userId: number, delta: number): Promise<number | null> => {
   const n = Math.trunc(delta);
+  if (!Number.isFinite(n)) return null; // 防御非数字输入
   let lastErr: unknown = null;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
+      // Math.trunc + Number.isFinite 保证 n 为安全整数，literal 插值无注入风险
       const [affected] = await User.update(
         { battleChips: literal(`GREATEST(0, battleChips + ${n})`) },
         { where: { id: userId } }

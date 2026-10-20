@@ -88,7 +88,7 @@ const routes = [
   },
   {
     path: '/match3',
-    name: 'Match',
+    name: 'Match3',
     component: () => import('@/pages/match3/index.vue'),
   },
   {

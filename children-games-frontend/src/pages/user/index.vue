@@ -597,13 +597,13 @@ const saveInterval = (value: number) => {
 onMounted(async () => {
   try {
     achievements.value = await getAchievements();
-  } catch (e) {
-    console.log("获取成就失败", e);
+  } catch {
+    // 获取成就失败，保持默认空数组
   }
   try {
     career.value = await getMyCareer();
-  } catch (e) {
-    console.log("获取生涯失败", e);
+  } catch {
+    // 获取生涯失败，保持默认
   }
   // 初始口令状态：探测一次（输错也算错，用设置接口无法探测——改由成员列表接口无此信息，
   // 这里用 profiles 公开列表查询自己是否带锁）

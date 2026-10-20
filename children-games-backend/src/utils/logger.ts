@@ -59,6 +59,7 @@ export const logError = (source: string, message: string, detail?: string): void
 
   if (!flushTimer) {
     flushTimer = setInterval(flush, FLUSH_INTERVAL_MS);
+    flushTimer.unref(); // 不阻止进程优雅退出
   }
 };
 

@@ -1,4 +1,5 @@
 import express from 'express';
+import http from 'http';
 import cors from 'cors';
 import helmet from 'helmet';
 import { config } from './config';
@@ -12,6 +13,9 @@ import { logError, initLogger } from './utils/logger';
 import { globalLimiter } from './middleware/rateLimiter';
 
 const app = express();
+
+// 信任代理（Nginx 后获取真实客户端 IP）
+app.set('trust proxy', true);
 
 // 安全中间件
 app.use(helmet());
@@ -53,7 +57,7 @@ app.use(globalLimiter);
 
 // 请求体解析
 app.use(express.json({ limit: '64kb' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: '64kb' }));
 
 // 路由
 app.use(avatarRoutes); // 头像上传/静态（自带完整路径）
@@ -72,6 +76,33 @@ process.on('uncaughtException', (err) => {
 });
 
 // 启动服务器
+let server: http.Server | null = null;
+
+const gracefulShutdown = async (signal: string) => {
+  console.log(`\n🛑 收到 ${signal}，开始优雅关闭...`);
+  // 1. 停止接受新连接
+  if (server) {
+    server.close(() => {
+      console.log('✅ HTTP 服务器已关闭');
+    });
+  }
+  // 2. 关闭数据库连接池
+  try {
+    await sequelize.close();
+    console.log('✅ 数据库连接已关闭');
+  } catch (err) {
+    console.error('关闭数据库连接失败:', err);
+  }
+  // 3. 给正在处理的请求最多 10 秒完成
+  setTimeout(() => {
+    console.log('⏰ 强制退出');
+    process.exit(1);
+  }, 10_000).unref();
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
 const startServer = async () => {
   try {
     // 初始化错误日志（清理过期文件）
@@ -88,7 +119,7 @@ const startServer = async () => {
     await initModels();
 
     // WebSocket（对战房间），挂在同一个 HTTP server 的 /ws 路径
-    const server = app.listen(config.port, () => {
+    server = app.listen(config.port, () => {
       console.log(`
 🚀 服务器已启动
 📍 地址: http://localhost:${config.port}

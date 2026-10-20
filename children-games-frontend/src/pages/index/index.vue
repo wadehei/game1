@@ -410,17 +410,16 @@ onMounted(async () => {
       router.replace("/profiles");
       return;
     }
-    console.log("刷新用户信息失败", e);
   }
   try {
     await getAllProgress();
-  } catch (e) {
-    console.log("获取进度失败", e);
+  } catch {
+    // 获取进度失败，保持默认空状态
   }
   try {
     dailyTask.value = await getDailyTask();
-  } catch (e) {
-    console.log("获取每日任务失败", e);
+  } catch {
+    // 获取每日任务失败，保持默认
   }
 });
 </script>

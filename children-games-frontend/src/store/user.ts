@@ -14,7 +14,16 @@ export interface UserInfo {
 export const useUserStore = defineStore('user', () => {
   const token = ref<string>(localStorage.getItem('token') || '');
   const stored = localStorage.getItem('userInfo');
-  const userInfo = ref<UserInfo | null>(stored ? JSON.parse(stored) : null);
+  let parsed: UserInfo | null = null;
+  if (stored) {
+    try {
+      parsed = JSON.parse(stored);
+    } catch {
+      // localStorage 数据损坏，清除后重置
+      localStorage.removeItem('userInfo');
+    }
+  }
+  const userInfo = ref<UserInfo | null>(parsed);
 
   const setToken = (newToken: string) => {
     token.value = newToken;

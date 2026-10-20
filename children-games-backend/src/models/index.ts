@@ -58,10 +58,40 @@ export const initModels = async (): Promise<void> => {
     await syncMissingColumns(FeedbackReply);
     await syncMissingColumns(QuizQuestion);
     await syncMissingColumns(BattleRecord);
+    // sync 也不会给旧表补索引，手动检查并补齐缺失索引
+    await syncMissingIndexes();
     console.log('✅ 数据表同步成功');
   } catch (error) {
     console.error('❌ 数据表同步失败:', error);
     throw error;
+  }
+};
+
+/** 对比模型定义与数据库实际索引，自动补齐缺失索引 */
+const syncMissingIndexes = async (): Promise<void> => {
+  const queryInterface = sequelize.getQueryInterface();
+  const models = [
+    { model: GameProgress, tableName: 'game_progress' },
+    { model: UserPlaytime, tableName: 'user_playtime' },
+    { model: FeedbackReply, tableName: 'feedback_replies' },
+  ];
+
+  for (const { model, tableName } of models) {
+    const indexes = (model as any)._indexes || [];
+    const existingIndexes = await queryInterface.showIndex(tableName) as Array<{ name: string }>;
+    const existingNames = new Set(existingIndexes.map((idx) => idx.name));
+
+    for (const idx of indexes) {
+      const indexName = idx.name || `${tableName}_${idx.fields.join('_')}`;
+      if (existingNames.has(indexName)) continue;
+
+      const cols = idx.fields.map((f: string) => `\`${f}\``).join(', ');
+      const uq = idx.unique ? 'UNIQUE ' : '';
+      await sequelize.query(
+        `ALTER TABLE \`${tableName}\` ADD ${uq}INDEX \`${indexName}\` (${cols})`
+      );
+      console.log(`✅ 已补充索引: ${tableName}.${indexName}`);
+    }
   }
 };
 

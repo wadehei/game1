@@ -102,6 +102,10 @@ GameProgress.init(
         unique: true,
         fields: ['userId', 'gameId'],
       },
+      {
+        fields: ['userId', 'updatedAt'],
+        name: 'idx_gp_user_updated',
+      },
     ],
   }
 );

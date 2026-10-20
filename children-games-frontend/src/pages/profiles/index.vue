@@ -100,8 +100,8 @@ const onPhotoPick = async (event: Event) => {
   uploading.value = true;
   try {
     photoUrl.value = await uploadPhotoAvatar(file);
-  } catch (e) {
-    console.log('头像上传失败', e);
+  } catch {
+    // 头像上传失败，uploading 状态在 finally 中重置
   } finally {
     uploading.value = false;
     input.value = '';
@@ -140,8 +140,8 @@ const selectProfile = async (p: FamilyProfile) => {
   try {
     await familyLogin({ uid: p.id });
     enter();
-  } catch (e) {
-    console.log('角色登录失败', e);
+  } catch {
+    // 角色登录失败，用户可重试
   }
 };
 
@@ -169,8 +169,8 @@ const createProfile = async () => {
     await familyLogin({ nickname: nickname.value, avatar: photoUrl.value || pickedEmoji.value });
     creating.value = false;
     enter();
-  } catch (e) {
-    console.log('创建角色失败', e);
+  } catch {
+    creating.value = false;
   }
 };
 

@@ -11,6 +11,7 @@ export const useRoomWs = () => {
   let retry = 0;
   let closedByUser = false;
   let retryTimer: ReturnType<typeof setTimeout> | null = null;
+  let pingTimer: ReturnType<typeof setInterval> | null = null;
 
   const on = (t: string, fn: WsHandler) => {
     if (!handlers.has(t)) handlers.set(t, new Set());
@@ -65,13 +66,14 @@ export const useRoomWs = () => {
   const close = () => {
     closedByUser = true;
     if (retryTimer) clearTimeout(retryTimer);
+    if (pingTimer) clearInterval(pingTimer);
     ws?.close();
     ws = null;
     status.value = 'closed';
   };
 
   // 保活：每 25 秒 ping，防代理空闲断链
-  setInterval(() => send({ t: 'ping' }), 25000);
+  pingTimer = setInterval(() => send({ t: 'ping' }), 25000);
 
   return { status, connect, send, close, on, off };
 };
