@@ -9,7 +9,7 @@ import routes from './routes';
 import avatarRoutes from './routes/avatar';
 import { initWsServer } from './ws/wsServer';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
-import { logError, initLogger } from './utils/logger';
+import { logError, logInfo, initLogger } from './utils/logger';
 import { globalLimiter } from './middleware/rateLimiter';
 
 const app = express();
@@ -79,23 +79,23 @@ process.on('uncaughtException', (err) => {
 let server: http.Server | null = null;
 
 const gracefulShutdown = async (signal: string) => {
-  console.log(`\n🛑 收到 ${signal}，开始优雅关闭...`);
+  logInfo('server', `\n🛑 收到 ${signal}，开始优雅关闭...`);
   // 1. 停止接受新连接
   if (server) {
     server.close(() => {
-      console.log('✅ HTTP 服务器已关闭');
+      logInfo('server', '✅ HTTP 服务器已关闭');
     });
   }
   // 2. 关闭数据库连接池
   try {
     await sequelize.close();
-    console.log('✅ 数据库连接已关闭');
+    logInfo('server', '✅ 数据库连接已关闭');
   } catch (err) {
-    console.error('关闭数据库连接失败:', err);
+    logError('server', '关闭数据库连接失败', err instanceof Error ? err.stack : String(err));
   }
   // 3. 给正在处理的请求最多 10 秒完成
   setTimeout(() => {
-    console.log('⏰ 强制退出');
+    logInfo('server', '⏰ 强制退出');
     process.exit(1);
   }, 10_000).unref();
 };
@@ -120,7 +120,7 @@ const startServer = async () => {
 
     // WebSocket（对战房间），挂在同一个 HTTP server 的 /ws 路径
     server = app.listen(config.port, () => {
-      console.log(`
+      logInfo('server', `
 🚀 服务器已启动
 📍 地址: http://localhost:${config.port}
 🌍 环境: ${config.nodeEnv}
@@ -128,7 +128,7 @@ const startServer = async () => {
     });
     initWsServer(server);
   } catch (error) {
-    console.error('启动服务器失败:', error);
+    logError('server', '启动服务器失败', error instanceof Error ? error.stack : String(error));
     process.exit(1);
   }
 };

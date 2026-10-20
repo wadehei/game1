@@ -1,5 +1,6 @@
 import { Sequelize } from 'sequelize';
 import { config } from './index';
+import { logInfo, logError } from '../utils/logger';
 
 export const sequelize = new Sequelize(
   config.database.name,
@@ -9,7 +10,7 @@ export const sequelize = new Sequelize(
     host: config.database.host,
     port: config.database.port,
     dialect: 'mysql',
-    logging: config.nodeEnv === 'development' ? console.log : false,
+    logging: config.nodeEnv === 'development' ? (msg) => logInfo('database', msg) : false,
     pool: {
       max: 10,
       min: 0,
@@ -22,9 +23,9 @@ export const sequelize = new Sequelize(
 export const testConnection = async (): Promise<void> => {
   try {
     await sequelize.authenticate();
-    console.log('✅ 数据库连接成功');
+    logInfo('database', '✅ 数据库连接成功');
   } catch (error) {
-    console.error('❌ 数据库连接失败:', error);
+    logError('database', '❌ 数据库连接失败', error instanceof Error ? error.stack : String(error));
     throw error;
   }
 };

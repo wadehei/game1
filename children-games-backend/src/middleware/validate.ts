@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodSchema, ZodError } from 'zod';
-import { fail } from '../utils/response';
 
 /**
  * 验证中间件工厂
@@ -20,12 +19,17 @@ export const validate = (schema: ZodSchema, source: 'body' | 'query' | 'params' 
     } catch (error) {
       if (error instanceof ZodError) {
         // 格式化错误信息
-        const errors = error.errors.map(err => ({
-          field: err.path.join('.'),
-          message: err.message,
+        const errors = error.issues.map(issue => ({
+          field: issue.path.join('.'),
+          message: issue.message,
         }));
 
-        fail(res, '输入验证失败', 400, errors);
+        res.status(400).json({
+          code: 400,
+          error: 'VALIDATION_ERROR',
+          message: '输入验证失败',
+          details: errors,
+        });
         return;
       }
 
