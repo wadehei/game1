@@ -27,7 +27,8 @@ export const useRoomWs = () => {
   const connect = (roomId: string) => {
     const token = localStorage.getItem('token') || '';
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    url = `${proto}://${location.host}/ws?token=${encodeURIComponent(token)}&roomId=${encodeURIComponent(roomId)}`;
+    // URL 仅传 roomId，token 通过连接后首条消息传递（避免泄露至日志/Referer）
+    url = `${proto}://${location.host}/ws?roomId=${encodeURIComponent(roomId)}`;
     closedByUser = false;
     status.value = 'connecting';
     ws = new WebSocket(url);
@@ -35,6 +36,8 @@ export const useRoomWs = () => {
     ws.onopen = () => {
       status.value = 'open';
       retry = 0;
+      // 首条消息鉴权：发送 token 给服务端
+      ws.send(JSON.stringify({ t: 'auth', token }));
     };
     ws.onmessage = (e) => {
       try {

@@ -50,16 +50,16 @@ export const initModels = async (): Promise<void> => {
     await QuizQuestion.sync();
     await BattleRecord.sync();
     // sync 不会给旧表补列，逐一对比真实表结构补齐缺失列（防表结构漂移）
-    await syncMissingColumns(User as any);
-    await syncMissingColumns(GameProgress as any);
-    await syncMissingColumns(LevelConfig as any);
-    await syncMissingColumns(DailyTask as any);
-    await syncMissingColumns(AppSetting as any);
-    await syncMissingColumns(UserPlaytime as any);
-    await syncMissingColumns(Feedback as any);
-    await syncMissingColumns(FeedbackReply as any);
-    await syncMissingColumns(QuizQuestion as any);
-    await syncMissingColumns(BattleRecord as any);
+    await syncMissingColumns(User);
+    await syncMissingColumns(GameProgress);
+    await syncMissingColumns(LevelConfig);
+    await syncMissingColumns(DailyTask);
+    await syncMissingColumns(AppSetting);
+    await syncMissingColumns(UserPlaytime);
+    await syncMissingColumns(Feedback);
+    await syncMissingColumns(FeedbackReply);
+    await syncMissingColumns(QuizQuestion);
+    await syncMissingColumns(BattleRecord);
     // sync 也不会给旧表补索引，手动检查并补齐缺失索引
     await syncMissingIndexes();
     logInfo('database', '✅ 数据表同步成功');
@@ -73,9 +73,9 @@ export const initModels = async (): Promise<void> => {
 const syncMissingIndexes = async (): Promise<void> => {
   const queryInterface = sequelize.getQueryInterface();
   const models: Array<{ model: typeof Model & { _indexes?: any[] }; tableName: string }> = [
-    { model: GameProgress as any, tableName: 'game_progress' },
-    { model: UserPlaytime as any, tableName: 'user_playtime' },
-    { model: FeedbackReply as any, tableName: 'feedback_replies' },
+    { model: GameProgress, tableName: 'game_progress' },
+    { model: UserPlaytime, tableName: 'user_playtime' },
+    { model: FeedbackReply, tableName: 'feedback_replies' },
   ];
 
   for (const { model, tableName } of models) {
@@ -98,11 +98,11 @@ const syncMissingIndexes = async (): Promise<void> => {
 };
 
 /** 对比模型定义与数据库实际列，自动补齐缺失列 */
-const syncMissingColumns = async (model: any): Promise<void> => {
+const syncMissingColumns = async (model: typeof Model): Promise<void> => {
   const queryInterface = sequelize.getQueryInterface();
   const tableName = model.getTableName() as string;
   const described = await queryInterface.describeTable(tableName);
-  for (const [name, attr] of Object.entries<any>(model.rawAttributes)) {
+  for (const [name, attr] of Object.entries(model.rawAttributes)) {
     const field = attr.field || name;
     if (described[field]) {
       continue;

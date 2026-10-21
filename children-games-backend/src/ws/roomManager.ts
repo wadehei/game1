@@ -1,6 +1,7 @@
 // 房间管理：纯内存实现。房间解散（人走光/超时/房主解散）即整对象销毁——聊天与语音随之清空，符合"不永久保留"的需求
 import { getHandler } from './games/registry';
 import type { GameType } from './games/types';
+import type WebSocket from 'ws';
 
 export type Phase = 'waiting' | 'playing' | 'ended';
 export type Seat = 0 | 1 | -1; // -1=观战
@@ -30,20 +31,20 @@ export interface Member {
   ready: boolean;
   rematch: boolean;
   online: boolean;
-  ws: any; // WebSocket；断线时置 null，成员保留以便重连
+  ws: WebSocket | null; // WebSocket；断线时置 null，成员保留以便重连
   offlineAt: number;
   lastChatAt?: number; // 聊天限流
   chips: number; // 进房时的账号积分快照（座位格展示；牌类对局以 handler 内的桌面积分为准）
 }
 
-export interface Room {
+export interface Room<G = unknown, C = unknown> {
   id: string;
   gameType: GameType;
   hostUserId: number;
   members: Map<number, Member>;
   phase: Phase;
-  game: any; // 由对应 GameHandler 创建与管理
-  config: any; // 建房配置（handler 白名单校验后存入，对局期间不可改）
+  game: G; // 由对应 GameHandler 创建与管理
+  config: C; // 建房配置（handler 白名单校验后存入，对局期间不可改）
   chat: ChatMsg[]; // 上限 100 条，环形截断
   voices: Map<string, RoomVoice>;
   timers: NodeJS.Timeout[]; // 游戏定时器（题目推进/回合倒计时等），解散时统一清除
@@ -67,7 +68,7 @@ export const roomCount = (): number => rooms.size;
 export const createRoom = (
   user: { userId: number; nickname: string; avatar: string },
   gameType: GameType,
-  config?: any
+  config?: unknown
 ): Room => {
   let id: string;
   do {

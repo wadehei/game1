@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+
+# Run lint-staged in both frontend and backend
+cd children-games-frontend && npx lint-staged
+cd ../children-games-backend && npx lint-staged

@@ -12,10 +12,10 @@ export const sequelize = new Sequelize(
     dialect: 'mysql',
     logging: config.nodeEnv === 'development' ? (msg) => logInfo('database', msg) : false,
     pool: {
-      max: 10,
-      min: 0,
+      max: 20,
+      min: 2,
       acquire: 30000,
-      idle: 10000,
+      idle: 30000,
     },
   }
 );

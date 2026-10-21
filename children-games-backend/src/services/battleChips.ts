@@ -3,16 +3,15 @@
 import { fn, col, literal } from 'sequelize';
 import { User, BattleRecord } from '../models';
 import { logError } from '../utils/logger';
+import { formatDate } from '../utils/date';
+import { CHIPS_RELIEF_THRESHOLD, CHIPS_RELIEF_AMOUNT } from '../config/constants';
 
 export const CHIP_RANK_REWARDS = [30, 15, 5]; // 第1/2/3名奖励，第3名之后与第3名相同
 export const CHIP_DRAW_REWARD = 10;
-export const CHIPS_JOIN_MIN = 100; // 进房救济线：低于此值触发救济检查
-export const CHIPS_JOIN_REFILL = 1000;
+export const CHIPS_JOIN_MIN = CHIPS_RELIEF_THRESHOLD; // 进房救济线：低于此值触发救济检查
+export const CHIPS_JOIN_REFILL = CHIPS_RELIEF_AMOUNT;
 
-const localYmd = (): string => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
+const localYmd = (): string => formatDate();
 
 /** 每日救济：积分低于救济线时补足到 1000，同一自然日只补一次（市面救济金模式，防无限刷分） */
 export const grantDailyRelief = async (userId: number): Promise<number> => {
@@ -120,18 +119,21 @@ export interface CareerSummary {
 
 /** 个人中心生涯：当前积分 + 分游戏统计 + 最近 20 条流水 */
 export const getCareer = async (userId: number): Promise<CareerSummary> => {
-  const user = await User.findByPk(userId, { attributes: ['battleChips'] });
-  const grouped = await BattleRecord.findAll({
-    attributes: ['gameType', [fn('COUNT', col('id')), 'total'], [fn("SUM", literal("CASE WHEN result = 'win' THEN 1 ELSE 0 END")), 'wins']],
-    where: { userId },
-    group: ['gameType'],
-    raw: true,
-  });
-  const recent = await BattleRecord.findAll({
-    where: { userId },
-    order: [['createdAt', 'DESC']],
-    limit: 20,
-  });
+  // 三条独立查询并行执行
+  const [user, grouped, recent] = await Promise.all([
+    User.findByPk(userId, { attributes: ['battleChips'] }),
+    BattleRecord.findAll({
+      attributes: ['gameType', [fn('COUNT', col('id')), 'total'], [fn("SUM", literal("CASE WHEN result = 'win' THEN 1 ELSE 0 END")), 'wins']],
+      where: { userId },
+      group: ['gameType'],
+      raw: true,
+    }),
+    BattleRecord.findAll({
+      where: { userId },
+      order: [['createdAt', 'DESC']],
+      limit: 20,
+    }),
+  ]);
   return {
     chips: user?.battleChips ?? 0,
     games: (grouped as any[]).map((g) => ({

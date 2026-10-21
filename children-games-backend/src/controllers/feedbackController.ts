@@ -2,7 +2,17 @@ import { Request, Response } from 'express';
 import { Op } from 'sequelize';
 import { Feedback, FeedbackReply, User } from '../models';
 import { AuthRequest } from '../middleware/auth';
-import { success, fail, asyncHandler } from '../utils/response';
+import { success, asyncHandler } from '../utils/response';
+import { BadRequestError, NotFoundError, TooManyRequestsError } from '../errors/AppError';
+import {
+  DAILY_FEEDBACK_LIMIT,
+  DAILY_REPLY_LIMIT,
+  FEEDBACK_CONTENT_MAX,
+  FEEDBACK_LIST_LIMIT,
+  REPLY_CONTENT_MAX,
+  ADMIN_NOTE_MAX,
+  FEEDBACK_PAGE_MAX,
+} from '../config/constants';
 
 export const FEEDBACK_TYPES = ['suggestion', 'bug', 'experience', 'other'] as const;
 export const FEEDBACK_STATUSES = ['pending', 'processing', 'done'] as const;
@@ -13,9 +23,6 @@ type AnyAuthRequest = AuthRequest & { admin?: boolean };
 export const isValidType = (t: unknown): t is string =>
   typeof t === 'string' && (FEEDBACK_TYPES as readonly string[]).includes(t);
 
-// 简单限流：同一角色每天最多 5 条反馈、20 条回复，防误触连发
-const DAILY_FEEDBACK_LIMIT = 5;
-const DAILY_REPLY_LIMIT = 20;
 const todayStart = (): Date => {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
@@ -29,33 +36,25 @@ export const submitFeedback = asyncHandler(async (req: AuthRequest, res: Respons
   const userId = req.userId!;
   const { type, content, page } = req.body as { type?: string; content?: string; page?: string };
 
-  if (!isValidType(type)) {
-    fail(res, '请选择反馈类型');
-    return;
-  }
+  if (!isValidType(type)) throw new BadRequestError('请选择反馈类型');
   const text = (content || '').trim();
-  if (!text) {
-    fail(res, '请填写反馈内容');
-    return;
-  }
-  if (text.length > 1000) {
-    fail(res, '反馈内容不能超过 1000 字');
-    return;
+  if (!text) throw new BadRequestError('请填写反馈内容');
+  if (text.length > FEEDBACK_CONTENT_MAX) {
+    throw new BadRequestError(`反馈内容不能超过 ${FEEDBACK_CONTENT_MAX} 字`);
   }
 
   const todayCount = await Feedback.count({
     where: { userId, createdAt: { [Op.gte]: todayStart() } },
   });
   if (todayCount >= DAILY_FEEDBACK_LIMIT) {
-    fail(res, '今天的反馈已经够多啦，明天再来吧');
-    return;
+    throw new TooManyRequestsError('今天的反馈已经够多啦，明天再来吧');
   }
 
   const feedback = await Feedback.create({
     userId,
     type,
     content: text,
-    page: (page || '').slice(0, 100),
+    page: (page || '').slice(0, FEEDBACK_PAGE_MAX),
   });
 
   success(res, { id: feedback.id }, '提交成功，感谢反馈！');
@@ -70,7 +69,7 @@ export const listFeedbacks = asyncHandler(async (req: AnyAuthRequest, res: Respo
   const rows = await Feedback.findAll({
     where: mineOnly ? { userId: req.userId } : undefined,
     order: [['createdAt', 'DESC']],
-    limit: 50,
+    limit: FEEDBACK_LIST_LIMIT,
     include: [
       { model: User, as: 'user', attributes: ['id', 'nickname', 'avatar'] },
       {
@@ -95,20 +94,13 @@ export const addFeedbackReply = asyncHandler(async (req: AnyAuthRequest, res: Re
   const feedbackId = Number(req.params.id);
   const content = (req.body?.content || '').toString().trim();
 
-  if (!content) {
-    fail(res, '请填写回复内容');
-    return;
-  }
-  if (content.length > 500) {
-    fail(res, '回复不能超过 500 字');
-    return;
+  if (!content) throw new BadRequestError('请填写回复内容');
+  if (content.length > REPLY_CONTENT_MAX) {
+    throw new BadRequestError(`回复不能超过 ${REPLY_CONTENT_MAX} 字`);
   }
 
   const feedback = await Feedback.findByPk(feedbackId);
-  if (!feedback) {
-    fail(res, '反馈不存在', 404);
-    return;
-  }
+  if (!feedback) throw new NotFoundError('反馈不存在');
 
   if (!isAdmin) {
     const userId = req.userId!;
@@ -116,8 +108,7 @@ export const addFeedbackReply = asyncHandler(async (req: AnyAuthRequest, res: Re
       where: { userId, createdAt: { [Op.gte]: todayStart() } },
     });
     if (todayCount >= DAILY_REPLY_LIMIT) {
-      fail(res, '今天回复的次数太多了，明天再来吧');
-      return;
+      throw new TooManyRequestsError('今天回复的次数太多了，明天再来吧');
     }
     await FeedbackReply.create({ feedbackId, userId, isAdmin: false, content });
   } else {
@@ -135,19 +126,15 @@ export const updateFeedback = asyncHandler(async (req: Request, res: Response) =
   const { status, adminNote } = req.body as { status?: string; adminNote?: string };
 
   const feedback = await Feedback.findByPk(id);
-  if (!feedback) {
-    fail(res, '反馈不存在', 404);
-    return;
-  }
+  if (!feedback) throw new NotFoundError('反馈不存在');
   if (status !== undefined) {
     if (!(FEEDBACK_STATUSES as readonly string[]).includes(status)) {
-      fail(res, '无效的状态');
-      return;
+      throw new BadRequestError('无效的状态');
     }
     feedback.status = status;
   }
   if (adminNote !== undefined) {
-    feedback.adminNote = String(adminNote).slice(0, 2000);
+    feedback.adminNote = String(adminNote).slice(0, ADMIN_NOTE_MAX);
   }
   await feedback.save();
   success(res, feedback);

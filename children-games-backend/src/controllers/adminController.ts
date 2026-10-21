@@ -7,16 +7,23 @@ import jwt from 'jsonwebtoken';
 import { config } from '../config';
 import { User, GameProgress, DailyTask, AppSetting, UserPlaytime, LevelConfig, QuizQuestion, Feedback, FeedbackReply, BattleRecord } from '../models';
 import { AdminRequest } from '../middleware/adminAuth';
-import { success, fail, asyncHandler } from '../utils/response';
+import { success, asyncHandler } from '../utils/response';
+import { BadRequestError, NotFoundError, UnauthorizedError, InternalError } from '../errors/AppError';
 import { LEVEL_FIELDS } from './levelController';
 import { readRecentErrors, clearErrors } from '../utils/logger';
 import { withTransaction } from '../utils/transaction';
+import { safeJsonParse } from '../utils/safeJson';
+import { formatDate } from '../utils/date';
+import {
+  DEFAULT_REST_INTERVAL_MINUTES,
+  MAX_REST_INTERVAL_MINUTES,
+  MAX_LEVEL_NUMBER,
+  QUIZ_PAGE_LIMIT,
+  NICKNAME_MAX_LENGTH,
+  AVATAR_MAX_LENGTH,
+} from '../config/constants';
 
-const localDateString = (): string => {
-  const now = new Date();
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-};
+const localDateString = (): string => formatDate();
 
 // ─── 登录 ────────────────────────────────
 
@@ -26,15 +33,13 @@ export const adminLogin = asyncHandler(async (req: Request, res: Response) => {
   const expected = process.env.ADMIN_PASSWORD;
 
   if (!expected) {
-    fail(res, '未配置 ADMIN_PASSWORD，请在后端 .env 中设置', 500);
-    return;
+    throw new InternalError('未配置 ADMIN_PASSWORD，请在后端 .env 中设置');
   }
   // 使用 timingSafeEqual 防止计时攻击
   const actual = Buffer.from(String(password || ''), 'utf-8');
   const expectedBuf = Buffer.from(expected, 'utf-8');
   if (actual.length !== expectedBuf.length || !crypto.timingSafeEqual(actual, expectedBuf)) {
-    fail(res, '密码不正确', 401);
-    return;
+    throw new UnauthorizedError('密码不正确');
   }
 
   const token = jwt.sign({ role: 'admin' }, config.jwt.secret, { expiresIn: '12h' });
@@ -47,25 +52,21 @@ export const adminLogin = asyncHandler(async (req: Request, res: Response) => {
 export const getOverview = asyncHandler(async (req: AdminRequest, res: Response) => {
   const today = localDateString();
 
-  const users = await User.findAll({ attributes: ['id', 'openid', 'nickname', 'avatar', 'level', 'totalStars'] });
+  // 三条独立查询并行执行，减少总耗时
+  const [users, todayPlaytime, recent] = await Promise.all([
+    User.findAll({ attributes: ['id', 'openid', 'nickname', 'avatar', 'level', 'totalStars'] }),
+    UserPlaytime.findAll({ where: { date: today }, attributes: ['userId', 'seconds'] }),
+    GameProgress.findAll({ order: [['updatedAt', 'DESC']], limit: 20 }),
+  ]);
+
   const familyMembers = users.filter((u) => u.openid.startsWith('family_'));
   const totalStars = users.reduce((sum, u) => sum + u.totalStars, 0);
 
   // 积分入账失败告警（applyChipDelta 重试仍失败的记录，见错误日志 source=chips）
   const chipFailures = readRecentErrors(500).filter((e) => e.source === 'chips').length;
 
-  const todayPlaytime = await UserPlaytime.findAll({
-    where: { date: today },
-    attributes: ['userId', 'seconds'],
-  });
   const playtimeByUser = new Map(todayPlaytime.map((p) => [p.userId, p.seconds]));
   const todayPlaySeconds = todayPlaytime.reduce((sum, p) => sum + p.seconds, 0);
-
-  // 最近游玩动态（进度更新时间倒序）
-  const recent = await GameProgress.findAll({
-    order: [['updatedAt', 'DESC']],
-    limit: 20,
-  });
   const userMap = new Map(users.map((u) => [u.id, u]));
   const activity = recent.map((p) => ({
     userId: p.userId,
@@ -101,16 +102,19 @@ export const getOverview = asyncHandler(async (req: AdminRequest, res: Response)
 
 /** 全部用户（含游客），带游玩统计 */
 export const getUsers = asyncHandler(async (req: AdminRequest, res: Response) => {
-  const users = await User.findAll({
-    attributes: ['id', 'openid', 'nickname', 'avatar', 'level', 'totalStars', 'battleChips', 'createdAt'],
-    order: [['createdAt', 'ASC']],
-  });
-
   const today = localDateString();
-  const todayPlaytime = await UserPlaytime.findAll({ where: { date: today } });
-  const playtimeByUser = new Map(todayPlaytime.map((p) => [p.userId, p.seconds]));
 
-  const progresses = await GameProgress.findAll({ attributes: ['userId', 'updatedAt'] });
+  // 三条独立查询并行执行
+  const [users, todayPlaytime, progresses] = await Promise.all([
+    User.findAll({
+      attributes: ['id', 'openid', 'nickname', 'avatar', 'level', 'totalStars', 'battleChips', 'createdAt'],
+      order: [['createdAt', 'ASC']],
+    }),
+    UserPlaytime.findAll({ where: { date: today } }),
+    GameProgress.findAll({ attributes: ['userId', 'updatedAt'] }),
+  ]);
+
+  const playtimeByUser = new Map(todayPlaytime.map((p) => [p.userId, p.seconds]));
   const lastActiveByUser = new Map<number, Date>();
   const progressCountByUser = new Map<number, number>();
   progresses.forEach((p) => {
@@ -143,14 +147,13 @@ export const updateUser = asyncHandler(async (req: AdminRequest, res: Response) 
 
   const user = await User.findByPk(parseInt(String(req.params.id), 10));
   if (!user) {
-    fail(res, '用户不存在', 404);
-    return;
+    throw new NotFoundError('用户不存在');
   }
   if (nickname && String(nickname).trim()) {
-    user.nickname = String(nickname).trim().slice(0, 12);
+    user.nickname = String(nickname).trim().slice(0, NICKNAME_MAX_LENGTH);
   }
   if (avatar) {
-    user.avatar = String(avatar).slice(0, 500);
+    user.avatar = String(avatar).slice(0, AVATAR_MAX_LENGTH);
   }
   await user.save();
 
@@ -165,12 +168,10 @@ export const adjustUserChips = asyncHandler(async (req: AdminRequest, res: Respo
 
   const user = await User.findByPk(userId);
   if (!user) {
-    fail(res, '用户不存在', 404);
-    return;
+    throw new NotFoundError('用户不存在');
   }
   if (typeof set !== 'number' && (typeof delta !== 'number' || delta === 0)) {
-    fail(res, '请提供 delta（非 0 增减）或 set（设定）');
-    return;
+    throw new BadRequestError('请提供 delta（非 0 增减）或 set（设定）');
   }
   const chips = await adminAdjustChips(userId, {
     delta: typeof delta === 'number' ? delta : undefined,
@@ -210,8 +211,7 @@ export const deleteUser = asyncHandler(async (req: AdminRequest, res: Response) 
 
   const user = await User.findByPk(userId);
   if (!user) {
-    fail(res, '用户不存在', 404);
-    return;
+    throw new NotFoundError('用户不存在');
   }
 
   // 在房/在线的成员先立即请出（按游戏规则弃牌处置，此时账号还在、积分入账正常），不等 60s 掉线判定
@@ -253,7 +253,7 @@ const REST_INTERVAL_KEY = 'rest_interval_minutes';
 export const getSettings = asyncHandler(async (req: AdminRequest, res: Response) => {
   const row = await AppSetting.findByPk(REST_INTERVAL_KEY);
   success(res, {
-    restIntervalMinutes: row ? parseInt(row.value, 10) || 20 : 20,
+    restIntervalMinutes: row ? parseInt(row.value, 10) || DEFAULT_REST_INTERVAL_MINUTES : DEFAULT_REST_INTERVAL_MINUTES,
   });
 });
 
@@ -261,16 +261,15 @@ export const getSettings = asyncHandler(async (req: AdminRequest, res: Response)
 export const getPublicSettings = asyncHandler(async (req: Request, res: Response) => {
   const row = await AppSetting.findByPk(REST_INTERVAL_KEY);
   success(res, {
-    restIntervalMinutes: row ? parseInt(row.value, 10) || 20 : 20,
+    restIntervalMinutes: row ? parseInt(row.value, 10) || DEFAULT_REST_INTERVAL_MINUTES : DEFAULT_REST_INTERVAL_MINUTES,
   });
 });
 
 export const updateSettings = asyncHandler(async (req: AdminRequest, res: Response) => {
   const { restIntervalMinutes } = req.body;
   const value = parseInt(restIntervalMinutes, 10);
-  if (!Number.isFinite(value) || value < 0 || value > 120) {
-    fail(res, '提醒间隔需在 0~120 分钟之间（0 为关闭）');
-    return;
+  if (!Number.isFinite(value) || value < 0 || value > MAX_REST_INTERVAL_MINUTES) {
+    throw new BadRequestError(`提醒间隔需在 0~${MAX_REST_INTERVAL_MINUTES} 分钟之间（0 为关闭）`);
   }
   await AppSetting.upsert({ key: REST_INTERVAL_KEY, value: String(value) });
   success(res, { restIntervalMinutes: value });
@@ -280,8 +279,7 @@ export const updateSettings = asyncHandler(async (req: AdminRequest, res: Respon
 export const clearUserPin = asyncHandler(async (req: AdminRequest, res: Response) => {
   const user = await User.findByPk(parseInt(String(req.params.id), 10));
   if (!user) {
-    fail(res, '用户不存在', 404);
-    return;
+    throw new NotFoundError('用户不存在');
   }
   user.pinHash = null;
   await user.save();
@@ -294,8 +292,7 @@ export const clearUserPin = asyncHandler(async (req: AdminRequest, res: Response
 export const getLevelOverrides = asyncHandler(async (req: AdminRequest, res: Response) => {
   const gameId = String(req.params.gameId || '');
   if (!LEVEL_FIELDS[gameId]) {
-    fail(res, '未知的 gameId');
-    return;
+    throw new BadRequestError('未知的 gameId');
   }
   const rows = await LevelConfig.findAll({
     where: { gameId },
@@ -303,7 +300,7 @@ export const getLevelOverrides = asyncHandler(async (req: AdminRequest, res: Res
   });
   success(res, rows.map((r) => ({
     level: r.level,
-    config: JSON.parse(r.config),
+    config: safeJsonParse(r.config, {}),
     updatedAt: r.updatedAt,
   })));
 });
@@ -315,27 +312,22 @@ export const saveLevelOverride = asyncHandler(async (req: AdminRequest, res: Res
   const allowed = LEVEL_FIELDS[gameId];
 
   if (!allowed) {
-    fail(res, '未知的 gameId');
-    return;
+    throw new BadRequestError('未知的 gameId');
   }
-  if (!Number.isFinite(level) || level < 1 || level > 999) {
-    fail(res, '关卡编号需在 1~999 之间');
-    return;
+  if (!Number.isFinite(level) || level < 1 || level > MAX_LEVEL_NUMBER) {
+    throw new BadRequestError(`关卡编号需在 1~${MAX_LEVEL_NUMBER} 之间`);
   }
 
   const config = req.body?.config;
   if (!config || typeof config !== 'object' || Array.isArray(config)) {
-    fail(res, 'config 需为对象');
-    return;
+    throw new BadRequestError('config 需为对象');
   }
   const unknownKeys = Object.keys(config).filter((k) => !allowed.includes(k));
   if (unknownKeys.length > 0) {
-    fail(res, `不支持的字段: ${unknownKeys.join(', ')}（允许: ${allowed.join(', ')}）`);
-    return;
+    throw new BadRequestError(`不支持的字段: ${unknownKeys.join(', ')}（允许: ${allowed.join(', ')}）`);
   }
   if (Object.keys(config).length === 0) {
-    fail(res, '至少填写一个配置项');
-    return;
+    throw new BadRequestError('至少填写一个配置项');
   }
 
   await LevelConfig.upsert({ gameId, level, config: JSON.stringify(config) });
@@ -348,8 +340,7 @@ export const deleteLevelOverride = asyncHandler(async (req: AdminRequest, res: R
   const level = parseInt(String(req.params.level), 10);
 
   if (!LEVEL_FIELDS[gameId]) {
-    fail(res, '未知的 gameId');
-    return;
+    throw new BadRequestError('未知的 gameId');
   }
   await LevelConfig.destroy({ where: { gameId, level } });
   success(res, { gameId, level });
@@ -392,12 +383,21 @@ export const listAutoBackups = asyncHandler(async (req: AdminRequest, res: Respo
 
 // ─── 题库管理（答题对战） ────────────────────────────────
 
-const validateQuestion = (body: any): { error?: string; data?: any } => {
-  const text = String(body?.text || '').trim();
-  const options = Array.isArray(body?.options) ? body.options.map((o: any) => String(o).trim()) : [];
-  const answer = Number(body?.answer);
-  const category = String(body?.category || '综合').trim().slice(0, 20);
-  const difficulty = Math.min(3, Math.max(1, Number(body?.difficulty) || 1));
+interface QuestionData {
+  text: string;
+  options: string[];
+  answer: number;
+  category: string;
+  difficulty: number;
+}
+
+const validateQuestion = (body: unknown): { error?: string; data?: QuestionData } => {
+  const b = body as Record<string, unknown>;
+  const text = String(b?.text || '').trim();
+  const options = Array.isArray(b?.options) ? b.options.map((o) => String(o).trim()) : [];
+  const answer = Number(b?.answer);
+  const category = String(b?.category || '综合').trim().slice(0, 20);
+  const difficulty = Math.min(3, Math.max(1, Number(b?.difficulty) || 1));
   if (!text) return { error: '题干不能为空' };
   if (options.length !== 4 || options.some((o: string) => !o)) return { error: '必须提供 4 个非空选项' };
   if (!Number.isInteger(answer) || answer < 0 || answer > 3) return { error: '正确答案下标无效' };
@@ -406,7 +406,7 @@ const validateQuestion = (body: any): { error?: string; data?: any } => {
 
 export const quizList = asyncHandler(async (req: Request, res: Response) => {
   const page = Math.max(1, Number(req.query.page) || 1);
-  const limit = 20;
+  const limit = QUIZ_PAGE_LIMIT;
   const category = (req.query.category as string) || '';
   const where = category ? { category } : {};
   const { rows, count } = await QuizQuestion.findAndCountAll({
@@ -420,32 +420,32 @@ export const quizList = asyncHandler(async (req: Request, res: Response) => {
 
 export const quizCreate = asyncHandler(async (req: Request, res: Response) => {
   const v = validateQuestion(req.body);
-  if (v.error) return fail(res, v.error);
-  const dup = await QuizQuestion.findOne({ where: { text: v.data.text } });
-  if (dup) return fail(res, '已存在相同题干的题目');
-  const q = await QuizQuestion.create(v.data);
+  if (v.error) throw new BadRequestError(v.error);
+  const dup = await QuizQuestion.findOne({ where: { text: v.data!.text } });
+  if (dup) throw new BadRequestError('已存在相同题干的题目');
+  const q = await QuizQuestion.create(v.data!);
   success(res, q, '创建成功');
 });
 
 export const quizUpdate = asyncHandler(async (req: Request, res: Response) => {
   const q = await QuizQuestion.findByPk(Number(req.params.id));
-  if (!q) return fail(res, '题目不存在', 404);
+  if (!q) throw new NotFoundError('题目不存在');
   const v = validateQuestion(req.body);
-  if (v.error) return fail(res, v.error);
-  await q.update(v.data);
+  if (v.error) throw new BadRequestError(v.error);
+  await q.update(v.data!);
   success(res, q, '更新成功');
 });
 
 export const quizDelete = asyncHandler(async (req: Request, res: Response) => {
   const q = await QuizQuestion.findByPk(Number(req.params.id));
-  if (!q) return fail(res, '题目不存在', 404);
+  if (!q) throw new NotFoundError('题目不存在');
   await q.destroy();
   success(res, { ok: true }, '删除成功');
 });
 
 export const quizImport = asyncHandler(async (req: Request, res: Response) => {
   const list = Array.isArray(req.body?.questions) ? req.body.questions : [];
-  if (list.length === 0) return fail(res, '导入内容为空');
+  if (list.length === 0) throw new BadRequestError('导入内容为空');
 
   // 先在事务外做校验，过滤无效条目
   const validItems: Array<{ text: string; options: string[]; answer: number; category: string; difficulty: number }> = [];

@@ -1,389 +1,555 @@
-import { Request, Response } from 'express';
-import { Op, Transaction } from 'sequelize';
-import { sequelize } from '../config/database';
-import { GameProgress, User, DailyTask } from '../models';
-import { AuthRequest } from '../middleware/auth';
-import { success, fail, asyncHandler } from '../utils/response';
-import { withTransaction } from '../utils/transaction';
+import { Request, Response } from "express";
+import { Op } from "sequelize";
+import { z } from "zod";
+import { GameProgress, User } from "../models";
+import { AuthRequest } from "../middleware/auth";
+import { success, asyncHandler } from "../utils/response";
+import { BadRequestError } from "../errors/AppError";
+import { withTransaction } from "../utils/transaction";
+import {
+  ACHIEVEMENTS,
+  GAME_RULES,
+  evaluateAchievements,
+} from "../services/achievementService";
+import {
+  LEVEL_STAR_THRESHOLD,
+  DAILY_TASK_GOAL,
+  DAILY_TASK_REWARD,
+  localDateString,
+  countTodayPlayedGames,
+  updateDailyTask,
+  getTotalDailyReward,
+} from "../services/dailyTaskService";
+import { parseLevelStars } from "../services/progressService";
+import { getCachedLeaderboard, cacheLeaderboard, invalidateLeaderboardCache } from "../services/leaderboardCacheService";
+import { LEADERBOARD_DEFAULT_LIMIT, LEADERBOARD_MAX_LIMIT, LEADERBOARD_CACHE_LIMIT } from "../config/constants";
+import { safeJsonParse } from "../utils/safeJson";
 
-// 游戏白名单与计分规则（翻牌/拼图步数越少越好）
-const GAME_RULES: Record<string, { lowerScoreIsBetter: boolean }> = {
-  memory: { lowerScoreIsBetter: true },
-  puzzle: { lowerScoreIsBetter: true },
-  fruit: { lowerScoreIsBetter: false },
-  balloon: { lowerScoreIsBetter: false },
-  tank: { lowerScoreIsBetter: false },
-  mole: { lowerScoreIsBetter: false },
-  simon: { lowerScoreIsBetter: false },
-  // 数学小怪兽的成绩是通关用时（秒），越快越好
-  math: { lowerScoreIsBetter: true },
-  // 消消乐的成绩是通关用掉的步数，越少越好
-  match3: { lowerScoreIsBetter: true },
-  // 打砖块的成绩是砖块得分，越高越好
-  brick: { lowerScoreIsBetter: false },
-};
+// ─── Zod Schemas ────────────────────────────────────────
+const updateProgressSchema = z.object({
+  level: z.union([z.string(), z.number()]).refine(
+    (v) => {
+      const n = typeof v === "string" ? parseInt(v, 10) : v;
+      return Number.isFinite(n) && n >= 1;
+    },
+    { message: "level 需为正整数" },
+  ),
+  score: z.union([z.string(), z.number()]).optional().default(0),
+  stars: z.union([z.string(), z.number()]).optional().default(0),
+  achievements: z.array(z.string()).optional(),
+});
 
-// 每 15 颗星升一级
-const LEVEL_STAR_THRESHOLD = 15;
-// 每日任务：完成 N 个不同游戏，奖励 M 颗星
-const DAILY_TASK_GOAL = 3;
-const DAILY_TASK_REWARD = 10;
+const gameIdParamSchema = z.object({
+  gameId: z.string().refine((id) => id in GAME_RULES, {
+    message: "未知的 gameId",
+  }),
+});
 
-// ─── 成就系统 ────────────────────────────────────────
-// 判定只依赖用户当前进度数据，随时可幂等重算
-interface AchievementDef {
-  id: string;
-  name: string;
-  icon: string;
-  desc: string;
-  check: (ctx: { totalStars: number; levels: Record<string, number>; distinctGames: number; dailyRewardClaimed: boolean }) => boolean;
+/**
+ * @swagger
+ * /api/game/progress:
+ *   get:
+ *     summary: 获取用户所有游戏进度
+ *     tags: [游戏进度]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 成功返回所有游戏进度
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/GameProgress'
+ *       401:
+ *         description: 未授权
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+// 获取用户所有游戏进度
+export const getAllProgress = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    const progressList = await GameProgress.findAll({
+      where: { userId: req.userId! },
+    });
+
+    const result = progressList.map((p) => ({
+      gameId: p.gameId,
+      currentLevel: p.currentLevel,
+      highScore: p.highScore,
+      stars: p.stars,
+      levelStars: parseLevelStars(p.levelStars),
+      achievements: JSON.parse(p.achievements || "[]"),
+    }));
+
+    success(res, result);
+  },
+);
+
+/**
+ * @swagger
+ * /api/game/progress/{gameId}:
+ *   get:
+ *     summary: 获取单个游戏进度
+ *     tags: [游戏进度]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: gameId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 游戏ID（如 match3, puzzle 等）
+ *     responses:
+ *       200:
+ *         description: 成功返回游戏进度
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/GameProgress'
+ *       401:
+ *         description: 未授权
+ *       404:
+ *         description: 游戏不存在（返回默认进度）
+ */
+// 获取单个游戏进度
+export const getGameProgress = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    const { gameId } = req.params;
+
+    const progress = await GameProgress.findOne({
+      where: { userId: req.userId!, gameId },
+    });
+
+    if (!progress) {
+      success(res, {
+        gameId,
+        currentLevel: 1,
+        highScore: 0,
+        stars: 0,
+        levelStars: {},
+        achievements: [],
+      });
+      return;
+    }
+
+    success(res, {
+      gameId: progress.gameId,
+      currentLevel: progress.currentLevel,
+      highScore: progress.highScore,
+      stars: progress.stars,
+      levelStars: parseLevelStars(progress.levelStars),
+      achievements: JSON.parse(progress.achievements || "[]"),
+    });
+  },
+);
+
+/**
+ * @swagger
+ * /api/game/progress/{gameId}:
+ *   put:
+ *     summary: 更新游戏进度
+ *     tags: [游戏进度]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: gameId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 游戏ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - level
+ *             properties:
+ *               level:
+ *                 type: integer
+ *                 description: 关卡等级
+ *                 example: 5
+ *               score:
+ *                 type: integer
+ *                 description: 得分
+ *                 example: 1000
+ *               stars:
+ *                 type: integer
+ *                 description: 星星数（0-3）
+ *                 minimum: 0
+ *                 maximum: 3
+ *                 example: 3
+ *               achievements:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: 获得的成就列表
+ *                 example: ['first_win', 'combo_master']
+ *     responses:
+ *       200:
+ *         description: 更新成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     progress:
+ *                       $ref: '#/components/schemas/GameProgress'
+ *                     dailyTask:
+ *                       $ref: '#/components/schemas/DailyTask'
+ *                     newAchievements:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                     totalStarsReward:
+ *                       type: integer
+ *       400:
+ *         description: 请求参数错误
+ *       401:
+ *         description: 未授权
+ */
+// ─── updateGameProgress 子函数 ────────────────────────────────
+
+/** Step 1: 查找或创建进度，更新星星/关卡/高分/成就 */
+async function upsertGameProgress(
+  userId: number,
+  gameId: string,
+  levelNum: number,
+  scoreNum: number,
+  starsNum: number,
+  achievements: string[] | undefined,
+  rule: { lowerScoreIsBetter: boolean },
+  t: any,
+) {
+  const [progress, created] = await GameProgress.findOrCreate({
+    where: { userId, gameId },
+    defaults: {
+      userId,
+      gameId,
+      currentLevel: levelNum,
+      highScore: scoreNum,
+      stars: starsNum,
+      levelStars: JSON.stringify({ [String(levelNum)]: starsNum }),
+      achievements: JSON.stringify(achievements || []),
+      playCount: 1,
+      winCount: 1,
+    },
+    transaction: t,
+  });
+
+  if (created) return progress;
+
+  progress.playCount += 1;
+  progress.winCount += 1;
+  const levelStars = parseLevelStars(progress.levelStars);
+  if (Object.keys(levelStars).length === 0 && progress.stars > 0) {
+    levelStars[String(progress.currentLevel)] = progress.stars;
+  }
+  if (starsNum > (levelStars[String(levelNum)] || 0)) {
+    levelStars[String(levelNum)] = starsNum;
+  }
+  progress.levelStars = JSON.stringify(levelStars);
+  progress.stars = Object.values(levelStars).reduce((sum, s) => sum + s, 0);
+
+  if (levelNum > progress.currentLevel) progress.currentLevel = levelNum;
+  if (rule.lowerScoreIsBetter) {
+    if (scoreNum > 0 && (progress.highScore === 0 || scoreNum < progress.highScore)) {
+      progress.highScore = scoreNum;
+    }
+  } else if (scoreNum > progress.highScore) {
+    progress.highScore = scoreNum;
+  }
+  if (achievements) {
+    const existing = safeJsonParse<string[]>(progress.achievements, []);
+    progress.achievements = JSON.stringify([...new Set([...existing, ...achievements])]);
+  }
+
+  await progress.save({ transaction: t });
+  return progress;
 }
 
-const ACHIEVEMENTS: AchievementDef[] = [
-  { id: 'first_win', name: '初次通关', icon: '🎮', desc: '完成任意一关', check: (c) => c.totalStars > 0 },
-  { id: 'star_10', name: '星星收集者', icon: '⭐', desc: '累计获得 10 颗星', check: (c) => c.totalStars >= 10 },
-  { id: 'star_30', name: '闪闪发光', icon: '🌟', desc: '累计获得 30 颗星', check: (c) => c.totalStars >= 30 },
-  { id: 'star_60', name: '星星传奇', icon: '💫', desc: '累计获得 60 颗星', check: (c) => c.totalStars >= 60 },
-  { id: 'memory_master', name: '记忆大师', icon: '🧠', desc: '记忆翻牌通关第 10 关', check: (c) => (c.levels.memory || 0) >= 10 },
-  { id: 'sharp_shooter', name: '神枪手', icon: '🎯', desc: '坦克大战通关第 10 关', check: (c) => (c.levels.tank || 0) >= 10 },
-  { id: 'math_talent', name: '数学小达人', icon: '➕', desc: '数学小怪兽通关第 10 关', check: (c) => (c.levels.math || 0) >= 10 },
-  { id: 'all_rounder', name: '全能玩家', icon: '🏅', desc: '玩过全部 11 个游戏', check: (c) => c.distinctGames >= Object.keys(GAME_RULES).length },
-  { id: 'daily_done', name: '任务达成', icon: '📅', desc: '完成一次每日任务', check: (c) => c.dailyRewardClaimed },
-];
+/** Step 2: 重算用户总星星和等级 */
+async function recalcUserStats(userId: number, t: any) {
+  const user = await User.findByPk(userId, { transaction: t, lock: t.LOCK.UPDATE });
+  if (!user) throw new Error("用户不存在");
 
-const evaluateAchievements = async (userId: number, t?: Transaction): Promise<AchievementDef[]> => {
   const allProgress = await GameProgress.findAll({ where: { userId }, transaction: t });
-  const levels: Record<string, number> = {};
-  allProgress.forEach((p) => { levels[p.gameId] = Math.max(levels[p.gameId] || 0, p.currentLevel); });
+  const gameStars = allProgress.reduce((sum, p) => sum + p.stars, 0);
 
-  const rewardRows = await DailyTask.findAll({
-    where: { userId },
-    attributes: [[sequelize.fn('SUM', sequelize.col('taskReward')), 'rewardTotal']],
-    raw: true,
-    transaction: t,
-  });
-  const dailyRewardClaimed = (parseInt((rewardRows[0] as any)?.rewardTotal, 10) || 0) > 0;
+  const playedGames = await countTodayPlayedGames(userId, t);
+  await updateDailyTask(userId, playedGames, t);
+  const rewardTotal = await getTotalDailyReward(userId, t);
 
-  const user = await User.findByPk(userId, { transaction: t });
-  const totalStars = user?.totalStars || 0;
-  const ctx = { totalStars, levels, distinctGames: allProgress.length, dailyRewardClaimed };
+  user.totalStars = gameStars + rewardTotal;
+  user.level = Math.floor(user.totalStars / LEVEL_STAR_THRESHOLD) + 1;
+  await user.save({ transaction: t });
 
-  return ACHIEVEMENTS.filter((def) => def.check(ctx));
-};
+  return user;
+}
 
-const parseLevelStars = (raw: string | null): Record<string, number> => {
-  try {
-    const parsed = JSON.parse(raw || '{}');
-    return parsed && typeof parsed === 'object' ? parsed : {};
-  } catch {
-    return {};
-  }
-};
+/** Step 3: 成就判定 + 记录新解锁成就 */
+async function processNewAchievements(userId: number, user: any, t: any) {
+  const unlockedDefs = await evaluateAchievements(userId, t);
+  const owned = safeJsonParse<string[]>(user.achievements, []);
+  const fresh = unlockedDefs.filter((def) => !owned.includes(def.id));
 
-const localDateString = (): string => {
-  const now = new Date();
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-};
+  if (fresh.length === 0) return [];
 
-// 统计今天玩过的不同游戏数（按进度更新时间）
-const countTodayPlayedGames = async (userId: number, t?: Transaction): Promise<Set<string>> => {
-  const todayStart = new Date(`${localDateString()}T00:00:00`);
-  const rows = await GameProgress.findAll({
-    where: { userId, updatedAt: { [Op.gte]: todayStart } },
-    attributes: ['gameId'],
-    transaction: t,
-  });
-  return new Set(rows.map((p) => p.gameId));
-};
+  owned.push(...fresh.map((def) => def.id));
+  user.achievements = JSON.stringify(owned);
+  await user.save({ transaction: t });
 
-// 获取用户所有游戏进度
-export const getAllProgress = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const progressList = await GameProgress.findAll({
-    where: { userId: req.userId! },
-  });
-
-  const result = progressList.map(p => ({
-    gameId: p.gameId,
-    currentLevel: p.currentLevel,
-    highScore: p.highScore,
-    stars: p.stars,
-    levelStars: parseLevelStars(p.levelStars),
-    achievements: JSON.parse(p.achievements || '[]'),
-  }));
-
-  success(res, result);
-});
-
-// 获取单个游戏进度
-export const getGameProgress = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { gameId } = req.params;
-
-  const progress = await GameProgress.findOne({
-    where: { userId: req.userId!, gameId },
-  });
-
-  if (!progress) {
-    // 返回默认进度
-    success(res, {
-      gameId,
-      currentLevel: 1,
-      highScore: 0,
-      stars: 0,
-      levelStars: {},
-      achievements: [],
-    });
-    return;
-  }
-
-  success(res, {
-    gameId: progress.gameId,
-    currentLevel: progress.currentLevel,
-    highScore: progress.highScore,
-    stars: progress.stars,
-    levelStars: parseLevelStars(progress.levelStars),
-    achievements: JSON.parse(progress.achievements || '[]'),
-  });
-});
+  return fresh.map(({ id, name, icon }) => ({ id, name, icon }));
+}
 
 // 更新游戏进度
-export const updateGameProgress = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { gameId } = req.params;
-  const { level, score, stars, achievements } = req.body;
+export const updateGameProgress = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    // 验证 gameId 参数
+    const paramsResult = gameIdParamSchema.safeParse(req.params);
+    if (!paramsResult.success) {
+      throw new BadRequestError(paramsResult.error.issues[0].message);
+    }
+    const { gameId } = paramsResult.data;
 
-  const rule = GAME_RULES[gameId as string];
-  if (!rule) {
-    fail(res, '未知的 gameId');
-    return;
-  }
+    // 验证请求体
+    const bodyResult = updateProgressSchema.safeParse(req.body);
+    if (!bodyResult.success) {
+      throw new BadRequestError(bodyResult.error.issues.map((e: { message: string }) => e.message).join(", "));
+    }
+    const { level, score, stars, achievements } = bodyResult.data;
 
-  const levelNum = parseInt(level, 10);
-  if (!Number.isFinite(levelNum) || levelNum < 1) {
-    fail(res, 'level 参数无效');
-    return;
-  }
+    const rule = GAME_RULES[gameId];
+    const userId = req.userId!;
+    const levelNum = typeof level === "string" ? parseInt(level, 10) : level;
+    const scoreNum = Number(score) || 0;
+    const starsNum = Math.max(
+      0,
+      Math.min(typeof stars === "string" ? parseInt(stars, 10) || 0 : stars, 3),
+    );
 
-  const userId = req.userId!;
-  const scoreNum = Number(score) || 0;
-  // 本次本关星级（1-3）
-  const starsNum = Math.max(0, Math.min(parseInt(stars, 10) || 0, 3));
+    const result = await withTransaction(async (t) => {
+      // Step 1: 查找或创建进度
+      const progress = await upsertGameProgress(
+        userId, gameId, levelNum, scoreNum, starsNum, achievements, rule, t,
+      );
 
-  // 全部操作放在一个事务中，保证原子性
-  const result = await withTransaction(async (t) => {
-    // ── Step 1: 查找或创建进度 ──
-    const [progress, created] = await GameProgress.findOrCreate({
-      where: { userId, gameId: gameId as string },
-      defaults: {
-        userId,
-        gameId: gameId as string,
-        currentLevel: levelNum,
-        highScore: scoreNum,
-        stars: starsNum,
-        levelStars: JSON.stringify({ [String(levelNum)]: starsNum }),
-        achievements: JSON.stringify(achievements || []),
-        playCount: 1,
-        winCount: 1,
-      },
-      transaction: t,
+      // Step 2: 重算用户星星与等级
+      const user = await recalcUserStats(userId, t);
+
+      // Step 3: 成就判定
+      const newAchievements = await processNewAchievements(userId, user, t);
+
+      return { progress, user, newAchievements };
+    }, "updateGameProgress");
+
+    // 进度更新后清除该游戏排行榜缓存
+    await invalidateLeaderboardCache(result.progress.gameId);
+
+    success(res, {
+      gameId: result.progress.gameId,
+      currentLevel: result.progress.currentLevel,
+      highScore: result.progress.highScore,
+      stars: result.progress.stars,
+      levelStars: parseLevelStars(result.progress.levelStars),
+      totalStars: result.user.totalStars,
+      level: result.user.level,
+      newAchievements: result.newAchievements,
     });
-
-    if (!created) {
-      // 生涯统计：每局通关计一次局数与胜局
-      progress.playCount += 1;
-      progress.winCount += 1;
-      // 每关保留历史最佳星级
-      const levelStars = parseLevelStars(progress.levelStars);
-      // 兼容旧数据：把原有单一最高星级迁移到当时的关卡上
-      if (Object.keys(levelStars).length === 0 && progress.stars > 0) {
-        levelStars[String(progress.currentLevel)] = progress.stars;
-      }
-      if (starsNum > (levelStars[String(levelNum)] || 0)) {
-        levelStars[String(levelNum)] = starsNum;
-      }
-      progress.levelStars = JSON.stringify(levelStars);
-      progress.stars = Object.values(levelStars).reduce((sum, s) => sum + s, 0);
-
-      if (levelNum > progress.currentLevel) {
-        progress.currentLevel = levelNum;
-      }
-      if (rule.lowerScoreIsBetter) {
-        // 步数类成绩越小越好（highScore=0 表示还没记录过）
-        if (scoreNum > 0 && (progress.highScore === 0 || scoreNum < progress.highScore)) {
-          progress.highScore = scoreNum;
-        }
-      } else if (scoreNum > progress.highScore) {
-        progress.highScore = scoreNum;
-      }
-      if (achievements) {
-        const existing = JSON.parse(progress.achievements || '[]');
-        progress.achievements = JSON.stringify([...new Set([...existing, ...achievements])]);
-      }
-
-      await progress.save({ transaction: t });
-    }
-
-    // ── Step 2: 更新用户数据 ──
-    // SELECT ... FOR UPDATE 锁定用户行，防并发覆盖
-    const user = await User.findByPk(userId, { transaction: t, lock: t.LOCK.UPDATE });
-    if (!user) {
-      throw new Error('用户不存在');
-    }
-
-    // 在事务内重算总星星（一致性快照）
-    const allProgress = await GameProgress.findAll({ where: { userId }, transaction: t });
-    const gameStars = allProgress.reduce((sum, p) => sum + p.stars, 0);
-
-    // 每日任务：达成目标后自动发放一次奖励
-    const playedGames = await countTodayPlayedGames(userId, t);
-    const today = localDateString();
-    const [dailyTask] = await DailyTask.findOrCreate({
-      where: { userId, date: today },
-      defaults: { userId, date: today, completedGames: playedGames.size, taskReward: 0 },
-      transaction: t,
-    });
-    dailyTask.completedGames = playedGames.size;
-    if (playedGames.size >= DAILY_TASK_GOAL && dailyTask.taskReward === 0) {
-      dailyTask.taskReward = DAILY_TASK_REWARD;
-    }
-    await dailyTask.save({ transaction: t });
-
-    // 历史累计的每日任务奖励，避免重算时被覆盖
-    const rewardRows = await DailyTask.findAll({
-      where: { userId },
-      attributes: [[sequelize.fn('SUM', sequelize.col('taskReward')), 'rewardTotal']],
-      raw: true,
-      transaction: t,
-    });
-    const rewardTotal = parseInt((rewardRows[0] as any)?.rewardTotal, 10) || 0;
-
-    user.totalStars = gameStars + rewardTotal;
-    user.level = Math.floor(user.totalStars / LEVEL_STAR_THRESHOLD) + 1;
-
-    // ── Step 3: 成就判定（合并在同一次 save 中） ──
-    let newAchievements: { id: string; name: string; icon: string }[] = [];
-    const unlockedDefs = await evaluateAchievements(userId, t);
-    const owned = JSON.parse(user.achievements || '[]') as string[];
-    const fresh = unlockedDefs.filter((def) => !owned.includes(def.id));
-    if (fresh.length > 0) {
-      owned.push(...fresh.map((def) => def.id));
-      user.achievements = JSON.stringify(owned);
-      newAchievements = fresh.map(({ id, name, icon }) => ({ id, name, icon }));
-    }
-
-    // 关键修复：只调用一次 user.save()，同时写入 totalStars/level/achievements
-    await user.save({ transaction: t });
-
-    return { progress, user, newAchievements };
-  }, 'updateGameProgress');
-
-  success(res, {
-    gameId: result.progress.gameId,
-    currentLevel: result.progress.currentLevel,
-    highScore: result.progress.highScore,
-    stars: result.progress.stars,
-    levelStars: parseLevelStars(result.progress.levelStars),
-    totalStars: result.user.totalStars,
-    level: result.user.level,
-    newAchievements: result.newAchievements,
-  });
-});
+  },
+);
 
 // 获取成就列表（含实时解锁状态）
-export const getAchievements = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const userId = req.userId!;
-  const user = await User.findByPk(userId);
-  const owned = JSON.parse(user?.achievements || '[]') as string[];
-  const unlockedDefs = await evaluateAchievements(userId);
-  const unlockedIds = new Set(unlockedDefs.map((def) => def.id));
+export const getAchievements = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    const userId = req.userId!;
+    const user = await User.findByPk(userId);
+    const owned = safeJsonParse<string[]>(user?.achievements, []);
+    const unlockedDefs = await evaluateAchievements(userId);
+    const unlockedIds = new Set(unlockedDefs.map((def) => def.id));
 
-  success(res, ACHIEVEMENTS.map(({ id, name, icon, desc }) => ({
-    id,
-    name,
-    icon,
-    desc,
-    unlocked: owned.includes(id) || unlockedIds.has(id),
-  })));
-});
+    success(
+      res,
+      ACHIEVEMENTS.map(({ id, name, icon, desc }) => ({
+        id,
+        name,
+        icon,
+        desc,
+        unlocked: owned.includes(id) || unlockedIds.has(id),
+      })),
+    );
+  },
+);
 
-// 上报一局游玩（失败结算时调用，胜局在 updateGameProgress 里已计入）
-export const recordPlay = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const gameId = String(req.params.gameId || '');
-  if (!GAME_RULES[gameId]) {
-    fail(res, '未知的 gameId');
-    return;
-  }
-  const userId = req.userId!;
-  const [progress] = await GameProgress.findOrCreate({
-    where: { userId, gameId },
-    defaults: { userId, gameId, playCount: 0, winCount: 0 } as any,
-  });
-  if (progress) {
-    progress.playCount += 1;
-    await progress.save();
-  }
-  success(res, { ok: true });
-});
+// 上报一局游玩（失败结算时调用）
+export const recordPlay = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    const paramsResult = gameIdParamSchema.safeParse(req.params);
+    if (!paramsResult.success) {
+      throw new BadRequestError(paramsResult.error.issues[0].message);
+    }
+    const { gameId } = paramsResult.data;
+    const userId = req.userId!;
+    const [progress] = await GameProgress.findOrCreate({
+      where: { userId, gameId },
+      defaults: { userId, gameId, playCount: 0, winCount: 0 } as any,
+    });
+    if (progress) {
+      progress.playCount += 1;
+      await progress.save();
+    }
+    success(res, { ok: true });
+  },
+);
 
 // 获取今日任务进度
-export const getDailyTask = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const userId = req.userId!;
-  const today = localDateString();
-  const playedGames = await countTodayPlayedGames(userId);
-  const dailyTask = await DailyTask.findOne({ where: { userId, date: today } });
+export const getDailyTask = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    const userId = req.userId!;
+    const playedGames = await countTodayPlayedGames(userId);
 
-  success(res, {
-    completedGames: playedGames.size,
-    playedGames: [...playedGames],
-    taskGoal: DAILY_TASK_GOAL,
-    rewardStars: DAILY_TASK_REWARD,
-    claimed: (dailyTask?.taskReward || 0) > 0,
-  });
-});
+    success(res, {
+      completedGames: playedGames.size,
+      playedGames: [...playedGames],
+      taskGoal: DAILY_TASK_GOAL,
+      rewardStars: DAILY_TASK_REWARD,
+      claimed: playedGames.size >= DAILY_TASK_GOAL,
+    });
+  },
+);
 
-// 获取排行榜（按各游戏计分方向排序：步数/用时类少者在前）
-export const getLeaderboard = asyncHandler(async (req: Request, res: Response) => {
-  const { gameId } = req.params;
+/**
+ * @swagger
+ * /api/game/leaderboard/{gameId}:
+ *   get:
+ *     summary: 获取游戏排行榜
+ *     tags: [游戏进度]
+ *     parameters:
+ *       - in: path
+ *         name: gameId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 游戏ID
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 50
+ *         description: 返回数量限制（最大100）
+ *     responses:
+ *       200:
+ *         description: 成功返回排行榜
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       rank:
+ *                         type: integer
+ *                         example: 1
+ *                       userId:
+ *                         type: integer
+ *                         example: 1
+ *                       nickname:
+ *                         type: string
+ *                         example: 小明
+ *                       avatar:
+ *                         type: string
+ *                         example: /avatars/1.png
+ *                       highScore:
+ *                         type: integer
+ *                         example: 1000
+ *                       level:
+ *                         type: integer
+ *                         example: 5
+ */
+// 获取排行榜（先查 Redis 缓存，miss 后再查 DB 并回填缓存）
+export const getLeaderboard = asyncHandler(
+  async (req: Request, res: Response) => {
+    const paramsResult = gameIdParamSchema.safeParse(req.params);
+    if (!paramsResult.success) {
+      throw new BadRequestError(paramsResult.error.issues[0].message);
+    }
+    const { gameId } = paramsResult.data;
+    const rule = GAME_RULES[gameId];
 
-  const rule = GAME_RULES[gameId as string];
-  if (!rule) {
-    fail(res, '未知的 gameId');
-    return;
-  }
+    const limit = Math.min(
+      Math.max(parseInt(req.query.limit as string, 10) || LEADERBOARD_DEFAULT_LIMIT, 1),
+      LEADERBOARD_MAX_LIMIT,
+    );
 
-  const limit = Math.min(Math.max(parseInt(req.query.limit as string, 10) || 50, 1), 100);
+    // 1) 先尝试缓存
+    const cached = await getCachedLeaderboard(gameId);
+    if (cached) {
+      success(res, cached.slice(0, limit));
+      return;
+    }
 
-  // 只比家庭角色（排除历史游客数据）
-  const familyUsers = await User.findAll({
-    where: { openid: { [Op.like]: 'family_%' } },
-    attributes: ['id'],
-  });
-  const familyIds = familyUsers.map((u) => u.id);
-  if (familyIds.length === 0) {
-    success(res, []);
-    return;
-  }
+    // 2) 缓存 miss：使用 JOIN 一次查询获取进度 + 用户信息
+    const progressList = await GameProgress.findAll({
+      where: {
+        gameId,
+        highScore: { [Op.gt]: 0 },
+      },
+      include: [
+        {
+          model: User,
+          as: "user",
+          where: { openid: { [Op.like]: "family_%" } },
+          attributes: ["id", "nickname", "avatar"],
+          required: true,
+        },
+      ],
+      order: [["highScore", rule.lowerScoreIsBetter ? "ASC" : "DESC"]],
+      limit: LEADERBOARD_CACHE_LIMIT, // 缓存全量 top100，按 limit 截取返回
+    });
 
-  const progressList = await GameProgress.findAll({
-    where: { gameId, highScore: { [Op.gt]: 0 }, userId: { [Op.in]: familyIds } },
-    order: [['highScore', rule.lowerScoreIsBetter ? 'ASC' : 'DESC']],
-    limit,
-  });
+    const leaderboard = progressList.map((p, index) => ({
+      rank: index + 1,
+      userId: p.userId,
+      nickname: (p as any).user?.nickname || "匿名",
+      avatar: (p as any).user?.avatar || "",
+      highScore: p.highScore,
+      level: p.currentLevel,
+    }));
 
-  const userIds = progressList.map(p => p.userId);
-  const users = await User.findAll({
-    where: { id: { [Op.in]: userIds } },
-  });
+    // 3) 回填缓存
+    await cacheLeaderboard(gameId, leaderboard);
 
-  const userMap = new Map(users.map(u => [u.id, u]));
-
-  const leaderboard = progressList.map((p, index) => ({
-    rank: index + 1,
-    userId: p.userId,
-    nickname: userMap.get(p.userId)?.nickname || '匿名',
-    avatar: userMap.get(p.userId)?.avatar || '',
-    highScore: p.highScore,
-    level: p.currentLevel,
-  }));
-
-  success(res, leaderboard);
-});
+    success(res, leaderboard.slice(0, limit));
+  },
+);

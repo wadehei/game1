@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { LevelConfig } from '../models';
-import { success, fail, asyncHandler } from '../utils/response';
+import { success, asyncHandler } from '../utils/response';
+import { BadRequestError } from '../errors/AppError';
 
 /** 各游戏允许覆盖的配置字段（与前端 levelDefaults.ts 的字段一一对应） */
 export const LEVEL_FIELDS: Record<string, string[]> = {
@@ -23,8 +24,7 @@ export const getLevelOverride = asyncHandler(async (req: Request, res: Response)
   const level = parseInt(String(req.params.level), 10);
 
   if (!LEVEL_FIELDS[gameId] || !Number.isFinite(level) || level < 1) {
-    fail(res, '参数无效');
-    return;
+    throw new BadRequestError('参数无效');
   }
 
   const row = await LevelConfig.findOne({ where: { gameId, level } });

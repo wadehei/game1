@@ -2,6 +2,7 @@
 import fs from 'fs';
 import path from 'path';
 import { sequelize } from '../config/database';
+import { formatDateCompact } from '../utils/date';
 
 const BACKUP_DIR = path.resolve(process.cwd(), 'backups');
 const KEEP_COUNT = 7; // 磁盘保留的自动备份数量
@@ -26,10 +27,7 @@ const sqlEscape = (value: unknown): string => {
   return `'${String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '')}'`;
 };
 
-const dateStr = (d = new Date()): string => {
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
-};
+const dateStr = (d = new Date()): string => formatDateCompact(d);
 
 /** 构建全量业务数据 SQL（与管理端手动下载同一份逻辑） */
 export const buildBackupSql = async (): Promise<string> => {

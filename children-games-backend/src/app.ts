@@ -2,6 +2,7 @@ import express from 'express';
 import http from 'http';
 import cors from 'cors';
 import helmet from 'helmet';
+import swaggerUi from 'swagger-ui-express';
 import { config } from './config';
 import { sequelize, testConnection } from './config/database';
 import { initModels } from './models';
@@ -11,6 +12,8 @@ import { initWsServer } from './ws/wsServer';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { logError, logInfo, initLogger } from './utils/logger';
 import { globalLimiter } from './middleware/rateLimiter';
+import { swaggerSpec } from './config/swagger';
+import { initRedis, closeRedis } from './utils/redis';
 
 const app = express();
 
@@ -63,6 +66,20 @@ app.use(express.urlencoded({ extended: true, limit: '64kb' }));
 app.use(avatarRoutes); // 头像上传/静态（自带完整路径）
 app.use('/api', routes);
 
+// Swagger API 文档
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: '儿童游戏乐园 API',
+}));
+
+// 提供 OpenAPI JSON 规范文件
+app.get('/api-docs.json', (_req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
+
+logInfo('server', `📚 API 文档已加载: http://localhost:${config.port}/api-docs`);
+
 // 错误处理
 app.use(notFoundHandler);
 app.use(errorHandler);
@@ -86,14 +103,16 @@ const gracefulShutdown = async (signal: string) => {
       logInfo('server', '✅ HTTP 服务器已关闭');
     });
   }
-  // 2. 关闭数据库连接池
+  // 2. 关闭 Redis 连接
+  await closeRedis();
+  // 3. 关闭数据库连接池
   try {
     await sequelize.close();
     logInfo('server', '✅ 数据库连接已关闭');
   } catch (err) {
     logError('server', '关闭数据库连接失败', err instanceof Error ? err.stack : String(err));
   }
-  // 3. 给正在处理的请求最多 10 秒完成
+  // 4. 给正在处理的请求最多 10 秒完成
   setTimeout(() => {
     logInfo('server', '⏰ 强制退出');
     process.exit(1);
@@ -112,6 +131,9 @@ const startServer = async () => {
     const { initBackupScheduler } = await import('./services/backupService');
     initBackupScheduler();
 
+    // 初始化 Redis 连接（可选，失败不影响启动）
+    await initRedis();
+
     // 测试数据库连接
     await testConnection();
 
@@ -124,6 +146,7 @@ const startServer = async () => {
 🚀 服务器已启动
 📍 地址: http://localhost:${config.port}
 🌍 环境: ${config.nodeEnv}
+📚 API 文档: http://localhost:${config.port}/api-docs
       `);
     });
     initWsServer(server);

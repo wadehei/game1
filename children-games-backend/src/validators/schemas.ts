@@ -24,7 +24,8 @@ export const updateUserInfoSchema = z.object({
 
 // 角色 PIN 码
 export const updatePinSchema = z.object({
-  pin: z.string().regex(/^\d{4}$/, 'PIN 码必须是4位数字').nullable(),
+  oldPin: z.string().regex(/^\d{4}$/, '旧口令必须是4位数字').optional(),
+  newPin: z.string().regex(/^\d{4}$/, '新口令必须是4位数字').nullable(),
 });
 
 // 游玩时长上报
@@ -45,19 +46,21 @@ export const adminLoginSchema = z.object({
 });
 
 export const adjustChipsSchema = z.object({
-  amount: z.number().int('必须是整数'),
-  reason: z.string().min(1, '原因不能为空').max(200, '原因最多200个字符').optional(),
+  delta: z.number().int('必须是整数').optional(),
+  set: z.number().int('必须是整数').optional(),
+}).refine((data) => data.delta !== undefined || data.set !== undefined, {
+  message: '请提供 delta（增减）或 set（设定）',
 });
 
 export const updateSettingsSchema = z.object({
-  key: z.string().min(1).max(100),
-  value: z.string().min(1).max(1000),
+  restIntervalMinutes: z.number().int('必须是整数').min(0, '不能小于 0').max(120, '不能大于 120'),
 });
 
 // 意见反馈
 export const submitFeedbackSchema = z.object({
+  type: z.string().min(1, '请选择反馈类型'),
   content: z.string().min(1, '反馈内容不能为空').max(1000, '反馈内容最多1000个字符'),
-  contact: z.string().max(100, '联系方式最多100个字符').optional(),
+  page: z.string().max(100, '页面信息最多100个字符').optional(),
 });
 
 export const updateFeedbackSchema = z.object({
@@ -71,10 +74,10 @@ export const addReplySchema = z.object({
 
 // 答题对战
 export const quizSchema = z.object({
-  question: z.string().min(1, '题目不能为空').max(500, '题目最多500个字符'),
+  text: z.string().min(1, '题目不能为空').max(500, '题目最多500个字符'),
   options: z.array(z.string().min(1).max(200)).min(2, '至少2个选项').max(6, '最多6个选项'),
-  answer: z.number().int().min(0, '答案索引不能为负'),
-  difficulty: z.enum(['easy', 'medium', 'hard']).optional(),
+  answer: z.number().int().min(0, '答案索引不能为负').max(3, '答案索引不能大于3'),
+  difficulty: z.number().int().min(1, '难度最小1').max(3, '难度最大3').optional(),
   category: z.string().max(50).optional(),
 });
 

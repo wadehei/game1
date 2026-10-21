@@ -274,6 +274,8 @@ onMounted(() => {
 });
 onUnmounted(() => {
   if (timer) clearInterval(timer);
+  if (yanpaiTimer) clearTimeout(yanpaiTimer);
+  if (pcTimer) clearTimeout(pcTimer);
 });
 </script>
 

@@ -46,6 +46,12 @@ CREATE INDEX idx_battle_records_game_type ON battle_records(gameType, createdAt 
 CREATE INDEX idx_quiz_questions_difficulty ON quiz_questions(difficulty);
 CREATE INDEX idx_quiz_questions_category ON quiz_questions(category);
 
+-- 7. feedbacks 表：为每日反馈计数添加复合索引（submitFeedback 按 userId+当天时间 count）
+CREATE INDEX idx_feedbacks_user_created ON feedbacks(userId, createdAt);
+
+-- 8. feedback_replies 表：为每日回复计数添加复合索引
+CREATE INDEX idx_feedback_replies_user_created ON feedback_replies(userId, createdAt);
+
 -- ============================================
 -- 查看索引
 -- ============================================
@@ -68,3 +74,5 @@ CREATE INDEX idx_quiz_questions_category ON quiz_questions(category);
 -- DROP INDEX idx_battle_records_game_type ON battle_records;
 -- DROP INDEX idx_quiz_questions_difficulty ON quiz_questions;
 -- DROP INDEX idx_quiz_questions_category ON quiz_questions;
+-- DROP INDEX idx_feedbacks_user_created ON feedbacks;
+-- DROP INDEX idx_feedback_replies_user_created ON feedback_replies;

@@ -7,22 +7,54 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "smoke": "node tests/smoke.mjs",
-    "gen:icons": "node tests/gen-icons.mjs"
+    "gen:icons": "node tests/gen-icons.mjs",
+    "lint": "eslint . --fix",
+    "lint:check": "eslint .",
+    "format": "prettier --write \"src/**/*.{ts,vue,json,css,scss,md}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,vue,json,css,scss,md}\"",
+    "prepare": "cd .. && husky install"
   },
   "dependencies": {
+    "@children-games/shared": "file:../packages/shared",
     "axios": "^1.6.8",
     "pinia": "^2.1.7",
     "vue": "^3.4.21",
     "vue-router": "^4.3.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.0.0",
     "@playwright/test": "^1.64.0",
     "@types/node": "^20.12.7",
     "@vitejs/plugin-vue": "^5.0.4",
+    "@vitest/coverage-v8": "^1.6.0",
+    "@vue/test-utils": "^2.4.5",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.1.3",
+    "eslint-plugin-vue": "^9.24.0",
+    "husky": "^9.0.11",
+    "jsdom": "^24.0.0",
+    "lint-staged": "^15.2.2",
+    "prettier": "^3.2.5",
     "puppeteer": "^25.13.0",
     "typescript": "^5.4.5",
+    "typescript-eslint": "^7.5.0",
     "vite": "^5.2.10",
+    "vite-plugin-compression": "^0.5.1",
+    "vitest": "^1.6.0",
     "vue-tsc": "^2.0.11"
+  },
+  "lint-staged": {
+    "*.{ts,vue}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,css,scss,md}": [
+      "prettier --write"
+    ]
   }
 }
