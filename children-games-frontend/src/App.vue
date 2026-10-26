@@ -55,8 +55,10 @@ requestWakeLock();
   box-sizing: border-box;
 }
 
-html, body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+html,
+body {
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   background-color: #f5f5f5;
   width: 100%;
   height: 100%;
@@ -75,13 +77,13 @@ html, body {
 
 /* 全局颜色变量 */
 :root {
-  --primary-color: #FF6B6B;
-  --secondary-color: #4ECDC4;
-  --accent-color: #FFE66D;
+  --primary-color: #ff6b6b;
+  --secondary-color: #4ecdc4;
+  --accent-color: #ffe66d;
   --text-color: #333333;
   --text-light: #666666;
-  --bg-color: #F7F7F7;
-  --card-bg: #FFFFFF;
+  --bg-color: #f7f7f7;
+  --card-bg: #ffffff;
 }
 
 /* 通用样式 */

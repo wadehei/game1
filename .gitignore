@@ -46,3 +46,8 @@ pnpm-debug.log*
 *.tmp
 *.bak
 *.cache
+
+# TypeScript compiled JS files in source directories
+**/src/**/*.js
+**/src/**/*.js.map
+!**/src/**/*.config.js

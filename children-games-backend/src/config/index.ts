@@ -7,7 +7,10 @@ const isProduction = nodeEnv === 'production';
 
 // 生产环境安全检查
 if (isProduction) {
-  if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'your_jwt_secret_key_change_this_in_production_2024') {
+  if (
+    !process.env.JWT_SECRET ||
+    process.env.JWT_SECRET === 'your_jwt_secret_key_change_this_in_production_2024'
+  ) {
     throw new Error('生产环境必须设置安全的 JWT_SECRET！');
   }
   if (!process.env.DB_PASSWORD || process.env.DB_PASSWORD === '') {
@@ -49,8 +52,10 @@ export const config = {
   // CORS 配置
   cors: {
     allowedOrigins: process.env.CORS_ALLOWED_ORIGINS
-      ? process.env.CORS_ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
-      : (isProduction ? [] : ['http://localhost:5173', 'http://localhost:3002']),
+      ? process.env.CORS_ALLOWED_ORIGINS.split(',').map((origin) => origin.trim())
+      : isProduction
+        ? []
+        : ['http://localhost:5173', 'http://localhost:3002'],
   },
 
   // 速率限制配置

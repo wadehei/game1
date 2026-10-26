@@ -13,9 +13,15 @@ interface FeedbackAttributes {
   updatedAt?: Date;
 }
 
-interface FeedbackCreationAttributes extends Optional<FeedbackAttributes, 'id' | 'page' | 'status' | 'adminNote'> {}
+interface FeedbackCreationAttributes extends Optional<
+  FeedbackAttributes,
+  'id' | 'page' | 'status' | 'adminNote'
+> {}
 
-export class Feedback extends Model<FeedbackAttributes, FeedbackCreationAttributes> implements FeedbackAttributes {
+export class Feedback
+  extends Model<FeedbackAttributes, FeedbackCreationAttributes>
+  implements FeedbackAttributes
+{
   public id!: number;
   public userId!: number;
   public type!: string;

@@ -27,7 +27,12 @@ import {
 } from './roomManager';
 import { getHandler, gameHandlers } from './games/registry';
 import { setRoomBus } from './bus';
-import { settleRankingChips, applyChipDelta, grantDailyRelief, CHIPS_JOIN_MIN } from '../services/battleChips';
+import {
+  settleRankingChips,
+  applyChipDelta,
+  grantDailyRelief,
+  CHIPS_JOIN_MIN,
+} from '../services/battleChips';
 
 /** 牌类（blackjack/zjh）每手自行实时结算积分，game_over 时不再发排名分 */
 const CHIP_TABLE_GAMES = new Set(['blackjack', 'zjh']);
@@ -37,14 +42,18 @@ const settleGameChips = (room: Room, winnerSeatFromMsg: number): void => {
   if (room.chipSettled) return;
   room.chipSettled = true;
   if (CHIP_TABLE_GAMES.has(room.gameType)) return; // 牌类已在每手结算
-  const careerOn = room.config?.career !== false;
+  // 此处跨游戏聚合读取，game/config 的具体形态由各 handler 决定，仅按公共约定取字段
+  const careerOn = (room.config as { career?: boolean } | undefined)?.career !== false;
   const ranking: Array<{ userId: number }> = [];
-  const game = room.game || {};
+  const game = (room.game || {}) as { ranking?: Array<{ userId: number }> };
   if (Array.isArray(game.ranking) && game.ranking.length) {
     for (const r of game.ranking) ranking.push({ userId: r.userId });
   } else {
-    const seated = [...room.members.values()].filter((m) => m.seat >= 0).sort((a, b) => a.seat - b.seat);
-    const winner = winnerSeatFromMsg >= 0 ? seated.find((m) => m.seat === winnerSeatFromMsg) : undefined;
+    const seated = [...room.members.values()]
+      .filter((m) => m.seat >= 0)
+      .sort((a, b) => a.seat - b.seat);
+    const winner =
+      winnerSeatFromMsg >= 0 ? seated.find((m) => m.seat === winnerSeatFromMsg) : undefined;
     if (winner) ranking.push({ userId: winner.userId });
     for (const m of seated) {
       if (!winner || m.userId !== winner.userId) ranking.push({ userId: m.userId });
@@ -110,12 +119,19 @@ const startGame = (room: Room): void => {
   try {
     const result = handler.start?.(room);
     if (result?.broadcast) result.broadcast.forEach((msg) => busBroadcast(room, msg));
-    if (result?.toMember) result.toMember.forEach(({ userId, msg }) => busSendToUser(room, userId, msg));
+    if (result?.toMember)
+      result.toMember.forEach(({ userId, msg }) => busSendToUser(room, userId, msg));
     if (result?.error) logError('ws', `${room.gameType} start 异常: ${result.error}`);
   } catch (err) {
     // 游戏开局异常不能静默吞掉（否则房间卡在无对局状态）
-    logError('ws', `${room.gameType} start 抛错: ${err instanceof Error ? err.stack : String(err)}`);
-    logError('server', `${room.gameType} start 抛错: ${err instanceof Error ? err.message : String(err)}`);
+    logError(
+      'ws',
+      `${room.gameType} start 抛错: ${err instanceof Error ? err.stack : String(err)}`
+    );
+    logError(
+      'server',
+      `${room.gameType} start 抛错: ${err instanceof Error ? err.message : String(err)}`
+    );
   }
   broadcast(room, { t: 'game_start', phase: room.phase });
 };
@@ -147,7 +163,8 @@ const restartGame = (room: Room): void => {
   }
   const result = handler.start?.(room);
   if (result?.broadcast) result.broadcast.forEach((msg) => busBroadcast(room, msg));
-  if (result?.toMember) result.toMember.forEach(({ userId, msg }) => busSendToUser(room, userId, msg));
+  if (result?.toMember)
+    result.toMember.forEach(({ userId, msg }) => busSendToUser(room, userId, msg));
   broadcast(room, { t: 'game_restart', phase: room.phase });
 };
 
@@ -205,7 +222,9 @@ export const initWsServer = (server: Server): void => {
       return;
     }
 
-    const user = await User.findByPk(userId, { attributes: ['id', 'nickname', 'avatar', 'battleChips'] });
+    const user = await User.findByPk(userId, {
+      attributes: ['id', 'nickname', 'avatar', 'battleChips'],
+    });
     if (!user) {
       ws.close(4002, '角色不存在');
       return;
@@ -247,7 +266,12 @@ export const initWsServer = (server: Server): void => {
       }
       member.ws = ws;
       clients.set(ws, { userId, roomId: room.id });
-      send(ws, { t: 'joined', yourSeat: member.seat, gameTitle: handler.title, ...snapshotFor(room, member) });
+      send(ws, {
+        t: 'joined',
+        yourSeat: member.seat,
+        gameTitle: handler.title,
+        ...snapshotFor(room, member),
+      });
       broadcast(room, { t: 'member_update', members: memberList(room) }, ws);
     }
 
@@ -297,7 +321,10 @@ export const initWsServer = (server: Server): void => {
             broadcastSnapshot(room); // 换座后的座位信息要随快照下发
             break;
           }
-          broadcast(room, { t: 'rematch_vote', userIds: players.filter((m) => m.rematch).map((m) => m.userId) });
+          broadcast(room, {
+            t: 'rematch_vote',
+            userIds: players.filter((m) => m.rematch).map((m) => m.userId),
+          });
           // 首次表决起倒计时，到点自动重开（phase 守卫保证多人投票时只有一次生效）
           if (REMATCH_AUTO_MS > 0) {
             broadcast(room, { t: 'rematch_deadline', deadline: Date.now() + REMATCH_AUTO_MS });
@@ -313,11 +340,19 @@ export const initWsServer = (server: Server): void => {
 
         case 'chat': {
           const kind = ['text', 'emoji', 'quick'].includes(msg.kind) ? msg.kind : 'text';
-          const content = String(msg.content || '').trim().slice(0, 200);
+          const content = String(msg.content || '')
+            .trim()
+            .slice(0, 200);
           if (!content) return;
           if (me.lastChatAt && Date.now() - me.lastChatAt < 300) return; // 防刷屏
           me.lastChatAt = Date.now();
-          const chat: ChatMsg = { userId: me.userId, nickname: me.nickname, kind, content, ts: Date.now() };
+          const chat: ChatMsg = {
+            userId: me.userId,
+            nickname: me.nickname,
+            kind,
+            content,
+            ts: Date.now(),
+          };
           addChat(room, chat);
           broadcast(room, { t: 'chat', ...chat });
           break;
@@ -347,7 +382,10 @@ export const initWsServer = (server: Server): void => {
           try {
             result = handler.onAction(room, me, msg.t, msg);
           } catch (err) {
-            logError('ws', `${room.gameType} action 抛错: ${err instanceof Error ? err.stack : String(err)}`);
+            logError(
+              'ws',
+              `${room.gameType} action 抛错: ${err instanceof Error ? err.stack : String(err)}`
+            );
             send(ws, { t: 'error', message: '操作处理异常' });
             return;
           }
@@ -356,7 +394,8 @@ export const initWsServer = (server: Server): void => {
             return;
           }
           if (result.broadcast) result.broadcast.forEach((m) => broadcast(room, m));
-          if (result.toMember) result.toMember.forEach(({ userId: uid, msg: m }) => busSendToUser(room, uid, m));
+          if (result.toMember)
+            result.toMember.forEach(({ userId: uid, msg: m }) => busSendToUser(room, uid, m));
           if (result.ended) {
             endGame(room, result.ended.winnerSeat, result.ended.reason);
             broadcastSnapshot(room);
@@ -385,7 +424,10 @@ export const initWsServer = (server: Server): void => {
       try {
         getHandler(room.gameType).onMemberOffline?.(room, me);
       } catch (err) {
-        logError('ws', `${room.gameType} offline 处理抛错: ${err instanceof Error ? err.stack : String(err)}`);
+        logError(
+          'ws',
+          `${room.gameType} offline 处理抛错: ${err instanceof Error ? err.stack : String(err)}`
+        );
       }
       const timer = setTimeout(() => {
         const r = getRoom(room.id);
@@ -404,13 +446,16 @@ export const initWsServer = (server: Server): void => {
   });
 
   // 定期清理：空闲房间解散、过期语音清除
-  setInterval(() => {
-    try {
-      sweepIdle();
-    } catch (err) {
-      logError('ws', `房间清理失败: ${err instanceof Error ? err.message : String(err)}`);
-    }
-  }, 5 * 60 * 1000).unref();
+  setInterval(
+    () => {
+      try {
+        sweepIdle();
+      } catch (err) {
+        logError('ws', `房间清理失败: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    },
+    5 * 60 * 1000
+  ).unref();
 };
 
 // 供大厅展示的游戏列表

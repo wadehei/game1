@@ -1,15 +1,9 @@
 <template>
   <!-- 家长验证弹层 -->
-  <div
-    v-if="showGate"
-    class="parent-overlay"
-    @click.self="closeGate"
-  >
+  <div v-if="showGate" class="parent-overlay" @click.self="closeGate">
     <div class="parent-content">
       <div class="parent-title">🔐 家长验证</div>
-      <div class="parent-question">
-        {{ gateQuestion.a }} + {{ gateQuestion.b }} = ?
-      </div>
+      <div class="parent-question">{{ gateQuestion.a }} + {{ gateQuestion.b }} = ?</div>
       <input
         v-model="gateAnswer"
         class="parent-input"
@@ -26,17 +20,13 @@
   </div>
 
   <!-- 家长中心面板 -->
-  <div
-    v-if="showPanel"
-    class="parent-overlay"
-    @click.self="showPanel = false"
-  >
+  <div v-if="showPanel" class="parent-overlay" @click.self="showPanel = false">
     <div class="parent-content">
       <div class="parent-title">👪 家长中心</div>
       <div class="panel-row">
         <span class="panel-label">今日已玩</span>
         <strong class="panel-value">{{ todayMinutes }} 分钟</strong>
-        <button class="mini-btn" @click="resetPlayTime">清零</button>
+        <button class="mini-btn" @click="handleResetPlayTime">清零</button>
       </div>
       <div class="panel-col">
         <span class="panel-label">护眼提醒间隔（连续游玩后休息 20 秒）</span>
@@ -52,37 +42,35 @@
           </button>
         </div>
       </div>
-      <button class="p-btn-confirm full" @click="showPanel = false">
-        完成
-      </button>
+      <button class="p-btn-confirm full" @click="showPanel = false">完成</button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref } from 'vue';
 import {
   getRestIntervalMinutes,
   getTodayPlaySeconds,
   resetTodayPlayTime,
-} from "@/composables/usePlayTimeGuard";
+} from '@/composables/usePlayTimeGuard';
 
 const emit = defineEmits<{
-  (e: "verified"): void;
+  (e: 'verified'): void;
 }>();
 
 const showGate = ref(false);
 const showPanel = ref(false);
 const gateQuestion = ref({ a: 0, b: 0 });
-const gateAnswer = ref("");
+const gateAnswer = ref('');
 const gateError = ref(false);
 const todayMinutes = ref(Math.ceil(getTodayPlaySeconds() / 60));
 const restInterval = ref(getRestIntervalMinutes());
 const intervalOptions = [
-  { value: 15, label: "15 分钟" },
-  { value: 20, label: "20 分钟" },
-  { value: 30, label: "30 分钟" },
-  { value: 0, label: "关闭" },
+  { value: 15, label: '15 分钟' },
+  { value: 20, label: '20 分钟' },
+  { value: 30, label: '30 分钟' },
+  { value: 0, label: '关闭' },
 ];
 
 const openGate = () => {
@@ -90,7 +78,7 @@ const openGate = () => {
     a: 12 + Math.floor(Math.random() * 18),
     b: 12 + Math.floor(Math.random() * 18),
   };
-  gateAnswer.value = "";
+  gateAnswer.value = '';
   gateError.value = false;
   showGate.value = true;
 };
@@ -100,15 +88,12 @@ const closeGate = () => {
 };
 
 const confirmGate = () => {
-  if (
-    parseInt(gateAnswer.value, 10) ===
-    gateQuestion.value.a + gateQuestion.value.b
-  ) {
+  if (parseInt(gateAnswer.value, 10) === gateQuestion.value.a + gateQuestion.value.b) {
     showGate.value = false;
     todayMinutes.value = Math.ceil(getTodayPlaySeconds() / 60);
     restInterval.value = getRestIntervalMinutes();
     showPanel.value = true;
-    emit("verified");
+    emit('verified');
   } else {
     gateError.value = true;
   }
@@ -122,7 +107,7 @@ const handleResetPlayTime = () => {
 const saveInterval = (value: number) => {
   restInterval.value = value;
   try {
-    localStorage.setItem("parent_rest_interval", String(value));
+    localStorage.setItem('parent_rest_interval', String(value));
   } catch {
     // ignore
   }

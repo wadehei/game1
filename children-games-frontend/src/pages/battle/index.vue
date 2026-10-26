@@ -60,7 +60,11 @@
         <div class="cfg-title">♠️ 比大小 房间设置</div>
         <div class="cfg-row">
           <span class="cfg-label">特殊 235</span>
-          <button class="switch" :class="{ on: zjhSpecial235 }" @click="zjhSpecial235 = !zjhSpecial235">
+          <button
+            class="switch"
+            :class="{ on: zjhSpecial235 }"
+            @click="zjhSpecial235 = !zjhSpecial235"
+          >
             <span class="knob" />
           </button>
           <span class="cfg-note">不同花 2-3-5 反杀豹子</span>
@@ -68,21 +72,47 @@
         <div class="cfg-row">
           <span class="cfg-label">超时动作</span>
           <div class="seg">
-            <button class="seg-btn" :class="{ on: zjhTimeoutFold }" @click="zjhTimeoutFold = true">自动弃牌</button>
-            <button class="seg-btn" :class="{ on: !zjhTimeoutFold }" @click="zjhTimeoutFold = false">自动跟注</button>
+            <button class="seg-btn" :class="{ on: zjhTimeoutFold }" @click="zjhTimeoutFold = true">
+              自动弃牌
+            </button>
+            <button
+              class="seg-btn"
+              :class="{ on: !zjhTimeoutFold }"
+              @click="zjhTimeoutFold = false"
+            >
+              自动跟注
+            </button>
           </div>
         </div>
         <div class="cfg-row">
           <span class="cfg-label">庄家模式</span>
           <div class="seg">
-            <button class="seg-btn" :class="{ on: zjhBankerMode === 'rotate' }" @click="zjhBankerMode = 'rotate'">轮庄</button>
-            <button class="seg-btn" :class="{ on: zjhBankerMode === 'winner' }" @click="zjhBankerMode = 'winner'">赢家坐庄</button>
+            <button
+              class="seg-btn"
+              :class="{ on: zjhBankerMode === 'rotate' }"
+              @click="zjhBankerMode = 'rotate'"
+            >
+              轮庄
+            </button>
+            <button
+              class="seg-btn"
+              :class="{ on: zjhBankerMode === 'winner' }"
+              @click="zjhBankerMode = 'winner'"
+            >
+              赢家坐庄
+            </button>
           </div>
         </div>
         <div class="cfg-row">
           <span class="cfg-label">必闷轮数</span>
           <div class="seg">
-            <button v-for="n in [0, 1, 2]" :key="n" class="seg-btn" :class="{ on: zjhMustBlind === n }" @click="zjhMustBlind = n">
+            <button
+              v-for="n in [0, 1, 2]"
+              :key="n"
+              class="seg-btn"
+              :class="{ on: zjhMustBlind === n }"
+              @click="zjhMustBlind = n"
+            >
               {{ n === 0 ? '不限' : `前${n}轮` }}
             </button>
           </div>
@@ -140,9 +170,20 @@ const router = useRouter();
 const creating = ref(false);
 const joinCode = ref('');
 const errMsg = ref('');
-const games = ref<Array<{ type: string; title: string; emoji: string; desc: string; minPlayers: number; maxPlayers: number }>>([]);
+const games = ref<
+  Array<{
+    type: string;
+    title: string;
+    emoji: string;
+    desc: string;
+    minPlayers: number;
+    maxPlayers: number;
+  }>
+>([]);
 const selected = ref('gomoku');
-const selectedTitle = computed(() => games.value.find((g) => g.type === selected.value)?.title || '五子棋');
+const selectedTitle = computed(
+  () => games.value.find((g) => g.type === selected.value)?.title || '五子棋'
+);
 
 // 建房配置（牌类）
 const BANKER_MODES = [
@@ -161,7 +202,11 @@ const careerOn = ref(true);
 
 const buildConfig = (): Record<string, unknown> | undefined => {
   if (selected.value === 'blackjack') {
-    return { bankerMode: bjBankerMode.value, roundLimit: clampRound(bjRounds.value, 2, 20, 8), career: careerOn.value };
+    return {
+      bankerMode: bjBankerMode.value,
+      roundLimit: clampRound(bjRounds.value, 2, 20, 8),
+      career: careerOn.value,
+    };
   }
   if (selected.value === 'zjh') {
     return {
@@ -182,7 +227,9 @@ const clampRound = (v: number, min: number, max: number, dft: number): number =>
 };
 
 onMounted(async () => {
-  games.value = await getGameList().catch(() => [{ type: 'gomoku', title: '五子棋', emoji: '⚫', desc: '', minPlayers: 2, maxPlayers: 2 }]);
+  games.value = await getGameList().catch(() => [
+    { type: 'gomoku', title: '五子棋', emoji: '⚫', desc: '', minPlayers: 2, maxPlayers: 2 },
+  ]);
 });
 
 const goBack = () => {
@@ -308,7 +355,7 @@ const join = () => {
 .game-card {
   display: grid;
   grid-template-columns: 34px 1fr auto;
-  grid-template-areas: "icon title range" "icon desc range";
+  grid-template-areas: 'icon title range' 'icon desc range';
   column-gap: 10px;
   align-items: center;
   border: 2px solid #e3e8ef;

@@ -31,22 +31,23 @@ export const useRoomWs = () => {
     url = `${proto}://${location.host}/ws?roomId=${encodeURIComponent(roomId)}`;
     closedByUser = false;
     status.value = 'connecting';
-    ws = new WebSocket(url);
+    const sock = new WebSocket(url);
+    ws = sock;
 
-    ws.onopen = () => {
+    sock.onopen = () => {
       status.value = 'open';
       retry = 0;
       // 首条消息鉴权：发送 token 给服务端
-      ws.send(JSON.stringify({ t: 'auth', token }));
+      sock.send(JSON.stringify({ t: 'auth', token }));
     };
-    ws.onmessage = (e) => {
+    sock.onmessage = (e) => {
       try {
         dispatch(JSON.parse(e.data));
       } catch {
         // 忽略非 JSON 帧
       }
     };
-    ws.onclose = (e) => {
+    sock.onclose = (e) => {
       status.value = 'closed';
       handlers.get('disconnected')?.forEach((fn) => fn(e));
       // 服务端明确关门（房间解散/未登录）不重连

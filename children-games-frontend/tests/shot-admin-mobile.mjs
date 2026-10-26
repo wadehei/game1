@@ -13,7 +13,9 @@ await new Promise((r) => setTimeout(r, 1500));
 await page.screenshot({ path: 'test-results/admin-mobile-fixed.png' });
 // 角色管理页也来一张
 await page.evaluate(() => {
-  [...document.querySelectorAll('.mobile-tab')].find((t) => t.textContent.includes('角色管理'))?.click();
+  [...document.querySelectorAll('.mobile-tab')]
+    .find((t) => t.textContent.includes('角色管理'))
+    ?.click();
 });
 await new Promise((r) => setTimeout(r, 1200));
 await page.screenshot({ path: 'test-results/admin-mobile-members.png' });

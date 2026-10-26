@@ -7,7 +7,14 @@
       </div>
       <div v-if="error" class="pin-error">{{ error }}</div>
       <div class="keys">
-        <button v-for="k in [1, 2, 3, 4, 5, 6, 7, 8, 9]" :key="k" class="key" @click="press(String(k))">{{ k }}</button>
+        <button
+          v-for="k in [1, 2, 3, 4, 5, 6, 7, 8, 9]"
+          :key="k"
+          class="key"
+          @click="press(String(k))"
+        >
+          {{ k }}
+        </button>
         <span class="key blank"></span>
         <button class="key" @click="press('0')">0</button>
         <button class="key del" @click="del">⌫</button>
@@ -20,13 +27,16 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 
-const props = withDefaults(defineProps<{
-  title?: string;
-  error?: string;
-}>(), {
-  title: '请输入口令',
-  error: '',
-});
+const props = withDefaults(
+  defineProps<{
+    title?: string;
+    error?: string;
+  }>(),
+  {
+    title: '请输入口令',
+    error: '',
+  }
+);
 
 const emit = defineEmits<{
   complete: [pin: string];
@@ -52,9 +62,12 @@ const del = () => {
 };
 
 // 外部报错后清空重输
-watch(() => props.error, (v) => {
-  if (v) pin.value = '';
-});
+watch(
+  () => props.error,
+  (v) => {
+    if (v) pin.value = '';
+  }
+);
 </script>
 
 <style scoped>

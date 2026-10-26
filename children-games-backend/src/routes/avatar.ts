@@ -45,12 +45,15 @@ const allowRate = (ip: string): boolean => {
   return rec.count <= 20;
 };
 // 定期清理过期的 IP 记录，防止内存泄漏（每 5 分钟一次）
-setInterval(() => {
-  const now = Date.now();
-  for (const [ip, rec] of rateMap) {
-    if (rec.resetAt < now) rateMap.delete(ip);
-  }
-}, 5 * 60 * 1000).unref();
+setInterval(
+  () => {
+    const now = Date.now();
+    for (const [ip, rec] of rateMap) {
+      if (rec.resetAt < now) rateMap.delete(ip);
+    }
+  },
+  5 * 60 * 1000
+).unref();
 
 const router = Router();
 

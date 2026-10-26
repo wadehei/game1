@@ -67,10 +67,14 @@ app.use(avatarRoutes); // 头像上传/静态（自带完整路径）
 app.use('/api', routes);
 
 // Swagger API 文档
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: '儿童游戏乐园 API',
-}));
+app.use(
+  '/api-docs',
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpec, {
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: '儿童游戏乐园 API',
+  })
+);
 
 // 提供 OpenAPI JSON 规范文件
 app.get('/api-docs.json', (_req, res) => {
@@ -86,7 +90,11 @@ app.use(errorHandler);
 
 // 进程级兜底：未捕获的异常/拒绝也落盘
 process.on('unhandledRejection', (reason) => {
-  logError('process', `未处理的 Promise 拒绝: ${reason instanceof Error ? reason.message : String(reason)}`, reason instanceof Error ? reason.stack : undefined);
+  logError(
+    'process',
+    `未处理的 Promise 拒绝: ${reason instanceof Error ? reason.message : String(reason)}`,
+    reason instanceof Error ? reason.stack : undefined
+  );
 });
 process.on('uncaughtException', (err) => {
   logError('process', `未捕获异常: ${err.message}`, err.stack);
@@ -142,12 +150,15 @@ const startServer = async () => {
 
     // WebSocket（对战房间），挂在同一个 HTTP server 的 /ws 路径
     server = app.listen(config.port, () => {
-      logInfo('server', `
+      logInfo(
+        'server',
+        `
 🚀 服务器已启动
 📍 地址: http://localhost:${config.port}
 🌍 环境: ${config.nodeEnv}
 📚 API 文档: http://localhost:${config.port}/api-docs
-      `);
+      `
+      );
     });
     initWsServer(server);
   } catch (error) {

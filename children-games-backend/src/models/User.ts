@@ -20,7 +20,17 @@ interface UserAttributes {
   updatedAt?: Date;
 }
 
-interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'totalStars' | 'level' | 'achievements' | 'pinHash' | 'avatarHistory' | 'battleChips' | 'chipsReliefDate'> {}
+interface UserCreationAttributes extends Optional<
+  UserAttributes,
+  | 'id'
+  | 'totalStars'
+  | 'level'
+  | 'achievements'
+  | 'pinHash'
+  | 'avatarHistory'
+  | 'battleChips'
+  | 'chipsReliefDate'
+> {}
 
 export class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
   public id!: number;

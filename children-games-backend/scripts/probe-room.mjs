@@ -3,7 +3,13 @@ import WebSocket from 'ws';
 
 const roomId = process.argv[2];
 const uid = process.argv[3] || 2;
-const data = await fetch('http://localhost:3002/api/user/login/family', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid }) }).then((r) => r.json()).then((r) => r.data);
+const data = await fetch('http://localhost:3002/api/user/login/family', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ uid }),
+})
+  .then((r) => r.json())
+  .then((r) => r.data);
 const ws = new WebSocket(`ws://localhost:3002/ws?token=${data.token}&roomId=${roomId}`);
 ws.on('message', (d) => {
   const m = JSON.parse(d.toString());

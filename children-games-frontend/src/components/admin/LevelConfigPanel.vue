@@ -3,7 +3,8 @@
     <h2 class="panel-title">🎚️ 关卡难度配置</h2>
 
     <div class="hint">
-      列出每个关卡的<b>当前生效配置</b>（内置公式 + 此处自定义合并后的结果）。点击任意关卡进入编辑：<b>改过的字段会保存为该关的自定义配置</b>，改回原值或用「恢复默认」即回到内置难度。保存后，孩子重新进入该关卡立即生效。
+      列出每个关卡的<b>当前生效配置</b>（内置公式 +
+      此处自定义合并后的结果）。点击任意关卡进入编辑：<b>改过的字段会保存为该关的自定义配置</b>，改回原值或用「恢复默认」即回到内置难度。保存后，孩子重新进入该关卡立即生效。
     </div>
 
     <!-- 游戏选择 -->
@@ -14,7 +15,9 @@
         class="chip"
         :class="{ active: gameId === g.id }"
         @click="selectGame(g.id)"
-      >{{ g.name }}</button>
+      >
+        {{ g.name }}
+      </button>
     </div>
 
     <!-- 关卡列表 -->
@@ -30,7 +33,9 @@
         <span class="lv-config">{{ formatLevelConfig(gameId, effectiveOf(lv)) }}</span>
         <span v-if="overrideMap.get(lv)" class="lv-badge">自定义</span>
         <div class="row-actions" @click.stop>
-          <button v-if="overrideMap.get(lv)" class="act-btn danger" @click="removeRow(lv)">恢复默认</button>
+          <button v-if="overrideMap.get(lv)" class="act-btn danger" @click="removeRow(lv)">
+            恢复默认
+          </button>
         </div>
       </div>
     </div>
@@ -51,11 +56,7 @@
           <span v-if="customKeys.has(f.key)" class="custom-mark">已自定义</span>
         </label>
         <label v-if="f.isBool" class="bool-label">
-          <input
-            v-model="formValues[f.key]"
-            type="checkbox"
-            @change="markCustom(f.key)"
-          />
+          <input v-model="formValues[f.key]" type="checkbox" @change="markCustom(f.key)" />
           {{ formValues[f.key] ? '开启' : '关闭' }}
         </label>
         <input
@@ -69,7 +70,11 @@
       </div>
       <div class="form-btns">
         <button class="act-btn" @click="resetForm">取消编辑</button>
-        <button class="act-btn save" :disabled="!formLevel || formLevel < 1 || saving" @click="save">
+        <button
+          class="act-btn save"
+          :disabled="!formLevel || formLevel < 1 || saving"
+          @click="save"
+        >
           {{ saving ? '保存中…' : '保存修改' }}
         </button>
       </div>
@@ -223,7 +228,12 @@ const save = async () => {
 };
 
 const removeRow = async (level: number) => {
-  const ok = await confirmAction({ title: `删除第 ${level} 关的自定义配置？`, detail: '恢复内置默认难度。', danger: true, confirmText: '删除' });
+  const ok = await confirmAction({
+    title: `删除第 ${level} 关的自定义配置？`,
+    detail: '恢复内置默认难度。',
+    danger: true,
+    confirmText: '删除',
+  });
   if (!ok) return;
   await deleteLevelOverride(gameId.value, level).catch(() => {});
   showMessage(`第 ${level} 关已恢复默认难度`);
@@ -295,7 +305,9 @@ onMounted(() => loadList());
   border-radius: 12px;
   padding: 9px 12px;
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
   flex-wrap: wrap;
 }
 

@@ -10,27 +10,42 @@ export const testLoginSchema = z.object({
 });
 
 export const familyLoginSchema = z.object({
-  uid: z.string().min(1, 'uid 不能为空'),
-  pin: z.string().regex(/^\d{4}$/, 'PIN 码必须是4位数字').optional(),
+  // 兼容数字与字符串 uid（测试/sim 机器人发数字，前端发字符串），统一转 string；
+  // 可选——不带 uid + 带 nickname 即"昵称建新角色"（后台测试/选角色页新成员入口）
+  uid: z
+    .union([z.string().min(1, 'uid 不能为空'), z.number().int()])
+    .transform((v) => String(v))
+    .optional(),
+  pin: z
+    .string()
+    .regex(/^\d{4}$/, 'PIN 码必须是4位数字')
+    .optional(),
   nickname: z.string().min(1).max(50).optional(),
-  avatar: z.string().url().optional(),
+  // 头像既支持站内/外 URL 也支持 emoji（默认 😊），不做 url() 强校验
+  avatar: z.string().max(500).optional(),
 });
 
 // 用户信息更新
 export const updateUserInfoSchema = z.object({
   nickname: z.string().min(1, '昵称不能为空').max(50, '昵称最多50个字符').optional(),
-  avatar: z.string().url('头像必须是有效的 URL').optional(),
+  avatar: z.string().max(500, '头像字符串过长').optional(),
 });
 
 // 角色 PIN 码
 export const updatePinSchema = z.object({
-  oldPin: z.string().regex(/^\d{4}$/, '旧口令必须是4位数字').optional(),
-  newPin: z.string().regex(/^\d{4}$/, '新口令必须是4位数字').nullable(),
+  oldPin: z
+    .string()
+    .regex(/^\d{4}$/, '旧口令必须是4位数字')
+    .optional(),
+  newPin: z
+    .string()
+    .regex(/^\d{4}$/, '新口令必须是4位数字')
+    .nullable(),
 });
 
-// 游玩时长上报
+// 游玩时长上报（字段为 seconds，与前端 usePlayTimeGuard 心跳上报一致）
 export const reportPlaytimeSchema = z.object({
-  duration: z.number().int().positive('时长必须是正整数'),
+  seconds: z.number().int().positive('时长必须是正整数'),
 });
 
 // 游戏进度
@@ -45,12 +60,14 @@ export const adminLoginSchema = z.object({
   password: z.string().min(1, '密码不能为空'),
 });
 
-export const adjustChipsSchema = z.object({
-  delta: z.number().int('必须是整数').optional(),
-  set: z.number().int('必须是整数').optional(),
-}).refine((data) => data.delta !== undefined || data.set !== undefined, {
-  message: '请提供 delta（增减）或 set（设定）',
-});
+export const adjustChipsSchema = z
+  .object({
+    delta: z.number().int('必须是整数').optional(),
+    set: z.number().int('必须是整数').optional(),
+  })
+  .refine((data) => data.delta !== undefined || data.set !== undefined, {
+    message: '请提供 delta（增减）或 set（设定）',
+  });
 
 export const updateSettingsSchema = z.object({
   restIntervalMinutes: z.number().int('必须是整数').min(0, '不能小于 0').max(120, '不能大于 120'),

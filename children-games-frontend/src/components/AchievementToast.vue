@@ -15,15 +15,23 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { pendingAchievements, shiftAchievement, type AchievementMeta } from '@/utils/achievementBus';
+import {
+  pendingAchievements,
+  shiftAchievement,
+  type AchievementMeta,
+} from '@/utils/achievementBus';
 
 const current = ref<AchievementMeta | null>(null);
 let hideTimer: ReturnType<typeof setTimeout> | null = null;
 
-watch(pendingAchievements, (queue) => {
-  if (current.value || queue.length === 0) return;
-  showNext();
-}, { deep: true });
+watch(
+  pendingAchievements,
+  (queue) => {
+    if (current.value || queue.length === 0) return;
+    showNext();
+  },
+  { deep: true }
+);
 
 const showNext = () => {
   const next = shiftAchievement();
@@ -70,8 +78,13 @@ const showNext = () => {
 }
 
 @keyframes shineSpin {
-  0%, 100% { transform: scale(1) rotate(0deg); }
-  50% { transform: scale(1.25) rotate(18deg); }
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    transform: scale(1.25) rotate(18deg);
+  }
 }
 
 .toast-icon {
@@ -80,8 +93,12 @@ const showNext = () => {
 }
 
 @keyframes iconBounce {
-  from { transform: scale(0) rotate(-180deg); }
-  to { transform: scale(1) rotate(0deg); }
+  from {
+    transform: scale(0) rotate(-180deg);
+  }
+  to {
+    transform: scale(1) rotate(0deg);
+  }
 }
 
 .toast-label {

@@ -55,15 +55,25 @@ interface ZjhState {
   handStartChips: Map<number, number>;
   initialChips: Map<number, number>;
   timer: NodeJS.Timeout | null;
-  ranking: Array<{ userId: number; nickname: string; chips: number; delta: number; seat: number }> | null;
+  ranking: Array<{
+    userId: number;
+    nickname: string;
+    chips: number;
+    delta: number;
+    seat: number;
+  }> | null;
   endReason: string;
   lastWinnerSeat: number | null; // winner 坐庄模式：本手赢家做下一手庄
   /** 个人下注流水（整局累计，serializeFor 只发本人）：每手一条，底注/跟注/比牌累加 betTotal，结算回填 delta/ended */
-  betLog: Map<number, Array<{ round: number; betTotal: number; delta: number | null; ended: string | null }>>;
+  betLog: Map<
+    number,
+    Array<{ round: number; betTotal: number; delta: number | null; ended: string | null }>
+  >;
   config: ZjhConfig;
 }
 
-const seatPlayers = (room: Room): Member[] => [...room.members.values()].filter((m) => m.seat >= 0).sort((a, b) => a.seat - b.seat);
+const seatPlayers = (room: Room): Member[] =>
+  [...room.members.values()].filter((m) => m.seat >= 0).sort((a, b) => a.seat - b.seat);
 const aliveSeats = (room: Room, st: ZjhState): number[] =>
   [...st.players]
     .filter(([uid, p]) => !p.folded && room.members.has(uid))
@@ -84,7 +94,8 @@ const clearTimer = (st: ZjhState): void => {
 };
 
 /** 本手流水条目（无则 null） */
-const handLogEntry = (st: ZjhState, uid: number) => (st.betLog.get(uid) || []).find((e) => e.round === st.round) || null;
+const handLogEntry = (st: ZjhState, uid: number) =>
+  (st.betLog.get(uid) || []).find((e) => e.round === st.round) || null;
 
 /** 本手结算：按玩家回填每手净输赢与结束方式 */
 const markHandSettled = (st: ZjhState, winnerUid: number, winAmount: number): void => {
@@ -174,12 +185,26 @@ const startHand = (room: Room): void => {
     const chips = st.chips.get(m.userId) || 0;
     if (chips < ANTE) {
       // 连底注都付不起：本手观战（保留座位）
-      st.players.set(m.userId, { cards: [], seen: false, folded: true, allIn: false, betTotal: 0, timeoutCalls: 0 });
+      st.players.set(m.userId, {
+        cards: [],
+        seen: false,
+        folded: true,
+        allIn: false,
+        betTotal: 0,
+        timeoutCalls: 0,
+      });
       continue;
     }
     st.chips.set(m.userId, chips - ANTE);
     st.pot += ANTE;
-    st.players.set(m.userId, { cards: [], seen: false, folded: false, allIn: false, betTotal: ANTE, timeoutCalls: 0 });
+    st.players.set(m.userId, {
+      cards: [],
+      seen: false,
+      folded: false,
+      allIn: false,
+      betTotal: ANTE,
+      timeoutCalls: 0,
+    });
     const log = st.betLog.get(m.userId) || [];
     log.push({ round: st.round, betTotal: ANTE, delta: null, ended: null });
     st.betLog.set(m.userId, log);
@@ -269,9 +294,18 @@ const doLook = (room: Room, member: Member): void => {
   p.seen = true;
   p.timeoutCalls = 0; // 手动看牌清零连续超时计数
   const cards = dealTo(st, member.userId);
-  getRoomBus().broadcast(room, { t: 'zjh_action', userId: member.userId, nickname: member.nickname, action: 'look' });
+  getRoomBus().broadcast(room, {
+    t: 'zjh_action',
+    userId: member.userId,
+    nickname: member.nickname,
+    action: 'look',
+  });
   // 点对点私发自己的牌（防偷看核心：未看牌者的牌不在任何广播/快照里）
-  getRoomBus().sendToUser(room, member.userId, { t: 'zjh_your_cards', cards: cards.map(cardLabel), rank: typeName(handRank(cards)) });
+  getRoomBus().sendToUser(room, member.userId, {
+    t: 'zjh_your_cards',
+    cards: cards.map(cardLabel),
+    rank: typeName(handRank(cards)),
+  });
 };
 
 const doCompare = (room: Room, me: Member, target: Member): void => {
@@ -306,8 +340,20 @@ const doCompare = (room: Room, me: Member, target: Member): void => {
     cost,
     aliveCount: aliveSeats(room, st).length,
     reveals: [
-      { userId: me.userId, nickname: me.nickname, cards: myCards.map(cardLabel), typeName: typeName(handRank(myCards)), result: win ? 'win' : 'lose' },
-      { userId: target.userId, nickname: target.nickname, cards: oppCards.map(cardLabel), typeName: typeName(handRank(oppCards)), result: win ? 'lose' : 'win' },
+      {
+        userId: me.userId,
+        nickname: me.nickname,
+        cards: myCards.map(cardLabel),
+        typeName: typeName(handRank(myCards)),
+        result: win ? 'win' : 'lose',
+      },
+      {
+        userId: target.userId,
+        nickname: target.nickname,
+        cards: oppCards.map(cardLabel),
+        typeName: typeName(handRank(oppCards)),
+        result: win ? 'lose' : 'win',
+      },
     ],
   });
   bus.sendToUser(room, me.userId, {
@@ -384,7 +430,12 @@ const showdown = (room: Room): void => {
   const reveals = alive.map((seat) => {
     const m = seatPlayers(room).find((x) => x.seat === seat)!;
     const cards = dealTo(st, m.userId);
-    return { userId: m.userId, nickname: m.nickname, cards: cards.map(cardLabel), typeName: typeName(handRank(cards)) };
+    return {
+      userId: m.userId,
+      nickname: m.nickname,
+      cards: cards.map(cardLabel),
+      typeName: typeName(handRank(cards)),
+    };
   });
   let winnerSeat = alive[0];
   for (let i = 1; i < alive.length; i += 1) {
@@ -455,7 +506,11 @@ const nextHand = (room: Room, expectRound: number): void => {
   }
   st.round += 1;
   const seats: number[] = funded.map((m) => m.seat);
-  if (st.config.bankerMode === 'winner' && st.lastWinnerSeat !== null && seats.includes(st.lastWinnerSeat)) {
+  if (
+    st.config.bankerMode === 'winner' &&
+    st.lastWinnerSeat !== null &&
+    seats.includes(st.lastWinnerSeat)
+  ) {
     st.dealerSeat = st.lastWinnerSeat; // 赢家坐庄
   } else {
     const idx = seats.indexOf(st.dealerSeat);
@@ -485,7 +540,12 @@ const finish = (room: Room, reason: string): void => {
   if (st.config.career) {
     void writeCareerRecords(
       'zjh',
-      ranking.map((r2, i) => ({ userId: r2.userId, result: `rank:${i + 1}`, chipsDelta: r2.delta, chipsAfter: r2.chips }))
+      ranking.map((r2, i) => ({
+        userId: r2.userId,
+        result: `rank:${i + 1}`,
+        chipsDelta: r2.delta,
+        chipsAfter: r2.chips,
+      }))
     );
   }
 };
@@ -536,13 +596,20 @@ export const zjhHandler: GameHandler<ZjhState> = {
       endReason: '',
       lastWinnerSeat: null,
       betLog: new Map(),
-      config: { special235: true, timeoutFold: true, roundLimit: DEFAULT_ROUNDS, career: true, bankerMode: 'rotate', mustBlindRounds: 0 },
+      config: {
+        special235: true,
+        timeoutFold: true,
+        roundLimit: DEFAULT_ROUNDS,
+        career: true,
+        bankerMode: 'rotate',
+        mustBlindRounds: 0,
+      },
     };
   },
 
   start(room): void {
     const st = room.game as ZjhState;
-    st.config = zjhHandler.normalizeConfig!(room.config);
+    st.config = zjhHandler.normalizeConfig!(room.config) as ZjhConfig;
     st.totalRounds = st.config.roundLimit;
     const players = seatPlayers(room);
     st.chips = new Map();
@@ -588,7 +655,8 @@ export const zjhHandler: GameHandler<ZjhState> = {
 
   onAction(room: Room, member: Member, action: string, payload: any): ActionResult {
     const st = room.game as ZjhState;
-    if (room.phase !== 'playing' || st.handPhase !== 'betting') return { error: '当前不是下注阶段' };
+    if (room.phase !== 'playing' || st.handPhase !== 'betting')
+      return { error: '当前不是下注阶段' };
     const p = st.players.get(member.userId);
     if (!p) return { error: '你不在本手牌局中' };
     if (p.folded) return { error: '你已弃牌' };
@@ -678,12 +746,18 @@ export const zjhHandler: GameHandler<ZjhState> = {
       myAllIn: mine?.allIn || false,
       myBetTotal: mine?.betTotal || 0,
       others,
-      chips: st.chips.size ? [...st.chips].map(([userId, chips]) => ({ userId, chips })) : [...room.members.values()].filter((m) => m.seat >= 0).map((m) => ({ userId: m.userId, chips: m.chips })),
+      chips: st.chips.size
+        ? [...st.chips].map(([userId, chips]) => ({ userId, chips }))
+        : [...room.members.values()]
+            .filter((m) => m.seat >= 0)
+            .map((m) => ({ userId: m.userId, chips: m.chips })),
       raiseSteps: RAISE_STEPS,
       stakeCap: STAKE_CAP,
       special235: st.config.special235,
       // 投注明细全员可见：每手的投入（底注/跟注/加注/比牌）与输赢
-      betLedger: [...st.betLog].flatMap(([uid, entries]) => entries.map((e) => ({ ...e, userId: uid }))),
+      betLedger: [...st.betLog].flatMap(([uid, entries]) =>
+        entries.map((e) => ({ ...e, userId: uid }))
+      ),
       ended: st.ranking ? { ranking: st.ranking, reason: st.endReason } : null,
     };
   },

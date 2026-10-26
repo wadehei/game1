@@ -9,7 +9,7 @@ export { FeedbackReply } from './FeedbackReply';
 export { QuizQuestion } from './QuizQuestion';
 export { BattleRecord } from './BattleRecord';
 
-import { Model } from 'sequelize';
+import { ModelStatic } from 'sequelize';
 import { sequelize } from '../config/database';
 import { User } from './User';
 import { GameProgress } from './GameProgress';
@@ -72,7 +72,7 @@ export const initModels = async (): Promise<void> => {
 /** 对比模型定义与数据库实际索引，自动补齐缺失索引 */
 const syncMissingIndexes = async (): Promise<void> => {
   const queryInterface = sequelize.getQueryInterface();
-  const models: Array<{ model: typeof Model & { _indexes?: any[] }; tableName: string }> = [
+  const models: Array<{ model: ModelStatic<any> & { _indexes?: any[] }; tableName: string }> = [
     { model: GameProgress, tableName: 'game_progress' },
     { model: UserPlaytime, tableName: 'user_playtime' },
     { model: FeedbackReply, tableName: 'feedback_replies' },
@@ -80,7 +80,7 @@ const syncMissingIndexes = async (): Promise<void> => {
 
   for (const { model, tableName } of models) {
     const indexes = model._indexes || [];
-    const existingIndexes = await queryInterface.showIndex(tableName) as Array<{ name: string }>;
+    const existingIndexes = (await queryInterface.showIndex(tableName)) as Array<{ name: string }>;
     const existingNames = new Set(existingIndexes.map((idx) => idx.name));
 
     for (const idx of indexes) {
@@ -98,7 +98,7 @@ const syncMissingIndexes = async (): Promise<void> => {
 };
 
 /** 对比模型定义与数据库实际列，自动补齐缺失列 */
-const syncMissingColumns = async (model: typeof Model): Promise<void> => {
+const syncMissingColumns = async (model: ModelStatic<any>): Promise<void> => {
   const queryInterface = sequelize.getQueryInterface();
   const tableName = model.getTableName() as string;
   const described = await queryInterface.describeTable(tableName);

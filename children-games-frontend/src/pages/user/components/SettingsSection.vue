@@ -20,9 +20,9 @@
 
 <script setup lang="ts">
 defineEmits<{
-  (e: "feedback"): void;
-  (e: "parentCenter"): void;
-  (e: "logout"): void;
+  (e: 'feedback'): void;
+  (e: 'parentCenter'): void;
+  (e: 'logout'): void;
 }>();
 </script>
 

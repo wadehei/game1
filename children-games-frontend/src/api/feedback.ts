@@ -41,7 +41,11 @@ export interface FeedbackItem {
 }
 
 // 提交反馈（自动关联当前登录角色）
-export const submitFeedback = async (data: { type: FeedbackType; content: string; page?: string }): Promise<{ id: number }> => {
+export const submitFeedback = async (data: {
+  type: FeedbackType;
+  content: string;
+  page?: string;
+}): Promise<{ id: number }> => {
   return api.post<{ id: number }>('/feedback', data);
 };
 

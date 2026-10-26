@@ -9,11 +9,7 @@ import { logError } from '../utils/logger';
  */
 export const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction): void => {
   // 记录详细错误日志（包含堆栈）
-  logError(
-    'server',
-    `${req.method} ${req.originalUrl} → ${err.message}`,
-    err.stack
-  );
+  logError('server', `${req.method} ${req.originalUrl} → ${err.message}`, err.stack);
 
   // 处理自定义应用错误（业务错误）
   if (err instanceof AppError) {
@@ -28,7 +24,7 @@ export const errorHandler = (err: Error, req: Request, res: Response, next: Next
 
   // 处理 Zod 验证错误
   if (err instanceof ZodError) {
-    const errors = err.issues.map(issue => ({
+    const errors = err.issues.map((issue) => ({
       field: issue.path.join('.'),
       message: issue.message,
     }));

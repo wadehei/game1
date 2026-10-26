@@ -1,5 +1,10 @@
 <template>
-  <div v-if="!hideButton" class="pause-btn" :style="btnTop !== undefined ? { top: btnTop + 'px' } : undefined" @click="$emit('pause')">
+  <div
+    v-if="!hideButton"
+    class="pause-btn"
+    :style="btnTop !== undefined ? { top: btnTop + 'px' } : undefined"
+    @click="$emit('pause')"
+  >
     <span>⏸️</span>
   </div>
 
@@ -14,15 +19,18 @@
 </template>
 
 <script setup lang="ts">
-withDefaults(defineProps<{
-  show: boolean;
-  /** 隐藏悬浮按钮（如结算弹窗期间），仅保留弹层 */
-  hideButton?: boolean;
-  /** 悬浮按钮的 top 偏移（px），用于头部为 fixed 布局的游戏 */
-  btnTop?: number;
-}>(), {
-  hideButton: false,
-});
+withDefaults(
+  defineProps<{
+    show: boolean;
+    /** 隐藏悬浮按钮（如结算弹窗期间），仅保留弹层 */
+    hideButton?: boolean;
+    /** 悬浮按钮的 top 偏移（px），用于头部为 fixed 布局的游戏 */
+    btnTop?: number;
+  }>(),
+  {
+    hideButton: false,
+  }
+);
 
 defineEmits<{
   pause: [];
@@ -77,8 +85,12 @@ defineEmits<{
 }
 
 @keyframes pauseFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .pause-content {
@@ -93,8 +105,14 @@ defineEmits<{
 }
 
 @keyframes pauseBounceIn {
-  from { transform: scale(0.5); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .pause-icon {

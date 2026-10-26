@@ -6,13 +6,18 @@
         <span class="df-title">🏁 你画我猜结束</span>
       </template>
       <template v-else-if="phase === 'playing' && state?.phase === 'picking'">
-        <span v-if="!(isDrawer && candidates.length)">✏️ {{ nameOf(state?.drawerSeat) }} 正在选词…（第 {{ state?.round }}/{{ state?.totalRounds }} 回合）</span>
+        <span v-if="!(isDrawer && candidates.length)"
+          >✏️ {{ nameOf(state?.drawerSeat) }} 正在选词…（第 {{ state?.round }}/{{
+            state?.totalRounds
+          }}
+          回合）</span
+        >
         <span v-else class="pick-tip">选一个词来画：</span>
       </template>
       <template v-else-if="phase === 'playing' && state?.phase === 'drawing'">
         <span>
-          🎨 {{ isDrawer ? '你来画！' : `${nameOf(state?.drawerSeat)} 正在画` }}
-          · {{ state?.category }} · {{ state?.wordLen }} 个字
+          🎨 {{ isDrawer ? '你来画！' : `${nameOf(state?.drawerSeat)} 正在画` }} ·
+          {{ state?.category }} · {{ state?.wordLen }} 个字
           <template v-if="hintChar"> · 💡 首字「{{ hintChar }}」</template>
           <template v-if="state?.myGuessed"> · ✅ 你已猜对</template>
         </span>
@@ -40,8 +45,16 @@
     </div>
 
     <!-- 画家选词 -->
-    <div v-if="phase === 'playing' && isDrawer && state?.phase === 'picking' && candidates.length" class="pick-row">
-      <button v-for="(w, i) in candidates" :key="w" class="pick-btn" @click="emit('action', { t: 'draw_pick', index: i })">
+    <div
+      v-if="phase === 'playing' && isDrawer && state?.phase === 'picking' && candidates.length"
+      class="pick-row"
+    >
+      <button
+        v-for="(w, i) in candidates"
+        :key="w"
+        class="pick-btn"
+        @click="emit('action', { t: 'draw_pick', index: i })"
+      >
         {{ w }}
       </button>
     </div>
@@ -79,9 +92,16 @@
     <!-- 终局 -->
     <div v-if="phase === 'ended' && final" class="draw-final">
       <div class="df-title">🏁 排名</div>
-      <div v-for="(r, i) in final.ranking" :key="r.userId" class="df-row" :class="{ me: r.userId === myId }">
+      <div
+        v-for="(r, i) in final.ranking"
+        :key="r.userId"
+        class="df-row"
+        :class="{ me: r.userId === myId }"
+      >
         <span class="df-rank">{{ i + 1 }}.</span>
-        <span class="df-name">{{ r.nickname }}<template v-if="r.userId === myId">（我）</template></span>
+        <span class="df-name"
+          >{{ r.nickname }}<template v-if="r.userId === myId">（我）</template></span
+        >
         <span class="df-score">{{ r.total }} 分</span>
       </div>
       <div class="qf-tip">等待房主发起「再来一局」</div>
@@ -94,7 +114,12 @@ import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
 import { useUserStore } from '@/store/user';
 
 const COLORS = ['#333333', '#e74c3c', '#2980b9', '#27ae60', '#f39c12', '#8e44ad'];
-const COLORS_CSS = { red: '#e74c3c', blue: '#2980b9', green: '#27ae60', yellow: '#f1c40f' } as Record<string, string>;
+const COLORS_CSS = {
+  red: '#e74c3c',
+  blue: '#2980b9',
+  green: '#27ae60',
+  yellow: '#f1c40f',
+} as Record<string, string>;
 
 interface Batch {
   points: number[][];
@@ -117,7 +142,9 @@ const userStore = useUserStore();
 const myId = computed(() => userStore.userInfo?.id || 0);
 
 const isDrawer = computed(() => !!props.state?.isDrawer);
-const canDraw = computed(() => isDrawer.value && props.state?.phase === 'drawing' && props.phase === 'playing');
+const canDraw = computed(
+  () => isDrawer.value && props.state?.phase === 'drawing' && props.phase === 'playing'
+);
 // 猜对名单：快照带 guessedUserIds（重连恢复），guess_result 事件实时追加
 const guessedIds = computed<number[]>(() => {
   const ids = new Set<number>((props.state?.guessedUserIds as number[]) || []);
@@ -143,7 +170,9 @@ watch(
   },
   { immediate: true }
 );
-const remainSec = computed(() => Math.max(0, Math.ceil(((props.state?.deadline || 0) - Date.now()) / 1000)));
+const remainSec = computed(() =>
+  Math.max(0, Math.ceil(((props.state?.deadline || 0) - Date.now()) / 1000))
+);
 
 const nameOf = (seat: number): string => {
   const m = props.members?.find((x) => x.seat === seat);
@@ -201,7 +230,10 @@ const renderAll = () => {
     ctx.strokeStyle = b.color;
     ctx.lineWidth = b.width * (W / 400);
     ctx.beginPath();
-    const pts = (b.cont && prevEnd ? [prevEnd, ...b.points] : b.points).map(([nx, ny]) => [nx * W, ny * H]);
+    const pts = (b.cont && prevEnd ? [prevEnd, ...b.points] : b.points).map(([nx, ny]) => [
+      nx * W,
+      ny * H,
+    ]);
     if (pts.length === 1) {
       const [px, py] = pts[0];
       ctx.arc(px, py, (b.width * (W / 400)) / 2, 0, Math.PI * 2);
@@ -274,7 +306,12 @@ const onUp = () => {
   // 把余下的点补发（带上衔接点，服务端每批独立存档，快照重放可还原完整笔迹）
   if (currentBatch && pendingPoints.length > 0) {
     const pts = lastSentPoint ? [lastSentPoint, ...pendingPoints] : pendingPoints;
-    emit('action', { t: 'draw_stroke', points: pts, color: currentBatch.color, width: currentBatch.width });
+    emit('action', {
+      t: 'draw_stroke',
+      points: pts,
+      color: currentBatch.color,
+      width: currentBatch.width,
+    });
   }
   pendingPoints = [];
   currentBatch = null;

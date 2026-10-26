@@ -29,7 +29,17 @@ export function useGameSounds() {
   };
 
   const play = (
-    name: 'click' | 'success' | 'fail' | 'match' | 'pop' | 'shoot' | 'explosion' | 'levelUp' | 'bounce' | 'collect',
+    name:
+      | 'click'
+      | 'success'
+      | 'fail'
+      | 'match'
+      | 'pop'
+      | 'shoot'
+      | 'explosion'
+      | 'levelUp'
+      | 'bounce'
+      | 'collect',
     options?: { pitch?: number }
   ) => {
     if (isMuted.value) return;
@@ -38,7 +48,8 @@ export function useGameSounds() {
       soundManager.playMatch(options.pitch);
       return;
     }
-    const method = `play${name.charAt(0).toUpperCase() + name.slice(1)}` as keyof typeof soundManager;
+    const method =
+      `play${name.charAt(0).toUpperCase() + name.slice(1)}` as keyof typeof soundManager;
     (soundManager[method] as () => void)();
   };
 

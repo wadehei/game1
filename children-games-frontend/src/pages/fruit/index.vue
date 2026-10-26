@@ -4,17 +4,17 @@
     <GameHeader
       :items="headerItems"
       :muted="sounds.isMuted.value"
-      headerClass="fruit-header"
+      header-class="fruit-header"
       level-selectable
-      @toggleSound="sounds.toggleSound"
-      @goBack="router.back()"
-      @selectLevel="openLevelSelect"
+      @toggle-sound="sounds.toggleSound"
+      @go-back="router.back()"
+      @select-level="openLevelSelect"
     />
 
     <!-- 游戏画布 -->
     <canvas
-      ref="canvasRef"
       id="fruitCanvas"
+      ref="canvasRef"
       class="game-canvas"
       @mousemove="moveBasket"
       @touchmove="moveBasketTouch"
@@ -33,7 +33,13 @@
     />
 
     <!-- 暂停（头部为 fixed，按钮下移避开） -->
-    <PauseMenu :show="paused" :btn-top="96" @pause="pauseGame" @resume="resumeGame" @quit="quitGame" />
+    <PauseMenu
+      :show="paused"
+      :btn-top="96"
+      @pause="pauseGame"
+      @resume="resumeGame"
+      @quit="quitGame"
+    />
 
     <!-- 选关弹层 -->
     <LevelSelectModal
@@ -87,9 +93,12 @@ interface Fruit {
 }
 
 interface Particle {
-  x: number; y: number;
-  radius: number; alpha: number;
-  color: string; speed: number;
+  x: number;
+  y: number;
+  radius: number;
+  alpha: number;
+  color: string;
+  speed: number;
 }
 
 const fruitTypes = [
@@ -158,8 +167,13 @@ const initGame = async () => {
   // 加载图片资源
   if (!imagesLoaded.value) {
     await fruitImages.loadAll({
-      apple: appleSvg, banana: bananaSvg, orange: orangeSvg,
-      grape: grapeSvg, bomb: bombSvg, basket: basketSvg, cloud: cloudSvg,
+      apple: appleSvg,
+      banana: bananaSvg,
+      orange: orangeSvg,
+      grape: grapeSvg,
+      bomb: bombSvg,
+      basket: basketSvg,
+      cloud: cloudSvg,
     });
     imagesLoaded.value = true;
   }
@@ -283,7 +297,8 @@ const update = () => {
         for (let i = 0; i < 5; i++) {
           if (particles.length < 20) {
             particles.push({
-              x: fruit.x, y: fruit.y,
+              x: fruit.x,
+              y: fruit.y,
               radius: 3 + Math.random() * 5,
               alpha: 1,
               color: ['#FFD700', '#FF6B6B', '#4ECDC4'][Math.floor(Math.random() * 3)],
@@ -350,7 +365,7 @@ const render = () => {
 
   // 绘制并更新粒子
   if (particles.length > 0) {
-    particles = particles.filter(p => {
+    particles = particles.filter((p) => {
       p.radius += p.speed;
       p.alpha -= 0.03;
       if (p.alpha <= 0) return false;
@@ -555,7 +570,7 @@ onUnmounted(() => {
 <style scoped>
 .fruit-game {
   min-height: 100vh;
-  background: linear-gradient(180deg, #87CEEB 0%, #E0F7FA 100%);
+  background: linear-gradient(180deg, #87ceeb 0%, #e0f7fa 100%);
   position: relative;
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;

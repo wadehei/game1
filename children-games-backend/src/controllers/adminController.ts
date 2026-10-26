@@ -5,10 +5,26 @@ import crypto from 'crypto';
 import { Op } from 'sequelize';
 import jwt from 'jsonwebtoken';
 import { config } from '../config';
-import { User, GameProgress, DailyTask, AppSetting, UserPlaytime, LevelConfig, QuizQuestion, Feedback, FeedbackReply, BattleRecord } from '../models';
+import {
+  User,
+  GameProgress,
+  DailyTask,
+  AppSetting,
+  UserPlaytime,
+  LevelConfig,
+  QuizQuestion,
+  Feedback,
+  FeedbackReply,
+  BattleRecord,
+} from '../models';
 import { AdminRequest } from '../middleware/adminAuth';
 import { success, asyncHandler } from '../utils/response';
-import { BadRequestError, NotFoundError, UnauthorizedError, InternalError } from '../errors/AppError';
+import {
+  BadRequestError,
+  NotFoundError,
+  UnauthorizedError,
+  InternalError,
+} from '../errors/AppError';
 import { LEVEL_FIELDS } from './levelController';
 import { readRecentErrors, clearErrors } from '../utils/logger';
 import { withTransaction } from '../utils/transaction';
@@ -107,7 +123,16 @@ export const getUsers = asyncHandler(async (req: AdminRequest, res: Response) =>
   // 三条独立查询并行执行
   const [users, todayPlaytime, progresses] = await Promise.all([
     User.findAll({
-      attributes: ['id', 'openid', 'nickname', 'avatar', 'level', 'totalStars', 'battleChips', 'createdAt'],
+      attributes: [
+        'id',
+        'openid',
+        'nickname',
+        'avatar',
+        'level',
+        'totalStars',
+        'battleChips',
+        'createdAt',
+      ],
       order: [['createdAt', 'ASC']],
     }),
     UserPlaytime.findAll({ where: { date: today } }),
@@ -125,20 +150,23 @@ export const getUsers = asyncHandler(async (req: AdminRequest, res: Response) =>
     }
   });
 
-  success(res, users.map((u) => ({
-    id: u.id,
-    nickname: u.nickname,
-    avatar: u.avatar,
-    level: u.level,
-    totalStars: u.totalStars,
-    battleChips: u.battleChips ?? 1000,
-    isFamily: u.openid.startsWith('family_'),
-    hasPin: !!(u as any).pinHash,
-    gamesPlayed: progressCountByUser.get(u.id) || 0,
-    todaySeconds: playtimeByUser.get(u.id) || 0,
-    lastActiveAt: lastActiveByUser.get(u.id) || null,
-    createdAt: u.createdAt,
-  })));
+  success(
+    res,
+    users.map((u) => ({
+      id: u.id,
+      nickname: u.nickname,
+      avatar: u.avatar,
+      level: u.level,
+      totalStars: u.totalStars,
+      battleChips: u.battleChips ?? 1000,
+      isFamily: u.openid.startsWith('family_'),
+      hasPin: !!(u as any).pinHash,
+      gamesPlayed: progressCountByUser.get(u.id) || 0,
+      todaySeconds: playtimeByUser.get(u.id) || 0,
+      lastActiveAt: lastActiveByUser.get(u.id) || null,
+      createdAt: u.createdAt,
+    }))
+  );
 });
 
 /** 修改成员昵称/形象 */
@@ -225,7 +253,7 @@ export const deleteUser = asyncHandler(async (req: AdminRequest, res: Response) 
   if (avMatch) {
     const p = path.resolve(process.cwd(), 'uploads', 'avatars', avMatch[1]);
     try {
-      fs.existsSync(p) && fs.unlinkSync(p);
+      if (fs.existsSync(p)) fs.unlinkSync(p);
     } catch {
       // 文件删除失败不阻断主流程
     }
@@ -253,7 +281,9 @@ const REST_INTERVAL_KEY = 'rest_interval_minutes';
 export const getSettings = asyncHandler(async (req: AdminRequest, res: Response) => {
   const row = await AppSetting.findByPk(REST_INTERVAL_KEY);
   success(res, {
-    restIntervalMinutes: row ? parseInt(row.value, 10) || DEFAULT_REST_INTERVAL_MINUTES : DEFAULT_REST_INTERVAL_MINUTES,
+    restIntervalMinutes: row
+      ? parseInt(row.value, 10) || DEFAULT_REST_INTERVAL_MINUTES
+      : DEFAULT_REST_INTERVAL_MINUTES,
   });
 });
 
@@ -261,7 +291,9 @@ export const getSettings = asyncHandler(async (req: AdminRequest, res: Response)
 export const getPublicSettings = asyncHandler(async (req: Request, res: Response) => {
   const row = await AppSetting.findByPk(REST_INTERVAL_KEY);
   success(res, {
-    restIntervalMinutes: row ? parseInt(row.value, 10) || DEFAULT_REST_INTERVAL_MINUTES : DEFAULT_REST_INTERVAL_MINUTES,
+    restIntervalMinutes: row
+      ? parseInt(row.value, 10) || DEFAULT_REST_INTERVAL_MINUTES
+      : DEFAULT_REST_INTERVAL_MINUTES,
   });
 });
 
@@ -298,11 +330,14 @@ export const getLevelOverrides = asyncHandler(async (req: AdminRequest, res: Res
     where: { gameId },
     order: [['level', 'ASC']],
   });
-  success(res, rows.map((r) => ({
-    level: r.level,
-    config: safeJsonParse(r.config, {}),
-    updatedAt: r.updatedAt,
-  })));
+  success(
+    res,
+    rows.map((r) => ({
+      level: r.level,
+      config: safeJsonParse(r.config, {}),
+      updatedAt: r.updatedAt,
+    }))
+  );
 });
 
 /** 保存某关卡的难度覆盖（只允许各游戏白名单内的字段） */
@@ -324,7 +359,9 @@ export const saveLevelOverride = asyncHandler(async (req: AdminRequest, res: Res
   }
   const unknownKeys = Object.keys(config).filter((k) => !allowed.includes(k));
   if (unknownKeys.length > 0) {
-    throw new BadRequestError(`不支持的字段: ${unknownKeys.join(', ')}（允许: ${allowed.join(', ')}）`);
+    throw new BadRequestError(
+      `不支持的字段: ${unknownKeys.join(', ')}（允许: ${allowed.join(', ')}）`
+    );
   }
   if (Object.keys(config).length === 0) {
     throw new BadRequestError('至少填写一个配置项');
@@ -380,7 +417,6 @@ export const listAutoBackups = asyncHandler(async (req: AdminRequest, res: Respo
   success(res, list());
 });
 
-
 // ─── 题库管理（答题对战） ────────────────────────────────
 
 interface QuestionData {
@@ -396,10 +432,13 @@ const validateQuestion = (body: unknown): { error?: string; data?: QuestionData 
   const text = String(b?.text || '').trim();
   const options = Array.isArray(b?.options) ? b.options.map((o) => String(o).trim()) : [];
   const answer = Number(b?.answer);
-  const category = String(b?.category || '综合').trim().slice(0, 20);
+  const category = String(b?.category || '综合')
+    .trim()
+    .slice(0, 20);
   const difficulty = Math.min(3, Math.max(1, Number(b?.difficulty) || 1));
   if (!text) return { error: '题干不能为空' };
-  if (options.length !== 4 || options.some((o: string) => !o)) return { error: '必须提供 4 个非空选项' };
+  if (options.length !== 4 || options.some((o: string) => !o))
+    return { error: '必须提供 4 个非空选项' };
   if (!Number.isInteger(answer) || answer < 0 || answer > 3) return { error: '正确答案下标无效' };
   return { data: { text, options, answer, category, difficulty } };
 };
@@ -448,11 +487,20 @@ export const quizImport = asyncHandler(async (req: Request, res: Response) => {
   if (list.length === 0) throw new BadRequestError('导入内容为空');
 
   // 先在事务外做校验，过滤无效条目
-  const validItems: Array<{ text: string; options: string[]; answer: number; category: string; difficulty: number }> = [];
+  const validItems: Array<{
+    text: string;
+    options: string[];
+    answer: number;
+    category: string;
+    difficulty: number;
+  }> = [];
   let skipped = 0;
   for (const item of list) {
     const v = validateQuestion(item);
-    if (v.error) { skipped++; continue; }
+    if (v.error || !v.data) {
+      skipped++;
+      continue;
+    }
     validItems.push(v.data);
   }
 
@@ -464,7 +512,10 @@ export const quizImport = asyncHandler(async (req: Request, res: Response) => {
         where: { text: data.text },
         transaction: t,
       });
-      if (dup) { skipped++; continue; }
+      if (dup) {
+        skipped++;
+        continue;
+      }
       await QuizQuestion.create(data, { transaction: t });
       createdCount++;
     }

@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { API_ORIGIN } from '../utils/request';
 
-const BASE_URL = '/api/admin';
+const BASE_URL = `${API_ORIGIN}/api/admin`;
 const TOKEN_KEY = 'admin_token';
 
 const client = axios.create({ baseURL: BASE_URL, timeout: 15000 });
@@ -35,7 +36,7 @@ export const adminLogout = (): void => {
 
 export const adminLogin = async (password: string): Promise<void> => {
   // 响应拦截器已解包出业务数据，这里对齐类型
-  const data = await client.post('/login', { password }) as unknown as { token: string };
+  const data = (await client.post('/login', { password })) as unknown as { token: string };
   localStorage.setItem(TOKEN_KEY, data.token);
 };
 
@@ -94,11 +95,15 @@ export interface AdminUser {
 
 export const getUsers = (): Promise<AdminUser[]> => client.get('/users');
 
-export const adjustUserChips = (id: number, data: { delta?: number; set?: number }): Promise<{ battleChips: number }> =>
-  client.put(`/users/${id}/chips`, data);
+export const adjustUserChips = (
+  id: number,
+  data: { delta?: number; set?: number }
+): Promise<{ battleChips: number }> => client.put(`/users/${id}/chips`, data);
 
-export const updateUser = (id: number, data: { nickname?: string; avatar?: string }): Promise<void> =>
-  client.put(`/users/${id}`, data);
+export const updateUser = (
+  id: number,
+  data: { nickname?: string; avatar?: string }
+): Promise<void> => client.put(`/users/${id}`, data);
 
 export const clearUserPin = (id: number): Promise<void> => client.post(`/users/${id}/clear-pin`);
 
@@ -114,7 +119,8 @@ export interface AdminSettings {
 
 export const getSettings = (): Promise<AdminSettings> => client.get('/settings');
 
-export const updateSettings = (data: AdminSettings): Promise<AdminSettings> => client.put('/settings', data);
+export const updateSettings = (data: AdminSettings): Promise<AdminSettings> =>
+  client.put('/settings', data);
 
 // ─── 关卡难度覆盖 ────────────────────────────────
 
@@ -145,11 +151,13 @@ export interface VoiceLineStatus {
 }
 
 export const listVoiceLines = (): Promise<VoiceLineStatus[]> =>
-  fetch('/api/voice').then((r) => r.json()).then((d) => d.data || []);
+  fetch(`${API_ORIGIN}/api/voice`)
+    .then((r) => r.json())
+    .then((d) => d.data || []);
 
 // 配音接口在 /api/voice（不在 /api/admin 下），用独立请求携带管理员凭证
 export const uploadVoice = (key: string, blob: Blob): Promise<void> =>
-  axios.post(`/api/voice/${key}`, blob, {
+  axios.post(`${API_ORIGIN}/api/voice/${key}`, blob, {
     headers: {
       'Content-Type': blob.type || 'audio/webm',
       Authorization: `Bearer ${localStorage.getItem(TOKEN_KEY)}`,
@@ -157,7 +165,7 @@ export const uploadVoice = (key: string, blob: Blob): Promise<void> =>
   }) as unknown as Promise<void>;
 
 export const deleteVoice = (key: string): Promise<void> =>
-  axios.delete(`/api/voice/${key}`, {
+  axios.delete(`${API_ORIGIN}/api/voice/${key}`, {
     headers: { Authorization: `Bearer ${localStorage.getItem(TOKEN_KEY)}` },
   }) as unknown as Promise<void>;
 
@@ -241,20 +249,34 @@ export interface QuizQuestionPayload {
   difficulty?: number;
 }
 
-export const adminQuizList = async (page = 1, category = ''): Promise<{ list: AdminQuizQuestion[]; total: number }> => {
+export const adminQuizList = async (
+  page = 1,
+  category = ''
+): Promise<{ list: AdminQuizQuestion[]; total: number }> => {
   const params: Record<string, unknown> = { page };
   if (category) params.category = category;
-  return client.get('/quiz', { params }) as unknown as Promise<{ list: AdminQuizQuestion[]; total: number }>;
+  return client.get('/quiz', { params }) as unknown as Promise<{
+    list: AdminQuizQuestion[];
+    total: number;
+  }>;
 };
 
 export const adminQuizCreate = async (data: QuizQuestionPayload): Promise<AdminQuizQuestion> =>
   client.post('/quiz', data) as unknown as Promise<AdminQuizQuestion>;
 
-export const adminQuizUpdate = async (id: number, data: QuizQuestionPayload): Promise<AdminQuizQuestion> =>
+export const adminQuizUpdate = async (
+  id: number,
+  data: QuizQuestionPayload
+): Promise<AdminQuizQuestion> =>
   client.put(`/quiz/${id}`, data) as unknown as Promise<AdminQuizQuestion>;
 
 export const adminQuizDelete = async (id: number): Promise<void> =>
   client.delete(`/quiz/${id}`) as unknown as Promise<void>;
 
-export const adminQuizImport = async (questions: QuizQuestionPayload[]): Promise<{ created: number; skipped: number }> =>
-  client.post('/quiz/import', { questions }) as unknown as Promise<{ created: number; skipped: number }>;
+export const adminQuizImport = async (
+  questions: QuizQuestionPayload[]
+): Promise<{ created: number; skipped: number }> =>
+  client.post('/quiz/import', { questions }) as unknown as Promise<{
+    created: number;
+    skipped: number;
+  }>;

@@ -14,92 +14,154 @@
       <!-- 重开/待开局的空档：状态未到，先占位避免 0/0 NaN 闪现 -->
       <div v-if="!state?.round" class="idle-tip pre-start">等待开局…</div>
       <template v-else>
-      <!-- 状态条 -->
-      <div class="bj-status">
-        <span class="round">第 {{ state?.round || 0 }}/{{ state?.totalRounds || 0 }} 手</span>
-        <span class="banker">庄家：{{ nameOfSeat(state?.bankerSeat) }}</span>
-        <span v-if="phaseText" class="phase">{{ phaseText }}</span>
-        <span v-if="remainSec > 0 && (state?.phase === 'betting' || state?.phase === 'acting')" class="timer" :class="{ hurry: remainSec <= 5 }">{{ remainSec }}s</span>
-      </div>
-
-      <!-- 我的下注流水（整局累计） -->
-      <BetLedger v-if="betLedger.length" :entries="betLedger" :members="members" :my-id="myId" theme="green" />
-
-      <!-- 庄家区 -->
-      <div class="banker-area" :class="{ turn: state?.phase === 'dealer' }">
-        <div class="area-label">庄家{{ isBanker ? '（你）' : '' }}</div>
-        <div class="cards">
-          <span v-for="(c, i) in state?.bankerCards || []" :key="i" class="pcard" :class="{ red: isRed(c) }">{{ c }}</span>
-          <span v-if="!state?.bankerCards?.length" class="card-back" />
+        <!-- 状态条 -->
+        <div class="bj-status">
+          <span class="round">第 {{ state?.round || 0 }}/{{ state?.totalRounds || 0 }} 手</span>
+          <span class="banker">庄家：{{ nameOfSeat(state?.bankerSeat) }}</span>
+          <span v-if="phaseText" class="phase">{{ phaseText }}</span>
+          <span
+            v-if="remainSec > 0 && (state?.phase === 'betting' || state?.phase === 'acting')"
+            class="timer"
+            :class="{ hurry: remainSec <= 5 }"
+            >{{ remainSec }}s</span
+          >
         </div>
-        <span v-if="state?.bankerValue" class="value-badge">{{ state.bankerValue }}</span>
-      </div>
 
-      <!-- 闲家区 -->
-      <div class="players-row">
-        <div v-for="o in othersView" :key="o.userId" class="p-cell" :class="{ act: state?.turnSeat === o.seat, bust: o.busted }">
-          <div class="p-name">{{ nameOfUser(o.userId) }}</div>
-          <div class="cards small">
-            <span v-for="(c, i) in o.cards || []" :key="i" class="pcard sm" :class="{ red: isRed(c) }">{{ c }}</span>
-            <span v-if="!o.cards?.length" class="waiting">{{ o.stake ? `${o.stake}分` : '…' }}</span>
+        <!-- 我的下注流水（整局累计） -->
+        <BetLedger
+          v-if="betLedger.length"
+          :entries="betLedger"
+          :members="members"
+          :my-id="myId"
+          theme="green"
+        />
+
+        <!-- 庄家区 -->
+        <div class="banker-area" :class="{ turn: state?.phase === 'dealer' }">
+          <div class="area-label">庄家{{ isBanker ? '（你）' : '' }}</div>
+          <div class="cards">
+            <span
+              v-for="(c, i) in state?.bankerCards || []"
+              :key="i"
+              class="pcard"
+              :class="{ red: isRed(c) }"
+              >{{ c }}</span
+            >
+            <span v-if="!state?.bankerCards?.length" class="card-back" />
           </div>
-          <div class="p-tag">
-            {{ o.busted ? '💥 爆牌' : o.natural ? '✨ Blackjack' : o.done ? '🛑 停牌' : o.stake ? `押 ${o.stake}` : '思考中' }}
+          <span v-if="state?.bankerValue" class="value-badge">{{ state.bankerValue }}</span>
+        </div>
+
+        <!-- 闲家区 -->
+        <div class="players-row">
+          <div
+            v-for="o in othersView"
+            :key="o.userId"
+            class="p-cell"
+            :class="{ act: state?.turnSeat === o.seat, bust: o.busted }"
+          >
+            <div class="p-name">{{ nameOfUser(o.userId) }}</div>
+            <div class="cards small">
+              <span
+                v-for="(c, i) in o.cards || []"
+                :key="i"
+                class="pcard sm"
+                :class="{ red: isRed(c) }"
+                >{{ c }}</span
+              >
+              <span v-if="!o.cards?.length" class="waiting">{{
+                o.stake ? `${o.stake}分` : '…'
+              }}</span>
+            </div>
+            <div class="p-tag">
+              {{
+                o.busted
+                  ? '💥 爆牌'
+                  : o.natural
+                    ? '✨ Blackjack'
+                    : o.done
+                      ? '🛑 停牌'
+                      : o.stake
+                        ? `押 ${o.stake}`
+                        : '思考中'
+              }}
+            </div>
+          </div>
+          <div v-if="!othersView.length" class="empty-tip">等待其他玩家下注…</div>
+        </div>
+
+        <!-- 我的手牌 -->
+        <div v-if="!isBanker && myInView" class="my-area" :class="{ bust: state?.myBusted }">
+          <div class="my-label">
+            我的手牌 <span v-if="state?.myNatural" class="natural">✨ Blackjack！</span>
+            <span v-if="state?.myBusted" class="bust-tag">💥 爆了</span>
+          </div>
+          <div class="cards">
+            <span
+              v-for="(c, i) in state?.myCards || []"
+              :key="i"
+              class="pcard"
+              :class="{ red: isRed(c), deal: i >= myCardsLenAtDeal }"
+              >{{ c }}</span
+            >
+          </div>
+          <div class="my-meta">
+            本手押注 {{ state?.myStake || 0 }} 分<template v-if="state?.myDoubled"
+              >（已加倍）</template
+            >
           </div>
         </div>
-        <div v-if="!othersView.length" class="empty-tip">等待其他玩家下注…</div>
-      </div>
 
-      <!-- 我的手牌 -->
-      <div v-if="!isBanker && myInView" class="my-area" :class="{ bust: state?.myBusted }">
-        <div class="my-label">
-          我的手牌 <span v-if="state?.myNatural" class="natural">✨ Blackjack！</span>
-          <span v-if="state?.myBusted" class="bust-tag">💥 爆了</span>
+        <!-- 本手结算浮条 -->
+        <div v-if="lastResults" class="settle-bar">
+          <div v-for="r in lastResults" :key="r.userId" class="s-item">
+            {{ nameOfUser(r.userId) }}
+            <b :class="r.delta > 0 ? 'pos' : r.delta < 0 ? 'neg' : ''">{{
+              r.delta > 0 ? `+${r.delta}` : r.delta
+            }}</b>
+            <span class="outcome">{{ outcomeText(r.outcome) }}</span>
+          </div>
+          <div v-if="nextRemain > 0" class="s-next">下一手 {{ nextRemain }}s 后开始</div>
         </div>
-        <div class="cards">
-          <span v-for="(c, i) in state?.myCards || []" :key="i" class="pcard" :class="{ red: isRed(c), deal: i >= myCardsLenAtDeal }">{{ c }}</span>
+
+        <!-- 操作区 -->
+        <div v-if="canBet" class="actions">
+          <span class="hint">下注：</span>
+          <button
+            v-for="amt in state?.betOptions || []"
+            :key="amt"
+            class="btn bet"
+            :disabled="(myChips || 0) < amt"
+            @click="emit('action', { t: 'blackjack_bet', amount: amt })"
+          >
+            {{ amt }}
+          </button>
         </div>
-        <div class="my-meta">本手押注 {{ state?.myStake || 0 }} 分<template v-if="state?.myDoubled">（已加倍）</template></div>
-      </div>
-
-      <!-- 本手结算浮条 -->
-      <div v-if="lastResults" class="settle-bar">
-        <div v-for="r in lastResults" :key="r.userId" class="s-item">
-          {{ nameOfUser(r.userId) }}
-          <b :class="r.delta > 0 ? 'pos' : r.delta < 0 ? 'neg' : ''">{{ r.delta > 0 ? `+${r.delta}` : r.delta }}</b>
-          <span class="outcome">{{ outcomeText(r.outcome) }}</span>
+        <div v-else-if="myTurnToAct" class="actions mine">
+          <button class="btn hit" @click="emit('action', { t: 'blackjack_hit' })">要牌</button>
+          <button class="btn stand" @click="emit('action', { t: 'blackjack_stand' })">停牌</button>
+          <button
+            v-if="canDouble"
+            class="btn double"
+            @click="emit('action', { t: 'blackjack_double' })"
+          >
+            加倍
+          </button>
         </div>
-        <div v-if="nextRemain > 0" class="s-next">下一手 {{ nextRemain }}s 后开始</div>
-      </div>
+        <div v-else-if="canPassBank" class="actions">
+          <button class="btn pass" @click="emit('action', { t: 'blackjack_pass_bank' })">
+            让庄给下家
+          </button>
+        </div>
+        <div v-else class="idle-tip">{{ idleText }}</div>
 
-      <!-- 操作区 -->
-      <div v-if="canBet" class="actions">
-        <span class="hint">下注：</span>
-        <button
-          v-for="amt in state?.betOptions || []"
-          :key="amt"
-          class="btn bet"
-          :disabled="(myChips || 0) < amt"
-          @click="emit('action', { t: 'blackjack_bet', amount: amt })"
-        >
-          {{ amt }}
-        </button>
-      </div>
-      <div v-else-if="myTurnToAct" class="actions mine">
-        <button class="btn hit" @click="emit('action', { t: 'blackjack_hit' })">要牌</button>
-        <button class="btn stand" @click="emit('action', { t: 'blackjack_stand' })">停牌</button>
-        <button v-if="canDouble" class="btn double" @click="emit('action', { t: 'blackjack_double' })">加倍</button>
-      </div>
-      <div v-else-if="canPassBank" class="actions">
-        <button class="btn pass" @click="emit('action', { t: 'blackjack_pass_bank' })">让庄给下家</button>
-      </div>
-      <div v-else class="idle-tip">{{ idleText }}</div>
-
-      <!-- 我要加倍 动态弹框（全房间可见+语音通知） -->
-      <div v-if="dblPop" :key="dblPop.seq" class="yanpai-pop">
-        <div class="yp-main">「{{ nameOfUser(dblPop.userId) }}」我要加倍！</div>
-        <div class="yp-sub">押注加倍到 <b>{{ dblPop.stake }} 分</b>，再补一张牌</div>
-      </div>
+        <!-- 我要加倍 动态弹框（全房间可见+语音通知） -->
+        <div v-if="dblPop" :key="dblPop.seq" class="yanpai-pop">
+          <div class="yp-main">「{{ nameOfUser(dblPop.userId) }}」我要加倍！</div>
+          <div class="yp-sub">
+            押注加倍到 <b>{{ dblPop.stake }} 分</b>，再补一张牌
+          </div>
+        </div>
       </template>
     </template>
   </div>
@@ -127,11 +189,31 @@ const myId = computed(() => userStore.userInfo?.id || 0);
 
 const final = computed(() => props.events.final);
 const isBanker = computed(() => !!props.state?.isBanker);
-const myChips = computed(() => props.state?.chips?.find((c: any) => c.userId === myId.value)?.chips ?? 0);
-const myTurnToAct = computed(() => props.phase === 'playing' && props.state?.phase === 'acting' && props.state?.turnSeat === props.mySeat && !props.state?.myDone);
-const canBet = computed(() => props.phase === 'playing' && props.state?.phase === 'betting' && !isBanker.value && !props.state?.myStake && (myChips.value || 0) > 0);
-const canDouble = computed(() => (props.state?.myCards?.length || 0) === 2 && (myChips.value || 0) >= (props.state?.myStake || 0));
-const canPassBank = computed(() => props.phase === 'playing' && props.state?.canPassBank && isBanker.value);
+const myChips = computed(
+  () => props.state?.chips?.find((c: any) => c.userId === myId.value)?.chips ?? 0
+);
+const myTurnToAct = computed(
+  () =>
+    props.phase === 'playing' &&
+    props.state?.phase === 'acting' &&
+    props.state?.turnSeat === props.mySeat &&
+    !props.state?.myDone
+);
+const canBet = computed(
+  () =>
+    props.phase === 'playing' &&
+    props.state?.phase === 'betting' &&
+    !isBanker.value &&
+    !props.state?.myStake &&
+    (myChips.value || 0) > 0
+);
+const canDouble = computed(
+  () =>
+    (props.state?.myCards?.length || 0) === 2 && (myChips.value || 0) >= (props.state?.myStake || 0)
+);
+const canPassBank = computed(
+  () => props.phase === 'playing' && props.state?.canPassBank && isBanker.value
+);
 const myInView = computed(() => (props.state?.myCards?.length || 0) > 0 || props.state?.myStake);
 
 // 轮到自己行动：提示音（仅状态切换沿触发，进房即轮到不响）
@@ -157,11 +239,25 @@ const myCardsLenAtDeal = ref(99);
 
 /** 闲家视图：优先用 deal/action 拼装的明牌（events.handsView），快照兜底只给张数 */
 const othersView = computed<any[]>(() => {
-  const view = props.events.handsView as Array<{ userId: number; seat: number; cards: string[]; stake: number; done: boolean; busted: boolean; natural: boolean }> | undefined;
+  const view = props.events.handsView as
+    | Array<{
+        userId: number;
+        seat: number;
+        cards: string[];
+        stake: number;
+        done: boolean;
+        busted: boolean;
+        natural: boolean;
+      }>
+    | undefined;
   if (view?.length) {
     return view.filter((v) => v.userId !== myId.value);
   }
-  return (props.state?.others || []).map((o: any) => ({ ...o, seat: seatOfUser(o.userId), cards: [] }));
+  return (props.state?.others || []).map((o: any) => ({
+    ...o,
+    seat: seatOfUser(o.userId),
+    cards: [],
+  }));
 });
 
 const lastResults = computed(() => props.state?.lastResults || null);
@@ -188,8 +284,10 @@ const phaseText = computed(() => {
 });
 
 const idleText = computed(() => {
-  if (isBanker.value) return props.state?.phase === 'dealer' ? '庄家自动要牌中…' : '你是庄家，等待闲家行动';
-  if (props.state?.phase === 'betting') return props.state?.myStake ? '已下注，等待其他玩家…' : '等待其他玩家下注…';
+  if (isBanker.value)
+    return props.state?.phase === 'dealer' ? '庄家自动要牌中…' : '你是庄家，等待闲家行动';
+  if (props.state?.phase === 'betting')
+    return props.state?.myStake ? '已下注，等待其他玩家…' : '等待其他玩家下注…';
   if (props.state?.phase === 'acting') return '等待其他玩家行动…';
   if (props.state?.phase === 'settle') return '本手结算中…';
   return '等待开局…';
@@ -205,9 +303,11 @@ const nameOfUser = (userId: number): string => {
   if (!m) return `角色${userId}`;
   return m.userId === myId.value ? `${m.nickname}（我）` : m.nickname;
 };
-const seatOfUser = (userId: number): number => props.members?.find((x) => x.userId === userId)?.seat ?? -1;
+const seatOfUser = (userId: number): number =>
+  props.members?.find((x) => x.userId === userId)?.seat ?? -1;
 const isRed = (card: string): boolean => card.includes('♥') || card.includes('♦');
-const outcomeText = (o: string): string => ({ win: '赢', lose: '输', push: '平', bust: '爆牌', blackjack: 'Blackjack' })[o] || o;
+const outcomeText = (o: string): string =>
+  ({ win: '赢', lose: '输', push: '平', bust: '爆牌', blackjack: 'Blackjack' })[o] || o;
 
 // 倒计时
 const remainSec = ref(0);
@@ -216,7 +316,10 @@ let timer: ReturnType<typeof setInterval> | null = null;
 onMounted(() => {
   timer = setInterval(() => {
     remainSec.value = Math.max(0, Math.ceil(((props.state?.deadline || 0) - Date.now()) / 1000));
-    nextRemain.value = props.state?.phase === 'settle' && props.state?.nextDeadline ? Math.max(0, Math.ceil((props.state.nextDeadline - Date.now()) / 1000)) : 0;
+    nextRemain.value =
+      props.state?.phase === 'settle' && props.state?.nextDeadline
+        ? Math.max(0, Math.ceil((props.state.nextDeadline - Date.now()) / 1000))
+        : 0;
   }, 400);
 });
 onUnmounted(() => {

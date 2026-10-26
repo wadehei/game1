@@ -5,7 +5,13 @@ import { User, UserPlaytime, GameProgress, DailyTask } from '../models';
 import { config } from '../config';
 import { AuthRequest } from '../middleware/auth';
 import { success, asyncHandler } from '../utils/response';
-import { BadRequestError, NotFoundError, UnauthorizedError, ForbiddenError, TooManyRequestsError } from '../errors/AppError';
+import {
+  BadRequestError,
+  NotFoundError,
+  UnauthorizedError,
+  ForbiddenError,
+  TooManyRequestsError,
+} from '../errors/AppError';
 import { safeJsonParse } from '../utils/safeJson';
 import { generateUserToken, toUserInfo } from '../utils/auth';
 import {
@@ -19,14 +25,11 @@ import {
 // ─── 角色口令（PIN） ────────────────────────────────
 
 const PIN_HASH_ROUNDS = 12;
-const hashPin = async (pin: string): Promise<string> =>
-  bcrypt.hash(pin, PIN_HASH_ROUNDS);
+const hashPin = async (pin: string): Promise<string> => bcrypt.hash(pin, PIN_HASH_ROUNDS);
 
-const verifyPin = async (pin: string, hash: string): Promise<boolean> =>
-  bcrypt.compare(pin, hash);
+const verifyPin = async (pin: string, hash: string): Promise<boolean> => bcrypt.compare(pin, hash);
 
-const isValidPin = (pin: unknown): pin is string =>
-  typeof pin === 'string' && /^\d{4}$/.test(pin);
+const isValidPin = (pin: unknown): pin is string => typeof pin === 'string' && /^\d{4}$/.test(pin);
 
 // 防爆破：同一角色 1 分钟内错 5 次锁定 60 秒，递增惩罚
 const pinAttempts = new Map<number, { count: number; lockedUntil: number }>();
@@ -82,7 +85,7 @@ export const wxLogin = asyncHandler(async (req: Request, res: Response) => {
   const openid = `mock_${Date.now()}`;
 
   // 查找或创建用户
-  let [user, created] = await User.findOrCreate({
+  const [user, created] = await User.findOrCreate({
     where: { openid },
     defaults: {
       openid,
@@ -135,7 +138,9 @@ export const familyLogin = asyncHandler(async (req: Request, res: Response) => {
     if (user.pinHash) {
       const lockedUntil = checkThrottle(user.id);
       if (lockedUntil) {
-        throw new TooManyRequestsError(`口令错误次数过多，请 ${Math.ceil((lockedUntil - Date.now()) / 1000)} 秒后再试`);
+        throw new TooManyRequestsError(
+          `口令错误次数过多，请 ${Math.ceil((lockedUntil - Date.now()) / 1000)} 秒后再试`
+        );
       }
       const pin = req.body?.pin;
       if (!isValidPin(pin) || !(await verifyPin(pin, user.pinHash))) {
@@ -171,17 +176,20 @@ export const getProfiles = asyncHandler(async (req: Request, res: Response) => {
     where: { openid: { [Op.like]: 'family_%' } },
     attributes: ['id', 'nickname', 'avatar', 'level', 'totalStars', 'pinHash', 'createdAt'],
     order: [['totalStars', 'DESC']],
-    limit: 20,
+    limit: 100,
   });
 
-  success(res, users.map((u) => ({
-    id: u.id,
-    nickname: u.nickname,
-    avatar: u.avatar,
-    level: u.level,
-    totalStars: u.totalStars,
-    hasPin: !!u.pinHash,
-  })));
+  success(
+    res,
+    users.map((u) => ({
+      id: u.id,
+      nickname: u.nickname,
+      avatar: u.avatar,
+      level: u.level,
+      totalStars: u.totalStars,
+      hasPin: !!u.pinHash,
+    }))
+  );
 });
 
 // 设置/修改/清除自己的角色口令（newPin 传空串=清除）
@@ -197,7 +205,9 @@ export const updateMyPin = asyncHandler(async (req: AuthRequest, res: Response) 
     // 复用 familyLogin 的防爆破机制，防止 4 位 PIN 被穷举
     const lockedUntil = checkThrottle(user.id);
     if (lockedUntil) {
-      throw new TooManyRequestsError(`口令错误次数过多，请 ${Math.ceil((lockedUntil - Date.now()) / 1000)} 秒后再试`);
+      throw new TooManyRequestsError(
+        `口令错误次数过多，请 ${Math.ceil((lockedUntil - Date.now()) / 1000)} 秒后再试`
+      );
     }
     if (!isValidPin(oldPin) || !(await verifyPin(oldPin, user.pinHash))) {
       recordFail(user.id);
@@ -246,7 +256,7 @@ function computeCareerTotals(
   progresses: any[],
   timeRows: { seconds: number }[],
   rewardRows: { taskReward: number | null }[],
-  achievements: string[],
+  achievements: string[]
 ) {
   const playSeconds = timeRows.reduce((sum, r) => sum + r.seconds, 0);
   const playDays = timeRows.filter((r) => r.seconds > 0).length;
@@ -304,7 +314,9 @@ export const getMyCareer = asyncHandler(async (req: AuthRequest, res: Response) 
         winCount: p.winCount || 0,
         lastPlayedAt: p.updatedAt,
       }))
-      .sort((a, b) => new Date(b.lastPlayedAt || 0).getTime() - new Date(a.lastPlayedAt || 0).getTime()),
+      .sort(
+        (a, b) => new Date(b.lastPlayedAt || 0).getTime() - new Date(a.lastPlayedAt || 0).getTime()
+      ),
   });
 });
 

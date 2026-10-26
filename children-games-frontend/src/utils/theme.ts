@@ -14,7 +14,8 @@ export const getThemeChoice = (): ThemeChoice => {
 };
 
 const systemPrefersDark = (): boolean =>
-  typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  typeof window.matchMedia === 'function' &&
+  window.matchMedia('(prefers-color-scheme: dark)').matches;
 
 const apply = (choice: ThemeChoice): void => {
   const dark = choice === 'dark' || (choice === 'auto' && systemPrefersDark());

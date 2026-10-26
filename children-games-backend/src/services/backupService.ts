@@ -40,13 +40,15 @@ export const buildBackupSql = async (): Promise<string> => {
   ];
 
   for (const table of BACKUP_TABLES) {
-    const [rows] = await sequelize.query(`SELECT * FROM \`${table}\``) as [any[], unknown];
+    const [rows] = (await sequelize.query(`SELECT * FROM \`${table}\``)) as [any[], unknown];
     lines.push(`-- ${table}（${rows.length} 行）`);
     lines.push(`DELETE FROM \`${table}\`;`);
     for (const row of rows) {
       const cols = Object.keys(row);
       const vals = cols.map((c) => sqlEscape(row[c]));
-      lines.push(`INSERT INTO \`${table}\` (${cols.map((c) => `\`${c}\``).join(', ')}) VALUES (${vals.join(', ')});`);
+      lines.push(
+        `INSERT INTO \`${table}\` (${cols.map((c) => `\`${c}\``).join(', ')}) VALUES (${vals.join(', ')});`
+      );
     }
     lines.push('');
   }

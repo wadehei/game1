@@ -15,7 +15,7 @@
 
 <script setup lang="ts">
 defineProps<{
-  phase: "waiting" | "playing" | "ended";
+  phase: 'waiting' | 'playing' | 'ended';
   waitingText: string;
   playingStatusText: string;
   overText: string;

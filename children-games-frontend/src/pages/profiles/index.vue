@@ -5,7 +5,13 @@
 
     <!-- 成员列表：按总星星排序，就是家庭总榜 -->
     <div class="profile-list">
-      <div v-for="(p, index) in profiles" :key="p.id" class="profile-card" :class="{ me: p.id === myUserId }" @click="selectProfile(p)">
+      <div
+        v-for="(p, index) in profiles"
+        :key="p.id"
+        class="profile-card"
+        :class="{ me: p.id === myUserId }"
+        @click="selectProfile(p)"
+      >
         <span class="rank-badge">{{ index + 1 }}</span>
         <PlayerAvatar :avatar="p.avatar" :size="64" />
         <div class="profile-name">{{ p.nickname }}</div>
@@ -56,7 +62,8 @@
             class="emoji-cell"
             :class="{ picked: pickedEmoji === e && !photoUrl }"
             @click="pickedEmoji = e"
-          >{{ e }}</span>
+            >{{ e }}</span
+          >
         </div>
         <div class="create-btns">
           <button class="c-btn cancel" @click="creating = false">取消</button>
@@ -89,7 +96,9 @@ const pickedEmoji = ref('');
 // 照片头像（非必填；与 emoji 二选一，照片优先）
 const photoUrl = ref('');
 const uploading = ref(false);
-const canCreate = computed(() => !!nickname.value.trim() && (!!pickedEmoji.value || !!photoUrl.value));
+const canCreate = computed(
+  () => !!nickname.value.trim() && (!!pickedEmoji.value || !!photoUrl.value)
+);
 const myUserId = computed(() => userStore.userInfo?.id);
 const lastUsedId = computed(() => getLastProfileId());
 
@@ -180,7 +189,7 @@ onMounted(loadProfiles);
 <style scoped>
 .profiles-page {
   min-height: 100vh;
-  background: linear-gradient(180deg, #FFE5E5 0%, #F5F5F5 100%);
+  background: linear-gradient(180deg, #ffe5e5 0%, #f5f5f5 100%);
   padding: 28px 20px;
 }
 
@@ -217,7 +226,9 @@ onMounted(loadProfiles);
   cursor: pointer;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
   border: 3px solid transparent;
-  transition: transform 0.15s ease, border-color 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .profile-card:active {
@@ -234,7 +245,7 @@ onMounted(loadProfiles);
   left: 10px;
   font-size: 13px;
   font-weight: bold;
-  color: #FFB347;
+  color: #ffb347;
 }
 
 .lock-badge {
@@ -302,8 +313,12 @@ onMounted(loadProfiles);
 }
 
 @keyframes createFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .create-content {
@@ -317,8 +332,14 @@ onMounted(loadProfiles);
 }
 
 @keyframes createBounceIn {
-  from { transform: scale(0.5); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .create-title {

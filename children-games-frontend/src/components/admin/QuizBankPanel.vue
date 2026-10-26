@@ -17,7 +17,9 @@
         class="filter-btn"
         :class="{ active: filter === c }"
         @click="filter = filter === c ? '' : c"
-      >{{ c }}</button>
+      >
+        {{ c }}
+      </button>
     </div>
 
     <div v-if="loading" class="empty">加载中…</div>
@@ -40,28 +42,47 @@
             :key="i"
             class="q-opt"
             :class="{ correct: i === q.answer }"
-          >{{ 'ABCD'[i] }}. {{ o }}</span>
+            >{{ 'ABCD'[i] }}. {{ o }}</span
+          >
         </div>
       </div>
     </div>
 
-    <div class="pager" v-if="total > LIMIT">
+    <div v-if="total > LIMIT" class="pager">
       <button class="act-btn" :disabled="page <= 1" @click="prev">上一页</button>
       <span class="page-info">{{ page }} / {{ Math.ceil(total / LIMIT) }}</span>
-      <button class="act-btn" :disabled="page >= Math.ceil(total / LIMIT)" @click="next">下一页</button>
+      <button class="act-btn" :disabled="page >= Math.ceil(total / LIMIT)" @click="next">
+        下一页
+      </button>
     </div>
 
     <!-- 编辑/新增弹层 -->
     <div v-if="editing" class="mask" @click.self="editing = null">
       <div class="editor">
         <div class="e-title">{{ editing.id ? '编辑题目' : '新增题目' }}</div>
-        <textarea v-model="editing.text" class="e-text" rows="3" maxlength="500" placeholder="题干" />
+        <textarea
+          v-model="editing.text"
+          class="e-text"
+          rows="3"
+          maxlength="500"
+          placeholder="题干"
+        />
         <div v-for="(o, i) in editing.options" :key="i" class="e-opt-row">
           <label class="e-radio">
-            <input type="radio" name="correct" :checked="editing.answer === i" @change="editing.answer = i" />
+            <input
+              type="radio"
+              name="correct"
+              :checked="editing.answer === i"
+              @change="editing.answer = i"
+            />
             正确
           </label>
-          <input v-model="editing.options[i]" class="e-input" :placeholder="'选项 ' + 'ABCD'[i]" maxlength="100" />
+          <input
+            v-model="editing.options[i]"
+            class="e-input"
+            :placeholder="'选项 ' + 'ABCD'[i]"
+            maxlength="100"
+          />
         </div>
         <div class="e-row">
           <select v-model="editing.category" class="e-select">
@@ -88,7 +109,12 @@
         <div class="e-hint">
           格式：[{"text":"题干","options":["A","B","C","D"],"answer":0,"category":"综合"}]，重复题干自动跳过
         </div>
-        <textarea v-model="importJson" class="e-text import" rows="10" placeholder='[{"text":"...","options":["...","...","...","..."],"answer":0}]' />
+        <textarea
+          v-model="importJson"
+          class="e-text import"
+          rows="10"
+          placeholder='[{"text":"...","options":["...","...","...","..."],"answer":0}]'
+        />
         <div v-if="importMsg" class="e-err">{{ importMsg }}</div>
         <div class="e-btns">
           <button class="act-btn" @click="showImport = false">取消</button>
@@ -119,7 +145,14 @@ const total = ref(0);
 const page = ref(1);
 const filter = ref('');
 const loading = ref(true);
-const editing = ref<null | { id: number; text: string; options: string[]; answer: number; category: string; difficulty: number }>(null);
+const editing = ref<null | {
+  id: number;
+  text: string;
+  options: string[];
+  answer: number;
+  category: string;
+  difficulty: number;
+}>(null);
 const editError = ref('');
 const showImport = ref(false);
 const importJson = ref('');
@@ -142,7 +175,14 @@ const next = () => {
   load();
 };
 
-const blank = () => ({ id: 0, text: '', options: ['', '', '', ''], answer: 0, category: '综合', difficulty: 1 });
+const blank = () => ({
+  id: 0,
+  text: '',
+  options: ['', '', '', ''],
+  answer: 0,
+  category: '综合',
+  difficulty: 1,
+});
 
 const openCreate = () => {
   editError.value = '';
@@ -177,7 +217,11 @@ const save = async () => {
 };
 
 const remove = async (q: AdminQuizQuestion) => {
-  const ok = await confirmAction({ title: `删除「${q.text.slice(0, 20)}…」？`, danger: true, confirmText: '删除' });
+  const ok = await confirmAction({
+    title: `删除「${q.text.slice(0, 20)}…」？`,
+    danger: true,
+    confirmText: '删除',
+  });
   if (!ok) return;
   await adminQuizDelete(q.id).catch(() => {});
   await load();

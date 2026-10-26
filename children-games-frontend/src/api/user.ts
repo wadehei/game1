@@ -23,7 +23,12 @@ export const testLogin = async (nickname?: string): Promise<LoginResult> => {
 };
 
 // 家庭角色登录：uid 登录已有成员（设了口令需带 pin）；nickname+avatar 创建新成员
-export const familyLogin = async (data: { uid?: number; pin?: string; nickname?: string; avatar?: string }): Promise<LoginResult> => {
+export const familyLogin = async (data: {
+  uid?: number;
+  pin?: string;
+  nickname?: string;
+  avatar?: string;
+}): Promise<LoginResult> => {
   const result = await api.post<LoginResult>('/user/login/family', data);
   const userStore = useUserStore();
   userStore.setToken(result.token);
@@ -57,7 +62,10 @@ export interface FamilyProfile {
 }
 
 // 设置/修改/清除当前角色口令（newPin 空串=清除）
-export const updateMyPin = async (data: { oldPin?: string; newPin?: string }): Promise<{ hasPin: boolean }> => {
+export const updateMyPin = async (data: {
+  oldPin?: string;
+  newPin?: string;
+}): Promise<{ hasPin: boolean }> => {
   return api.put<{ hasPin: boolean }>('/user/pin', data);
 };
 

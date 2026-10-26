@@ -17,7 +17,7 @@ const pages = [
 ];
 
 console.log('✅ 页面文件检查:');
-pages.forEach(page => {
+pages.forEach((page) => {
   console.log(`  ✓ ${page.name} - ${page.path}`);
 });
 
@@ -30,7 +30,7 @@ const games = [
   { id: 'tank', name: '坦克大战', levels: 25 },
 ];
 
-games.forEach(game => {
+games.forEach((game) => {
   console.log(`  ✓ ${game.name} - ${game.levels}关`);
 });
 
@@ -45,7 +45,7 @@ const features = [
   '响应式布局',
 ];
 
-features.forEach(feature => {
+features.forEach((feature) => {
   console.log(`  ✓ ${feature}`);
 });
 

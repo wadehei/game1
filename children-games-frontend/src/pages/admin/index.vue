@@ -18,7 +18,8 @@
             :class="{ active: activeTab === tab.key }"
             @click="activeTab = tab.key"
           >
-            <span class="nav-icon">{{ tab.icon }}</span>{{ tab.label }}
+            <span class="nav-icon">{{ tab.icon }}</span
+            >{{ tab.label }}
           </button>
         </nav>
         <button class="logout-btn" @click="logout">退出登录</button>
@@ -33,7 +34,8 @@
           :class="{ active: activeTab === tab.key }"
           @click="activeTab = tab.key"
         >
-          <span>{{ tab.icon }}</span>{{ tab.label }}
+          <span>{{ tab.icon }}</span
+          >{{ tab.label }}
         </button>
       </nav>
 

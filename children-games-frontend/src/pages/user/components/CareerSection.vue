@@ -13,10 +13,7 @@
           :title="`${d.label} ${Math.round(d.seconds / 60)} 分钟`"
         >
           <div class="trend-bar-wrap">
-            <div
-              class="trend-bar"
-              :style="{ height: trendBarHeight(d.seconds) }"
-            />
+            <div class="trend-bar" :style="{ height: trendBarHeight(d.seconds) }" />
           </div>
           <span class="trend-label">{{ d.label }}</span>
         </div>
@@ -69,56 +66,46 @@
             />
           </div>
           <div class="career-line2">
-            关卡 {{ g.currentLevel }}/{{ gameTotal(g.gameId) }} · ⭐{{
-              g.stars
-            }}
+            关卡 {{ g.currentLevel }}/{{ gameTotal(g.gameId) }} · ⭐{{ g.stars }}
             <template v-if="g.playCount > 0">
               · {{ g.winCount }}胜/{{ g.playCount }}局{{
-                g.playCount > 0
-                  ? `（${Math.round((g.winCount / g.playCount) * 100)}%）`
-                  : ""
+                g.playCount > 0 ? `（${Math.round((g.winCount / g.playCount) * 100)}%）` : ''
               }}</template
             >
-            <template v-if="g.lastPlayedAt">
-              · {{ timeAgo(g.lastPlayedAt) }}</template
-            >
+            <template v-if="g.lastPlayedAt"> · {{ timeAgo(g.lastPlayedAt) }}</template>
           </div>
         </div>
       </div>
     </div>
-    <div v-else class="career-empty">
-      还没开始冒险，去玩一局点亮生涯吧！🚀
-    </div>
+    <div v-else class="career-empty">还没开始冒险，去玩一局点亮生涯吧！🚀</div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
-import { getGameMeta, formatScore } from "@/utils/gameMeta";
-import type { MyCareer, CareerGame } from "@/api/user";
+import { computed } from 'vue';
+import { getGameMeta, formatScore } from '@/utils/gameMeta';
+import type { MyCareer, CareerGame } from '@/api/user';
 
 const props = defineProps<{
   career: MyCareer | null;
 }>();
 
 const games = [
-  { id: "memory", name: "记忆翻牌", totalLevels: 20, icon: "🧠" },
-  { id: "fruit", name: "接水果", totalLevels: 30, icon: "🍎" },
-  { id: "puzzle", name: "拼图游戏", totalLevels: 25, icon: "🧩" },
-  { id: "balloon", name: "打气球", totalLevels: 30, icon: "🎈" },
-  { id: "tank", name: "坦克大战", totalLevels: 25, icon: "🚀" },
-  { id: "mole", name: "打地鼠", totalLevels: 20, icon: "🐹" },
-  { id: "simon", name: "音乐记忆", totalLevels: 15, icon: "🎵" },
-  { id: "math", name: "数学小怪兽", totalLevels: 20, icon: "👾" },
+  { id: 'memory', name: '记忆翻牌', totalLevels: 20, icon: '🧠' },
+  { id: 'fruit', name: '接水果', totalLevels: 30, icon: '🍎' },
+  { id: 'puzzle', name: '拼图游戏', totalLevels: 25, icon: '🧩' },
+  { id: 'balloon', name: '打气球', totalLevels: 30, icon: '🎈' },
+  { id: 'tank', name: '坦克大战', totalLevels: 25, icon: '🚀' },
+  { id: 'mole', name: '打地鼠', totalLevels: 20, icon: '🐹' },
+  { id: 'simon', name: '音乐记忆', totalLevels: 15, icon: '🎵' },
+  { id: 'math', name: '数学小怪兽', totalLevels: 20, icon: '👾' },
 ];
 
 const joinedDays = computed(() => {
-  if (!props.career?.user.joinedAt) return "-";
+  if (!props.career?.user.joinedAt) return '-';
   return Math.max(
     1,
-    Math.ceil(
-      (Date.now() - new Date(props.career.user.joinedAt).getTime()) / 86400000,
-    ),
+    Math.ceil((Date.now() - new Date(props.career.user.joinedAt).getTime()) / 86400000)
   );
 });
 
@@ -133,12 +120,12 @@ const playTimeText = computed(() => {
 
 const winRateText = computed(() => {
   const t = props.career?.totals;
-  if (!t || t.playCount === 0) return "-";
+  if (!t || t.playCount === 0) return '-';
   return `${Math.round((t.winCount / t.playCount) * 100)}%`;
 });
 
 const trendMax = computed(() =>
-  Math.max(...(props.career?.last7?.map((d) => d.seconds) || [0]), 1),
+  Math.max(...(props.career?.last7?.map((d) => d.seconds) || [0]), 1)
 );
 
 const trendBarHeight = (seconds: number): string => {
@@ -147,18 +134,17 @@ const trendBarHeight = (seconds: number): string => {
 };
 
 const gameName = (id: string): string => getGameMeta(id)?.name || id;
-const gameIcon = (id: string): string =>
-  games.find((g) => g.id === id)?.icon || "🎮";
+const gameIcon = (id: string): string => games.find((g) => g.id === id)?.icon || '🎮';
 const gameTotal = (id: string): number => getGameMeta(id)?.totalLevels || 20;
 
 const recordText = (g: CareerGame): string => {
-  if (!g.highScore) return "";
+  if (!g.highScore) return '';
   return formatScore(g.gameId, g.highScore);
 };
 
 const timeAgo = (iso: string): string => {
   const min = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
-  if (min < 1) return "刚刚";
+  if (min < 1) return '刚刚';
   if (min < 60) return `${min}分钟前`;
   const h = Math.floor(min / 60);
   if (h < 24) return `${h}小时前`;

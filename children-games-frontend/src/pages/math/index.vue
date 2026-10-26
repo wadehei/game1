@@ -4,11 +4,11 @@
     <GameHeader
       :items="headerItems"
       :muted="sounds.isMuted.value"
-      headerClass="math-header"
+      header-class="math-header"
       level-selectable
-      @toggleSound="sounds.toggleSound"
-      @goBack="router.back()"
-      @selectLevel="openLevelSelect"
+      @toggle-sound="sounds.toggleSound"
+      @go-back="router.back()"
+      @select-level="openLevelSelect"
     />
 
     <!-- 计时展示 -->
@@ -38,7 +38,8 @@
             :key="'b' + n"
             class="apple"
             :style="question.subtract && n <= question.countB ? 'opacity:0.25' : ''"
-          >{{ question.icon }}</span>
+            >{{ question.icon }}</span
+          >
         </div>
       </template>
     </div>
@@ -122,8 +123,19 @@ const finalSeconds = ref(0);
 let levelStartTs = 0;
 let timeTicker: ReturnType<typeof setInterval> | null = null;
 
-const levelConfig = ref<Record<string, any>>({ targetCorrect: 8, forceMode: 0, countMax: 0, addMax: 0 });
-const question = ref<MathQuestion>({ mode: 'count', countA: 1, countB: 0, answer: 1, options: [1, 2, 3] });
+const levelConfig = ref<Record<string, any>>({
+  targetCorrect: 8,
+  forceMode: 0,
+  countMax: 0,
+  addMax: 0,
+});
+const question = ref<MathQuestion>({
+  mode: 'count',
+  countA: 1,
+  countB: 0,
+  answer: 1,
+  options: [1, 2, 3],
+});
 
 let gameEnded = false;
 let hintTimer: ReturnType<typeof setTimeout> | null = null;
@@ -225,7 +237,15 @@ const generateQuestion = (): MathQuestion => {
     [optionList[i], optionList[j]] = [optionList[j], optionList[i]];
   }
 
-  return { mode, countA, countB, answer, options: optionList, subtract, icon: COUNT_ICONS[Math.floor(Math.random() * COUNT_ICONS.length)] };
+  return {
+    mode,
+    countA,
+    countB,
+    answer,
+    options: optionList,
+    subtract,
+    icon: COUNT_ICONS[Math.floor(Math.random() * COUNT_ICONS.length)],
+  };
 };
 
 // 数字读成中文（数学题语音读题）
@@ -415,7 +435,7 @@ onUnmounted(() => {
 <style scoped>
 .math-game {
   min-height: 100vh;
-  background: linear-gradient(180deg, #43C59E 0%, #2d9d7a 100%);
+  background: linear-gradient(180deg, #43c59e 0%, #2d9d7a 100%);
   padding: 20px;
   position: relative;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -482,22 +502,45 @@ onUnmounted(() => {
 }
 
 @keyframes monsterFloat {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
 }
 
 @keyframes monsterHappy {
-  0%, 100% { transform: translateY(0) scale(1); }
-  30% { transform: translateY(-16px) scale(1.15) rotate(-6deg); }
-  60% { transform: translateY(-4px) scale(1.08) rotate(5deg); }
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  30% {
+    transform: translateY(-16px) scale(1.15) rotate(-6deg);
+  }
+  60% {
+    transform: translateY(-4px) scale(1.08) rotate(5deg);
+  }
 }
 
 @keyframes monsterShake {
-  0%, 100% { transform: translateX(0); }
-  20% { transform: translateX(-9px) rotate(-4deg); }
-  40% { transform: translateX(9px) rotate(4deg); }
-  60% { transform: translateX(-6px); }
-  80% { transform: translateX(6px); }
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-9px) rotate(-4deg);
+  }
+  40% {
+    transform: translateX(9px) rotate(4deg);
+  }
+  60% {
+    transform: translateX(-6px);
+  }
+  80% {
+    transform: translateX(6px);
+  }
 }
 
 .bubble {
@@ -553,8 +596,14 @@ onUnmounted(() => {
 }
 
 @keyframes appleIn {
-  from { transform: scale(0); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .math-sign {
@@ -581,15 +630,23 @@ onUnmounted(() => {
   border: none;
   border-radius: 20px;
   cursor: pointer;
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
   box-shadow: 0 6px 0 rgba(0, 0, 0, 0.18);
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
 
-.option-btn:nth-child(1) { background: linear-gradient(135deg, #FF6B6B 0%, #ee5253 100%); }
-.option-btn:nth-child(2) { background: linear-gradient(135deg, #FF9F43 0%, #feca57 100%); }
-.option-btn:nth-child(3) { background: linear-gradient(135deg, #54a0ff 0%, #2e86de 100%); }
+.option-btn:nth-child(1) {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5253 100%);
+}
+.option-btn:nth-child(2) {
+  background: linear-gradient(135deg, #ff9f43 0%, #feca57 100%);
+}
+.option-btn:nth-child(3) {
+  background: linear-gradient(135deg, #54a0ff 0%, #2e86de 100%);
+}
 
 .option-btn:active {
   transform: translateY(4px);

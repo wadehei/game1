@@ -1,9 +1,6 @@
 <template>
   <div class="profile-edit card">
-    <div
-      class="profile-entry"
-      @click="$router.push('/profile')"
-    >
+    <div class="profile-entry" @click="$router.push('/profile')">
       <PlayerAvatar :avatar="avatar" :size="52" />
       <div class="pe-main">
         <div class="pe-title">👤 个人中心</div>
@@ -14,12 +11,11 @@
 
     <div class="section-title pin-title">🔑 角色口令</div>
     <div class="pin-desc">
-      设置 4
-      位数字口令后，切换这个角色需要先输口令，别人就不能随便玩你的档案啦。
+      设置 4 位数字口令后，切换这个角色需要先输口令，别人就不能随便玩你的档案啦。
     </div>
     <div class="pin-status">
       <span :class="['pin-state', hasPin ? 'on' : '']">{{
-        hasPin ? "🔒 已设置口令" : "🔓 未设置"
+        hasPin ? '🔒 已设置口令' : '🔓 未设置'
       }}</span>
     </div>
     <template v-if="hasPin">
@@ -50,12 +46,8 @@
         placeholder="设置 4 位数字口令"
       />
     </template>
-    <button
-      class="save-profile-btn pin-btn"
-      :disabled="savingPin"
-      @click="savePin"
-    >
-      {{ savingPin ? "处理中…" : hasPin ? "修改 / 清除口令" : "设置口令" }}
+    <button class="save-profile-btn pin-btn" :disabled="savingPin" @click="savePin">
+      {{ savingPin ? '处理中…' : hasPin ? '修改 / 清除口令' : '设置口令' }}
     </button>
     <div v-if="pinMsg" class="pin-msg" :class="{ err: pinIsErr }">
       {{ pinMsg }}
@@ -64,37 +56,37 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
-import { updateMyPin } from "@/api/user";
-import PlayerAvatar from "@/components/PlayerAvatar.vue";
+import { ref } from 'vue';
+import { updateMyPin } from '@/api/user';
+import PlayerAvatar from '@/components/PlayerAvatar.vue';
 
 defineProps<{
   avatar: string;
 }>();
 
 const hasPin = ref(false);
-const pinOld = ref("");
-const pinNew = ref("");
+const pinOld = ref('');
+const pinNew = ref('');
 const savingPin = ref(false);
-const pinMsg = ref("");
+const pinMsg = ref('');
 const pinIsErr = ref(false);
 
 const flashPin = (text: string, isErr = false) => {
   pinMsg.value = text;
   pinIsErr.value = isErr;
   setTimeout(() => {
-    pinMsg.value = "";
+    pinMsg.value = '';
   }, 3000);
 };
 
 const savePin = async () => {
   if (savingPin.value) return;
   if (hasPin.value && !/^\d{4}$/.test(pinOld.value)) {
-    flashPin("请先输入当前口令（4 位数字）", true);
+    flashPin('请先输入当前口令（4 位数字）', true);
     return;
   }
   if (pinNew.value && !/^\d{4}$/.test(pinNew.value)) {
-    flashPin("新口令需为 4 位数字", true);
+    flashPin('新口令需为 4 位数字', true);
     return;
   }
   savingPin.value = true;
@@ -104,11 +96,11 @@ const savePin = async () => {
       newPin: pinNew.value,
     });
     hasPin.value = result.hasPin;
-    pinOld.value = "";
-    pinNew.value = "";
-    flashPin(result.hasPin ? "口令已设置 🔒" : "口令已清除 🔓");
+    pinOld.value = '';
+    pinNew.value = '';
+    flashPin(result.hasPin ? '口令已设置 🔒' : '口令已清除 🔓');
   } catch (e: any) {
-    flashPin(e?.message || "操作失败，请重试", true);
+    flashPin(e?.message || '操作失败，请重试', true);
   } finally {
     savingPin.value = false;
   }

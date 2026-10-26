@@ -15,7 +15,7 @@ export const localDateString = (): string => formatDate();
 // 统计今天玩过的不同游戏数（按进度更新时间）
 export const countTodayPlayedGames = async (
   userId: number,
-  t?: Transaction,
+  t?: Transaction
 ): Promise<Set<string>> => {
   const todayStart = new Date(`${localDateString()}T00:00:00`);
   const rows = await GameProgress.findAll({
@@ -30,7 +30,7 @@ export const countTodayPlayedGames = async (
 export const updateDailyTask = async (
   userId: number,
   playedGames: Set<string>,
-  t: Transaction,
+  t: Transaction
 ): Promise<DailyTask> => {
   const today = localDateString();
   const [dailyTask] = await DailyTask.findOrCreate({
@@ -47,10 +47,7 @@ export const updateDailyTask = async (
 };
 
 // 获取历史累计的每日任务奖励总和
-export const getTotalDailyReward = async (
-  userId: number,
-  t?: Transaction,
-): Promise<number> => {
+export const getTotalDailyReward = async (userId: number, t?: Transaction): Promise<number> => {
   const rewardRows = await DailyTask.findAll({
     where: { userId },
     attributes: [[sequelize.fn('SUM', sequelize.col('taskReward')), 'rewardTotal']],

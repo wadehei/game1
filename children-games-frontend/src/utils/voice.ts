@@ -9,15 +9,17 @@
  * - 语速 0.9 / 音调 1.0（儿童友好，不尖不赶）
  */
 
+import { API_ORIGIN } from './apiOrigin';
+
 /** 音色优先级：从上到下第一个命中的即使用 */
 const VOICE_PREFERENCES: RegExp[] = [
-  /xiaoxiao.*natural|xiaoxiao online/i,   // Edge 晓晓（自然语音，女）
-  /yunxi.*natural|yunxi online/i,         // Edge 云希（自然语音，男）
-  /xiaoyi.*natural|xiaoyi online/i,       // Edge 晓伊（自然语音，女童声）
-  /google.*中文|google\s*普通话/i,        // Chrome 在线语音
-  /yaoyao/i,                              // 本地 娅娅（女，较柔和）
-  /huihui/i,                              // 本地 慧慧（女）
-  /tingting|meijia/i,                     // 本地 Tingting/美佳
+  /xiaoxiao.*natural|xiaoxiao online/i, // Edge 晓晓（自然语音，女）
+  /yunxi.*natural|yunxi online/i, // Edge 云希（自然语音，男）
+  /xiaoyi.*natural|xiaoyi online/i, // Edge 晓伊（自然语音，女童声）
+  /google.*中文|google\s*普通话/i, // Chrome 在线语音
+  /yaoyao/i, // 本地 娅娅（女，较柔和）
+  /huihui/i, // 本地 慧慧（女）
+  /tingting|meijia/i, // 本地 Tingting/美佳
 ];
 
 let cachedVoice: SpeechSynthesisVoice | null = null;
@@ -67,10 +69,12 @@ export const initVoice = (): void => {
 let customVoices = new Map<string, number>();
 
 const fetchCustomVoices = (): void => {
-  fetch('/api/voice')
+  fetch(`${API_ORIGIN}/api/voice`)
     .then((r) => r.json())
     .then((d) => {
-      customVoices = new Map((d?.data || []).map((v: { key: string; updatedAt: number }) => [v.key, v.updatedAt]));
+      customVoices = new Map(
+        (d?.data || []).map((v: { key: string; updatedAt: number }) => [v.key, v.updatedAt])
+      );
     })
     .catch(() => {
       // 离线时无录音可用，全部走 TTS
@@ -83,7 +87,7 @@ export const playVoice = (key: string, fallbackText: string): void => {
   const version = customVoices.get(key);
   if (version !== undefined) {
     stopSpeaking();
-    const audio = new Audio(`/api/voice/${key}?v=${version}`);
+    const audio = new Audio(`${API_ORIGIN}/api/voice/${key}?v=${version}`);
     audio.play().catch(() => {
       // 播放失败（如自动播放限制）时退回 TTS
       speak(fallbackText);

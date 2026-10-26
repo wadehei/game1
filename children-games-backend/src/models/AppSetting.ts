@@ -10,7 +10,10 @@ interface AppSettingAttributes {
 
 interface AppSettingCreationAttributes extends Optional<AppSettingAttributes, 'value'> {}
 
-export class AppSetting extends Model<AppSettingAttributes, AppSettingCreationAttributes> implements AppSettingAttributes {
+export class AppSetting
+  extends Model<AppSettingAttributes, AppSettingCreationAttributes>
+  implements AppSettingAttributes
+{
   public key!: string;
   public value!: string;
   public readonly updatedAt!: Date;

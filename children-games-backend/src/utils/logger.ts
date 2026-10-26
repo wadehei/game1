@@ -54,20 +54,33 @@ const flush = (): void => {
     // 写应用日志
     if (pendingApp.length > 0) {
       const appFile = path.join(LOG_DIR, `app-${date}.log`);
-      fs.appendFileSync(appFile, pendingApp.map((e) => JSON.stringify(e)).join('\n') + '\n', 'utf8');
+      fs.appendFileSync(
+        appFile,
+        pendingApp.map((e) => JSON.stringify(e)).join('\n') + '\n',
+        'utf8'
+      );
     }
 
     // 写错误日志
     if (pendingError.length > 0) {
       const errorFile = path.join(LOG_DIR, `error-${date}.log`);
-      fs.appendFileSync(errorFile, pendingError.map((e) => JSON.stringify(e)).join('\n') + '\n', 'utf8');
+      fs.appendFileSync(
+        errorFile,
+        pendingError.map((e) => JSON.stringify(e)).join('\n') + '\n',
+        'utf8'
+      );
     }
   } catch {
     // 磁盘问题不能拖垮服务，丢弃即可
   }
 };
 
-const createLogEntry = (level: LogLevel, source: string, message: string, detail?: string): LogEntry => {
+const createLogEntry = (
+  level: LogLevel,
+  source: string,
+  message: string,
+  detail?: string
+): LogEntry => {
   return {
     time: new Date().toISOString(),
     level,

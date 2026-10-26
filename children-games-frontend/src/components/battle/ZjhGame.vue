@@ -14,146 +14,227 @@
       <!-- 重开/待开局的空档：状态未到，先占位避免 0/0 NaN 闪现 -->
       <div v-if="!state?.round" class="idle-tip pre-start">等待开局…</div>
       <template v-else>
-      <!-- 状态条 -->
-      <div class="zjh-status">
-        <span class="round">第 {{ state?.round || 0 }}/{{ state?.totalRounds || 0 }} 手</span>
-        <span class="pot">池子 <b>{{ state?.pot || 0 }}</b></span>
-        <span class="stake">单注 {{ state?.stake || 0 }}（看家 {{ (state?.stake || 0) * 2 }}）</span>
-        <span class="round-no">第 {{ state?.roundNo || 1 }} 轮</span>
-        <span v-if="remainSec > 0 && state?.phase === 'betting'" class="timer" :class="{ hurry: remainSec <= 5 }">{{ remainSec }}s</span>
-      </div>
-
-      <!-- 我的下注流水（整局累计） -->
-      <BetLedger v-if="betLedger.length" :entries="betLedger" :members="members" :my-id="myId" theme="purple" />
-
-      <!-- 亮牌区（摊牌） -->
-      <div v-if="showdown" class="showdown">
-        <div class="sd-title"> 🔔 开牌！</div>
-        <div v-for="r in showdown.reveals" :key="r.userId" class="sd-row" :class="{ me: r.userId === myId }">
-          <span class="sd-name">{{ nameOfUser(r.userId) }}</span>
-          <span v-for="(c, i) in r.cards" :key="i" class="pcard sm" :class="{ red: isRed(c) }">{{ c }}</span>
-          <span class="sd-type">{{ r.typeName }}</span>
-        </div>
-      </div>
-
-      <!-- 其他玩家 -->
-      <div class="others">
-        <div v-for="o in othersView" :key="o.userId" class="o-cell" :class="{ act: state?.turnSeat === o.seat, fold: o.folded }">
-          <div class="o-name">{{ o.nickname }}<template v-if="o.userId === myId">（我）</template></div>
-          <div class="o-tag">
-            {{ o.folded ? '🚫 已弃' : o.allIn ? '💰 all-in' : o.seen ? '👀 已看' : '🙈 闷牌' }}
-          </div>
-          <div class="o-bet">投 {{ o.betTotal || 0 }}</div>
-        </div>
-      </div>
-
-      <!-- 比牌结果全员公布（动效面板，所有人可见双方牌面） -->
-      <div v-if="publicCompare" :key="publicCompare.seq" class="pub-cmp">
-        <div class="pc-title">🔍 验牌 · {{ nameOfUser(publicCompare.from) }} 向 {{ nameOfUser(publicCompare.to) }} 发起（{{ publicCompare.cost }} 分）</div>
-        <div v-for="r in publicCompare.reveals" :key="r.userId" class="pc-row" :class="{ win: r.result === 'win', lose: r.result === 'lose' }">
-          <span class="pc-name">{{ r.nickname }}</span>
+        <!-- 状态条 -->
+        <div class="zjh-status">
+          <span class="round">第 {{ state?.round || 0 }}/{{ state?.totalRounds || 0 }} 手</span>
+          <span class="pot"
+            >池子 <b>{{ state?.pot || 0 }}</b></span
+          >
+          <span class="stake"
+            >单注 {{ state?.stake || 0 }}（看家 {{ (state?.stake || 0) * 2 }}）</span
+          >
+          <span class="round-no">第 {{ state?.roundNo || 1 }} 轮</span>
           <span
-            v-for="(c, i) in r.cards"
-            :key="i"
-            class="pcard sm pc-flip"
-            :class="{ red: isRed(c) }"
-            :style="{ animationDelay: `${0.15 + i * 0.14}s` }"
-          >{{ c }}</span>
-          <span class="pc-type">{{ r.typeName }}</span>
-          <span class="pc-flag">{{ r.result === 'win' ? '🏆 胜' : '✖ 弃' }}</span>
+            v-if="remainSec > 0 && state?.phase === 'betting'"
+            class="timer"
+            :class="{ hurry: remainSec <= 5 }"
+            >{{ remainSec }}s</span
+          >
         </div>
-      </div>
 
-      <!-- 验牌记录（常驻，整局累计） -->
-      <div v-if="compareLog.length" class="cmp-log">
-        <button class="cl-head" @click="cmpOpen = !cmpOpen">
-          <span>🔍 验牌记录（{{ compareLog.length }}）</span>
-          <span class="cl-toggle">{{ cmpOpen ? '收起 ▲' : '展开 ▼' }}</span>
-        </button>
-        <div v-if="cmpOpen" class="cl-list">
-          <div v-for="c in compareLog" :key="c.seq" class="cl-row">
-            <span class="cl-round">第{{ c.round }}手</span>
-            <span class="cl-names">{{ nameOfUser(c.from) }} ⇄ {{ nameOfUser(c.to) }}</span>
-            <span class="cl-winner" :class="{ mine: c.winner === myId }">🏆 {{ nameOfUser(c.winner) }}</span>
+        <!-- 我的下注流水（整局累计） -->
+        <BetLedger
+          v-if="betLedger.length"
+          :entries="betLedger"
+          :members="members"
+          :my-id="myId"
+          theme="purple"
+        />
+
+        <!-- 亮牌区（摊牌） -->
+        <div v-if="showdown" class="showdown">
+          <div class="sd-title">🔔 开牌！</div>
+          <div
+            v-for="r in showdown.reveals"
+            :key="r.userId"
+            class="sd-row"
+            :class="{ me: r.userId === myId }"
+          >
+            <span class="sd-name">{{ nameOfUser(r.userId) }}</span>
+            <span v-for="(c, i) in r.cards" :key="i" class="pcard sm" :class="{ red: isRed(c) }">{{
+              c
+            }}</span>
+            <span class="sd-type">{{ r.typeName }}</span>
           </div>
         </div>
-      </div>
 
-      <!-- 我的手牌 -->
-      <div class="my-cards" @click="!state?.mySeen && canActNow && doLook()">
-        <template v-if="state?.myCards?.length">
-          <span v-for="(c, i) in state.myCards" :key="i" class="pcard flip" :class="{ red: isRed(c) }">{{ c }}</span>
-          <span v-if="state?.myRank" class="my-rank">{{ state.myRank }}</span>
-        </template>
-        <template v-else>
-          <span v-for="n in 3" :key="n" class="pcard back" />
-          <span class="look-hint">{{ canActNow ? '点击看牌' : '闷牌中' }}</span>
-        </template>
-      </div>
-
-      <!-- 比牌结果浮层（我参与的） -->
-      <div v-if="compareCards" class="cmp-pop" @click="dismissCompare">
-        <div class="cmp-title">{{ compareCards.result === 'win' ? '🎉 比牌获胜！' : '😭 比牌输了，自动弃牌' }}</div>
-        <div class="cmp-row">
-          <span>我的牌：</span>
-          <span v-for="(c, i) in compareCards.myCards" :key="i" class="pcard xs" :class="{ red: isRed(c) }">{{ c }}</span>
-          <b>{{ compareCards.myType }}</b>
+        <!-- 其他玩家 -->
+        <div class="others">
+          <div
+            v-for="o in othersView"
+            :key="o.userId"
+            class="o-cell"
+            :class="{ act: state?.turnSeat === o.seat, fold: o.folded }"
+          >
+            <div class="o-name">
+              {{ o.nickname }}<template v-if="o.userId === myId">（我）</template>
+            </div>
+            <div class="o-tag">
+              {{ o.folded ? '🚫 已弃' : o.allIn ? '💰 all-in' : o.seen ? '👀 已看' : '🙈 闷牌' }}
+            </div>
+            <div class="o-bet">投 {{ o.betTotal || 0 }}</div>
+          </div>
         </div>
-        <div class="cmp-row">
-          <span>对方牌：</span>
-          <span v-for="(c, i) in compareCards.oppCards" :key="i" class="pcard xs" :class="{ red: isRed(c) }">{{ c }}</span>
-          <b>{{ compareCards.oppType }}</b>
+
+        <!-- 比牌结果全员公布（动效面板，所有人可见双方牌面） -->
+        <div v-if="publicCompare" :key="publicCompare.seq" class="pub-cmp">
+          <div class="pc-title">
+            🔍 验牌 · {{ nameOfUser(publicCompare.from) }} 向
+            {{ nameOfUser(publicCompare.to) }} 发起（{{ publicCompare.cost }} 分）
+          </div>
+          <div
+            v-for="r in publicCompare.reveals"
+            :key="r.userId"
+            class="pc-row"
+            :class="{ win: r.result === 'win', lose: r.result === 'lose' }"
+          >
+            <span class="pc-name">{{ r.nickname }}</span>
+            <span
+              v-for="(c, i) in r.cards"
+              :key="i"
+              class="pcard sm pc-flip"
+              :class="{ red: isRed(c) }"
+              :style="{ animationDelay: `${0.15 + i * 0.14}s` }"
+              >{{ c }}</span
+            >
+            <span class="pc-type">{{ r.typeName }}</span>
+            <span class="pc-flag">{{ r.result === 'win' ? '🏆 胜' : '✖ 弃' }}</span>
+          </div>
         </div>
-        <div class="cmp-tip">点击关闭</div>
-      </div>
 
-      <!-- 本手结算 -->
-      <div v-if="settle" class="settle-bar">
-        <div class="s-title">{{ nameOfUser(settle.winner) }} 赢得 {{ settle.winAmount }} 分{{ settle.reason === 'others_folded' ? '（无需开牌）' : '' }}<span v-if="nextRemain > 0" class="s-next">· 下一手 {{ nextRemain }}s</span></div>
-        <div v-for="d in settle.deltas" :key="d.userId" class="s-item">
-          {{ d.nickname }} <b :class="d.delta > 0 ? 'pos' : d.delta < 0 ? 'neg' : ''">{{ d.delta > 0 ? `+${d.delta}` : d.delta }}</b>
-        </div>
-      </div>
-
-      <!-- 操作区 -->
-      <div v-if="canActNow" class="actions mine">
-        <button v-if="!state?.mySeen" class="btn look" @click="doLook">看牌</button>
-        <button class="btn call" @click="emit('action', { t: 'zjh_call' })">
-          跟注 {{ state?.mySeen ? (state?.stake || 0) * 2 : state?.stake || 0 }}
-        </button>
-        <button
-          v-for="amt in raiseOptions"
-          :key="amt"
-          class="btn raise"
-          :disabled="(state?.stake || 0) >= (state?.stakeCap || 100)"
-          @click="emit('action', { t: 'zjh_raise', amount: amt })"
-        >
-          +{{ amt }}
-        </button>
-        <button v-if="canCompare" class="btn compare" @click="pickingTarget = !pickingTarget">比牌 {{ compareCost }}</button>
-        <button class="btn fold" @click="emit('action', { t: 'zjh_fold' })">弃牌</button>
-      </div>
-      <div v-else-if="state?.phase === 'betting' && state?.turnSeat >= 0" class="idle-tip">
-        等待 {{ nameOfSeat(state.turnSeat) }} 行动…
-      </div>
-      <div v-else class="idle-tip">{{ state?.phase === 'showdown' ? '开牌结算中…' : '等待下一手…' }}</div>
-
-      <!-- 比牌选人 -->
-      <div v-if="pickingTarget" class="target-pick">
-        <div class="tp-title">选择比牌对象（{{ state?.mySeen ? '已看牌 ' : '闷牌 ' }}费用 {{ compareCost }}）</div>
-        <div class="tp-list">
-          <button v-for="o in compareTargets" :key="o.userId" class="tp-btn" @click="pickTarget(o.seat)">
-            {{ o.nickname }}
+        <!-- 验牌记录（常驻，整局累计） -->
+        <div v-if="compareLog.length" class="cmp-log">
+          <button class="cl-head" @click="cmpOpen = !cmpOpen">
+            <span>🔍 验牌记录（{{ compareLog.length }}）</span>
+            <span class="cl-toggle">{{ cmpOpen ? '收起 ▲' : '展开 ▼' }}</span>
           </button>
+          <div v-if="cmpOpen" class="cl-list">
+            <div v-for="c in compareLog" :key="c.seq" class="cl-row">
+              <span class="cl-round">第{{ c.round }}手</span>
+              <span class="cl-names">{{ nameOfUser(c.from) }} ⇄ {{ nameOfUser(c.to) }}</span>
+              <span class="cl-winner" :class="{ mine: c.winner === myId }"
+                >🏆 {{ nameOfUser(c.winner) }}</span
+              >
+            </div>
+          </div>
         </div>
-        <button class="tp-cancel" @click="pickingTarget = false">取消</button>
-      </div>
 
-      <!-- 我要验牌 动态弹框（全房间可见+语音通知） -->
-      <div v-if="yanpai" :key="yanpai.seq" class="yanpai-pop">
-        <div class="yp-main">「{{ nameOfUser(yanpai.from) }}」我要验牌！</div>
-        <div class="yp-sub">比牌对象：<b>{{ nameOfUser(yanpai.to) }}</b>（输家自动弃牌）</div>
-      </div>
+        <!-- 我的手牌 -->
+        <div class="my-cards" @click="!state?.mySeen && canActNow && doLook()">
+          <template v-if="state?.myCards?.length">
+            <span
+              v-for="(c, i) in state.myCards"
+              :key="i"
+              class="pcard flip"
+              :class="{ red: isRed(c) }"
+              >{{ c }}</span
+            >
+            <span v-if="state?.myRank" class="my-rank">{{ state.myRank }}</span>
+          </template>
+          <template v-else>
+            <span v-for="n in 3" :key="n" class="pcard back" />
+            <span class="look-hint">{{ canActNow ? '点击看牌' : '闷牌中' }}</span>
+          </template>
+        </div>
+
+        <!-- 比牌结果浮层（我参与的） -->
+        <div v-if="compareCards" class="cmp-pop" @click="dismissCompare">
+          <div class="cmp-title">
+            {{ compareCards.result === 'win' ? '🎉 比牌获胜！' : '😭 比牌输了，自动弃牌' }}
+          </div>
+          <div class="cmp-row">
+            <span>我的牌：</span>
+            <span
+              v-for="(c, i) in compareCards.myCards"
+              :key="i"
+              class="pcard xs"
+              :class="{ red: isRed(c) }"
+              >{{ c }}</span
+            >
+            <b>{{ compareCards.myType }}</b>
+          </div>
+          <div class="cmp-row">
+            <span>对方牌：</span>
+            <span
+              v-for="(c, i) in compareCards.oppCards"
+              :key="i"
+              class="pcard xs"
+              :class="{ red: isRed(c) }"
+              >{{ c }}</span
+            >
+            <b>{{ compareCards.oppType }}</b>
+          </div>
+          <div class="cmp-tip">点击关闭</div>
+        </div>
+
+        <!-- 本手结算 -->
+        <div v-if="settle" class="settle-bar">
+          <div class="s-title">
+            {{ nameOfUser(settle.winner) }} 赢得 {{ settle.winAmount }} 分{{
+              settle.reason === 'others_folded' ? '（无需开牌）' : ''
+            }}<span v-if="nextRemain > 0" class="s-next">· 下一手 {{ nextRemain }}s</span>
+          </div>
+          <div v-for="d in settle.deltas" :key="d.userId" class="s-item">
+            {{ d.nickname }}
+            <b :class="d.delta > 0 ? 'pos' : d.delta < 0 ? 'neg' : ''">{{
+              d.delta > 0 ? `+${d.delta}` : d.delta
+            }}</b>
+          </div>
+        </div>
+
+        <!-- 操作区 -->
+        <div v-if="canActNow" class="actions mine">
+          <button v-if="!state?.mySeen" class="btn look" @click="doLook">看牌</button>
+          <button class="btn call" @click="emit('action', { t: 'zjh_call' })">
+            跟注 {{ state?.mySeen ? (state?.stake || 0) * 2 : state?.stake || 0 }}
+          </button>
+          <button
+            v-for="amt in raiseOptions"
+            :key="amt"
+            class="btn raise"
+            :disabled="(state?.stake || 0) >= (state?.stakeCap || 100)"
+            @click="emit('action', { t: 'zjh_raise', amount: amt })"
+          >
+            +{{ amt }}
+          </button>
+          <button v-if="canCompare" class="btn compare" @click="pickingTarget = !pickingTarget">
+            比牌 {{ compareCost }}
+          </button>
+          <button class="btn fold" @click="emit('action', { t: 'zjh_fold' })">弃牌</button>
+        </div>
+        <div v-else-if="state?.phase === 'betting' && state?.turnSeat >= 0" class="idle-tip">
+          等待 {{ nameOfSeat(state.turnSeat) }} 行动…
+        </div>
+        <div v-else class="idle-tip">
+          {{ state?.phase === 'showdown' ? '开牌结算中…' : '等待下一手…' }}
+        </div>
+
+        <!-- 比牌选人 -->
+        <div v-if="pickingTarget" class="target-pick">
+          <div class="tp-title">
+            选择比牌对象（{{ state?.mySeen ? '已看牌 ' : '闷牌 ' }}费用 {{ compareCost }}）
+          </div>
+          <div class="tp-list">
+            <button
+              v-for="o in compareTargets"
+              :key="o.userId"
+              class="tp-btn"
+              @click="pickTarget(o.seat)"
+            >
+              {{ o.nickname }}
+            </button>
+          </div>
+          <button class="tp-cancel" @click="pickingTarget = false">取消</button>
+        </div>
+
+        <!-- 我要验牌 动态弹框（全房间可见+语音通知） -->
+        <div v-if="yanpai" :key="yanpai.seq" class="yanpai-pop">
+          <div class="yp-main">「{{ nameOfUser(yanpai.from) }}」我要验牌！</div>
+          <div class="yp-sub">
+            比牌对象：<b>{{ nameOfUser(yanpai.to) }}</b
+            >（输家自动弃牌）
+          </div>
+        </div>
       </template>
     </template>
   </div>
@@ -186,14 +267,27 @@ const compareCards = computed(() => props.events.compareCards);
 
 const pickingTarget = ref(false);
 const compareVisibleUntil = ref(0);
-void compareVisibleUntil;
+void compareVisibleUntil.value;
 
-const canActNow = computed(() => props.phase === 'playing' && props.state?.phase === 'betting' && props.state?.turnSeat === props.mySeat && !props.state?.myFolded && !props.state?.myAllIn);
-const canCompare = computed(() => canActNow.value && (props.state?.roundNo || 1) >= (props.state?.compareMinRound || 3));
+const canActNow = computed(
+  () =>
+    props.phase === 'playing' &&
+    props.state?.phase === 'betting' &&
+    props.state?.turnSeat === props.mySeat &&
+    !props.state?.myFolded &&
+    !props.state?.myAllIn
+);
+const canCompare = computed(
+  () => canActNow.value && (props.state?.roundNo || 1) >= (props.state?.compareMinRound || 3)
+);
 // 比牌费 = 自己跟注价的 2 倍（闷 2×单注 / 看 4×单注）
-const compareCost = computed(() => (props.state?.mySeen ? (props.state?.stake || 0) * 4 : (props.state?.stake || 0) * 2));
+const compareCost = computed(() =>
+  props.state?.mySeen ? (props.state?.stake || 0) * 4 : (props.state?.stake || 0) * 2
+);
 const raiseOptions = computed<number[]>(() => props.state?.raiseSteps || [10, 20, 50]);
-const compareTargets = computed(() => (props.state?.others || []).filter((o: any) => !o.folded && !o.allIn && o.userId !== myId.value));
+const compareTargets = computed(() =>
+  (props.state?.others || []).filter((o: any) => !o.folded && !o.allIn && o.userId !== myId.value)
+);
 
 // 轮到自己行动：提示音（仅状态切换沿触发，进房即轮到不响）
 watch(canActNow, (now, before) => {
@@ -269,7 +363,9 @@ onMounted(() => {
   timer = setInterval(() => {
     remainSec.value = Math.max(0, Math.ceil(((props.state?.deadline || 0) - Date.now()) / 1000));
     nextRemain.value =
-      props.state?.phase === 'settle' && props.state?.nextDeadline ? Math.max(0, Math.ceil((props.state.nextDeadline - Date.now()) / 1000)) : 0;
+      props.state?.phase === 'settle' && props.state?.nextDeadline
+        ? Math.max(0, Math.ceil((props.state.nextDeadline - Date.now()) / 1000))
+        : 0;
   }, 400);
 });
 onUnmounted(() => {

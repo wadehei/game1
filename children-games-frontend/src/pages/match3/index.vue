@@ -4,17 +4,19 @@
     <GameHeader
       :items="headerItems"
       :muted="sounds.isMuted.value"
-      headerClass="match3-header"
+      header-class="match3-header"
       level-selectable
-      @toggleSound="sounds.toggleSound"
-      @goBack="router.back()"
-      @selectLevel="showLevelSelect = true"
+      @toggle-sound="sounds.toggleSound"
+      @go-back="router.back()"
+      @select-level="showLevelSelect = true"
     />
 
     <!-- 状态栏 -->
     <div class="m3-status">
       <span class="m3-chip score">⭐ {{ score }} / {{ targetScore }}</span>
-      <span class="m3-chip moves" :class="{ danger: movesLeft <= 5 }">👣 剩余步数 {{ movesLeft }}</span>
+      <span class="m3-chip moves" :class="{ danger: movesLeft <= 5 }"
+        >👣 剩余步数 {{ movesLeft }}</span
+      >
       <span v-if="combo > 1" class="m3-chip combo">🔥 连击 ×{{ combo }}</span>
     </div>
 
@@ -55,7 +57,11 @@
       :stars="stars"
       :icon="gameWon ? '🎉' : '💪'"
       :title="gameWon ? '消除大成功！' : '步数用完啦，再试一次！'"
-      :info="gameWon ? `用了 ${movesUsed} 步，得到 ${score} 分` : `还差 ${targetScore - score} 分，加油！`"
+      :info="
+        gameWon
+          ? `用了 ${movesUsed} 步，得到 ${score} 分`
+          : `还差 ${targetScore - score} 分，加油！`
+      "
       @retry="restartGame"
       @next="nextLevel"
     />
@@ -133,7 +139,9 @@ let cellIdSeq = 1;
 let gameEnded = false;
 
 const theme = computed(() => THEMES[Math.floor((currentLevel.value - 1) / 5) % THEMES.length]);
-const kindsCount = computed(() => Math.min(theme.value.length, Number(levelConfig.value.kinds) || 6));
+const kindsCount = computed(() =>
+  Math.min(theme.value.length, Number(levelConfig.value.kinds) || 6)
+);
 const movesUsed = computed(() => (Number(levelConfig.value.moves) || 20) - movesLeft.value);
 const flatCells = computed(() => grid.value.flat());
 
@@ -143,7 +151,9 @@ const headerItems = computed(() => [
   { label: '步数', value: `${movesLeft.value}` },
 ]);
 
-const progressPct = computed(() => Math.min(100, Math.floor((score.value / Math.max(1, targetScore.value)) * 100)));
+const progressPct = computed(() =>
+  Math.min(100, Math.floor((score.value / Math.max(1, targetScore.value)) * 100))
+);
 
 // ── 棋盘构建 ──
 const makeCell = (r: number, c: number, kind?: number): Cell => ({
@@ -155,7 +165,9 @@ const makeCell = (r: number, c: number, kind?: number): Cell => ({
 
 const buildBoard = () => {
   do {
-    grid.value = Array.from({ length: ROWS }, (_, r) => Array.from({ length: COLS }, (_, c) => makeCell(r, c)));
+    grid.value = Array.from({ length: ROWS }, (_, r) =>
+      Array.from({ length: COLS }, (_, c) => makeCell(r, c))
+    );
   } while (findMatches().size > 0 || !hasAnyMove());
 };
 
@@ -318,7 +330,8 @@ const shuffleBoard = (): void => {
 };
 
 // ── 交互 ──
-const isSelected = (r: number, c: number): boolean => selected.value?.r === r && selected.value?.c === c;
+const isSelected = (r: number, c: number): boolean =>
+  selected.value?.r === r && selected.value?.c === c;
 const isNeighborOfSelected = (r: number, c: number): boolean => {
   if (!selected.value) return false;
   return Math.abs(selected.value.r - r) + Math.abs(selected.value.c - c) === 1;
@@ -371,7 +384,10 @@ const winGame = () => {
   const left = movesLeft.value;
   stars.value = left >= 8 ? 3 : left >= 4 ? 2 : 1;
   sounds.play('success');
-  finishAndSave();
+  showResult.value = true;
+  // 胜局计入场次与胜场（保存进度）；失败局由 loseGame 记一局游玩
+  // 成绩 = 用掉的步数（越小越好，进排行榜/星级体系）
+  saveGameProgress({ level: currentLevel.value, score: movesUsed.value, stars: stars.value });
 };
 
 const loseGame = () => {
@@ -380,13 +396,7 @@ const loseGame = () => {
   gameWon.value = false;
   stars.value = 0;
   sounds.play('fail');
-  finishAndSave();
-};
-
-const finishAndSave = () => {
   showResult.value = true;
-  // 成绩 = 用掉的步数（越小越好，进排行榜/星级体系）
-  saveGameProgress({ level: currentLevel.value, score: movesUsed.value, stars: stars.value });
   recordPlay();
 };
 
@@ -422,7 +432,9 @@ const applyLevelConfig = async (level: number) => {
   movesLeft.value = Number(levelConfig.value.moves) || 20;
   targetScore.value = Number(levelConfig.value.targetScore) || 200;
   buildBoard();
-  speak(`第 ${level} 关，凑够 ${targetScore.value} 分就赢啦！交换相邻的两个小图，三个连成一排就能消除`);
+  speak(
+    `第 ${level} 关，凑够 ${targetScore.value} 分就赢啦！交换相邻的两个小图，三个连成一排就能消除`
+  );
 };
 
 const restartGame = () => setupLevel(currentLevel.value);
@@ -440,21 +452,44 @@ const chooseLevel = async (lv: number) => {
 const pauseGame = () => (paused.value = true);
 const resumeGame = () => (paused.value = false);
 const quitGame = () => router.back();
+// 区分"系统自动暂停"与"用户主动暂停"：自动来源结束后只恢复自己发起的暂停
+let autoPausedByHidden = false;
+let autoPausedByRest = false;
+// 切后台自动暂停，回到游戏继续（此前是 11 款游戏里唯一缺这个的）
+const handleVisibilityChange = () => {
+  if (document.hidden) {
+    if (!gameEnded && !paused.value) {
+      autoPausedByHidden = true;
+      pauseGame();
+    }
+  } else if (autoPausedByHidden) {
+    autoPausedByHidden = false;
+    resumeGame();
+  }
+};
 const onGuardPause = () => {
-  if (!gameEnded) pauseGame();
+  if (!gameEnded && !paused.value) {
+    autoPausedByRest = true;
+    pauseGame();
+  }
 };
 const onGuardResume = () => {
-  if (paused.value) resumeGame();
+  if (autoPausedByRest) {
+    autoPausedByRest = false;
+    resumeGame();
+  }
 };
 
 onMounted(async () => {
   const start = await loadStartLevel();
   currentLevel.value = start;
   await applyLevelConfig(start);
+  document.addEventListener('visibilitychange', handleVisibilityChange);
   document.addEventListener(GAME_PAUSE_EVENT, onGuardPause);
   document.addEventListener(GAME_RESUME_EVENT, onGuardResume);
 });
 onUnmounted(() => {
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
   document.removeEventListener(GAME_PAUSE_EVENT, onGuardPause);
   document.removeEventListener(GAME_RESUME_EVENT, onGuardResume);
 });
@@ -568,7 +603,9 @@ onUnmounted(() => {
   justify-content: center;
   cursor: pointer;
   padding: 0;
-  transition: transform 0.1s ease, background 0.1s ease;
+  transition:
+    transform 0.1s ease,
+    background 0.1s ease;
 }
 
 .m3-cell.picked {
@@ -584,7 +621,9 @@ onUnmounted(() => {
 .m3-cell.clearing {
   transform: scale(0);
   opacity: 0;
-  transition: transform 0.3s ease, opacity 0.3s ease;
+  transition:
+    transform 0.3s ease,
+    opacity 0.3s ease;
 }
 
 .m3-cell.popin {

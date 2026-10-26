@@ -8,9 +8,10 @@ const page = await browser.newPage();
 await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2 });
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-let pageErrors = [];
+const pageErrors = [];
 page.on('pageerror', (err) => pageErrors.push(err.message));
-const realErrors = () => pageErrors.filter((e) => !/NetworkError|404|500|Request failed|AxiosError|ERR_/i.test(e));
+const realErrors = () =>
+  pageErrors.filter((e) => !/NetworkError|404|500|Request failed|AxiosError|ERR_/i.test(e));
 const check = (label, cond) => console.log(`${cond ? '✅' : '❌'} ${label}`);
 
 // 创建（或复用已有同名）角色并进入大厅
@@ -100,7 +101,10 @@ await createProfile('妈妈', 10); // 👑
     avatar: document.querySelector('.player-avatar')?.textContent?.trim(),
     cards: document.querySelectorAll('.game-card').length,
   }));
-  check(`妈妈进入大厅：「${info.nickname}」角色 ${info.avatar}（期望 👑）`, info.nickname === '妈妈' && info.avatar === '👑');
+  check(
+    `妈妈进入大厅：「${info.nickname}」角色 ${info.avatar}（期望 👑）`,
+    info.nickname === '妈妈' && info.avatar === '👑'
+  );
   check(`大厅 ${info.cards} 张游戏卡片`, info.cards === 8);
 }
 await page.screenshot({ path: shot('home-mom') });
@@ -111,8 +115,16 @@ await page.screenshot({ path: shot('home-mom') });
   check(`妈妈通关数学：${r.info}（含用时）`, r.modal && /用时 \d+ 秒/.test(r.info || ''));
   await page.screenshot({ path: shot('math-win') });
   const rows = await openBoard(8); // 第 8 张卡片 = 数学小怪兽
-  check(`数学排行榜含妈妈（${rows.length} 行，仅家庭角色）`, rows.length >= 1 && rows.every((r) => ['妈妈', '儿子'].includes(r.name)) && rows.some((r) => r.name === '妈妈'));
-  check(`成绩格式「${rows.find((r) => r.name === '妈妈')?.score}」（期望 最快 X 秒）`, /最快 \d+ 秒/.test(rows.find((r) => r.name === '妈妈')?.score || ''));
+  check(
+    `数学排行榜含妈妈（${rows.length} 行，仅家庭角色）`,
+    rows.length >= 1 &&
+      rows.every((r) => ['妈妈', '儿子'].includes(r.name)) &&
+      rows.some((r) => r.name === '妈妈')
+  );
+  check(
+    `成绩格式「${rows.find((r) => r.name === '妈妈')?.score}」（期望 最快 X 秒）`,
+    /最快 \d+ 秒/.test(rows.find((r) => r.name === '妈妈')?.score || '')
+  );
 }
 
 // ═══ 4. 切换到儿子 ═══
@@ -133,11 +145,16 @@ await createProfile('儿子', 7); // 🐯
   check(`数学排行榜 ${rows.length} 行（期望 2）`, rows.length === 2);
   const names = rows.map((r) => r.name).join('、');
   const scores = rows.map((r) => parseInt((r.score || '').match(/\d+/)?.[0] || '0', 10));
-  check(`按用时升序：${names}（${scores.join('秒,')}秒）`, rows.length === 2 && scores[0] <= scores[1]);
+  check(
+    `按用时升序：${names}（${scores.join('秒,')}秒）`,
+    rows.length === 2 && scores[0] <= scores[1]
+  );
 }
 await page.goto(`${BASE}/#/`, { waitUntil: 'networkidle2' });
 await sleep(1800);
 await page.screenshot({ path: shot('home-son') });
 
-console.log(`\n页面异常：${realErrors().length}${realErrors().length ? ' → ' + realErrors().join(' | ') : ' ✅ 无'}`);
+console.log(
+  `\n页面异常：${realErrors().length}${realErrors().length ? ' → ' + realErrors().join(' | ') : ' ✅ 无'}`
+);
 await browser.close();

@@ -5,7 +5,10 @@
     <div class="card">
       <div class="field">
         <div class="field-label">连续游玩提醒间隔</div>
-        <div class="field-desc">孩子连续玩到设定时长后，全屏休息 20 秒。0 表示关闭提醒。此设置为全局默认，手机上的家长中心仍可单独覆盖。</div>
+        <div class="field-desc">
+          孩子连续玩到设定时长后，全屏休息 20 秒。0
+          表示关闭提醒。此设置为全局默认，手机上的家长中心仍可单独覆盖。
+        </div>
         <div class="chips">
           <button
             v-for="opt in OPTIONS"
@@ -13,7 +16,9 @@
             class="chip"
             :class="{ active: interval === opt.value }"
             @click="interval = opt.value"
-          >{{ opt.label }}</button>
+          >
+            {{ opt.label }}
+          </button>
         </div>
       </div>
       <button class="save-btn" :disabled="saving" @click="save">
@@ -24,7 +29,10 @@
       <div class="voice-section">
         <div class="field-label">语音引导试听</div>
         <div class="voice-desc">当前音色：{{ voiceName }}</div>
-        <div class="voice-tip">游戏内的引导/读题/鼓励语音使用同一音色。若音色较机械，建议用 Edge 浏览器打开本应用（自带"晓晓"等自然语音，效果明显更好）。</div>
+        <div class="voice-tip">
+          游戏内的引导/读题/鼓励语音使用同一音色。若音色较机械，建议用 Edge
+          浏览器打开本应用（自带"晓晓"等自然语音，效果明显更好）。
+        </div>
         <button class="voice-btn" @click="testVoice">🔊 试听一段</button>
       </div>
     </div>

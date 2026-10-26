@@ -26,7 +26,9 @@ export const getHandler = (type: GameType): GameHandler => {
   return handler;
 };
 
-export const gameList = (): Array<Pick<GameHandler, 'type' | 'title' | 'emoji' | 'desc' | 'minPlayers' | 'maxPlayers'>> =>
+export const gameList = (): Array<
+  Pick<GameHandler, 'type' | 'title' | 'emoji' | 'desc' | 'minPlayers' | 'maxPlayers'>
+> =>
   Object.values(gameHandlers).map((h) => ({
     type: h.type,
     title: h.title,

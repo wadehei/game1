@@ -42,7 +42,11 @@ export function useGameProgress(gameId: string) {
     }
   };
 
-  const saveProgress = async (data: { level: number; score: number; stars: number }): Promise<void> => {
+  const saveProgress = async (data: {
+    level: number;
+    score: number;
+    stars: number;
+  }): Promise<void> => {
     try {
       const result = await updateGameProgress(gameId, data);
       localStorage.removeItem(localKey(gameId));
@@ -53,7 +57,9 @@ export function useGameProgress(gameId: string) {
     } catch {
       try {
         const prev = readLocalProgress(gameId);
-        const better = !prev || data.level > prev.level ||
+        const better =
+          !prev ||
+          data.level > prev.level ||
           (data.level === prev.level && (data.score || 0) > (prev.score || 0));
         if (better) {
           localStorage.setItem(localKey(gameId), JSON.stringify(data));

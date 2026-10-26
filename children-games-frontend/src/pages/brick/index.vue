@@ -4,17 +4,17 @@
     <GameHeader
       :items="headerItems"
       :muted="sounds.isMuted.value"
-      headerClass="brick-header"
+      header-class="brick-header"
       level-selectable
-      @toggleSound="sounds.toggleSound"
-      @goBack="router.back()"
-      @selectLevel="openLevelSelect"
+      @toggle-sound="sounds.toggleSound"
+      @go-back="router.back()"
+      @select-level="openLevelSelect"
     />
 
     <!-- 游戏画布：鼠标/触摸移动球拍 -->
     <canvas
-      ref="canvasRef"
       id="brickCanvas"
+      ref="canvasRef"
       class="game-canvas"
       @mousemove="movePaddle"
       @touchmove="movePaddleTouch"
@@ -33,7 +33,13 @@
     />
 
     <!-- 暂停（头部为 fixed，按钮下移避开） -->
-    <PauseMenu :show="paused" :btn-top="96" @pause="pauseGame" @resume="resumeGame" @quit="quitGame" />
+    <PauseMenu
+      :show="paused"
+      :btn-top="96"
+      @pause="pauseGame"
+      @resume="resumeGame"
+      @quit="quitGame"
+    />
 
     <!-- 选关弹层 -->
     <LevelSelectModal
@@ -96,11 +102,28 @@ let animationId: number | null = null;
 let gameEnded = false;
 
 // 砖块配色（按行循环，彩虹排布）
-const BRICK_COLORS = ['#FF6B6B', '#FFD93D', '#6BCB77', '#4D96FF', '#a18cd1', '#ff9966', '#4ECDC4', '#e84393'];
+const BRICK_COLORS = [
+  '#FF6B6B',
+  '#FFD93D',
+  '#6BCB77',
+  '#4D96FF',
+  '#a18cd1',
+  '#ff9966',
+  '#4ECDC4',
+  '#e84393',
+];
 const BRICK_H = 22;
 
 let bricks: Brick[] = [];
-let particles: Array<{ x: number; y: number; radius: number; alpha: number; color: string; vx: number; vy: number }> = [];
+let particles: Array<{
+  x: number;
+  y: number;
+  radius: number;
+  alpha: number;
+  color: string;
+  vx: number;
+  vy: number;
+}> = [];
 
 const paddleHeight = 12;
 let paddleX = 140;
@@ -235,7 +258,8 @@ const spawnParticles = (x: number, y: number, color: string) => {
   for (let i = 0; i < 6; i += 1) {
     if (particles.length < 30) {
       particles.push({
-        x, y,
+        x,
+        y,
         radius: 2 + Math.random() * 4,
         alpha: 1,
         color,
@@ -299,8 +323,10 @@ const update = () => {
   for (const b of bricks) {
     if (!b.alive) continue;
     if (
-      ballX + BALL_R >= b.x && ballX - BALL_R <= b.x + b.w &&
-      ballY + BALL_R >= b.y && ballY - BALL_R <= b.y + b.h
+      ballX + BALL_R >= b.x &&
+      ballX - BALL_R <= b.x + b.w &&
+      ballY + BALL_R >= b.y &&
+      ballY - BALL_R <= b.y + b.h
     ) {
       b.alive = false;
       score.value += b.points;

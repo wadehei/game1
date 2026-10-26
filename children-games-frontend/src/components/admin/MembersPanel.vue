@@ -17,7 +17,8 @@
                 class="emoji-pick"
                 :class="{ picked: editAvatar === e }"
                 @click="editAvatar = e"
-              >{{ e }}</span>
+                >{{ e }}</span
+              >
             </div>
           </template>
           <template v-else>
@@ -27,11 +28,18 @@
               <span v-if="!u.isFamily" class="guest-tag">游客</span>
             </div>
             <div class="member-meta">
-              Lv.{{ u.level }} · ⭐{{ u.totalStars }} · 💰{{ u.battleChips ?? 1000 }} 积分 · 玩过 {{ u.gamesPlayed }} 个游戏
+              Lv.{{ u.level }} · ⭐{{ u.totalStars }} · 💰{{ u.battleChips ?? 1000 }} 积分 · 玩过
+              {{ u.gamesPlayed }} 个游戏
               <template v-if="u.lastActiveAt"> · 最近 {{ timeAgo(u.lastActiveAt) }}</template>
             </div>
             <div v-if="chipsEditId === u.id" class="chips-edit">
-              <input v-model.number="chipsInput" class="chips-input" type="number" min="0" placeholder="数量" />
+              <input
+                v-model.number="chipsInput"
+                class="chips-input"
+                type="number"
+                min="0"
+                placeholder="数量"
+              />
               <button class="act-btn save" @click="applyChips(u, 'add')">＋增加</button>
               <button class="act-btn warn" @click="applyChips(u, 'sub')">－减少</button>
               <button class="act-btn" @click="applyChips(u, 'set')">设为</button>
@@ -59,12 +67,37 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { getUsers, updateUser, resetUserProgress, deleteUser, clearUserPin, adjustUserChips, type AdminUser } from '@/api/admin';
+import {
+  getUsers,
+  updateUser,
+  resetUserProgress,
+  deleteUser,
+  clearUserPin,
+  adjustUserChips,
+  type AdminUser,
+} from '@/api/admin';
 import { showToast } from '@/utils/toastBus';
 import { confirmAction } from '@/utils/confirmBus';
 import PlayerAvatar from '@/components/PlayerAvatar.vue';
 
-const EMOJIS = ['🐰', '🐻', '🐼', '🦊', '🐸', '🐵', '🐯', '🦁', '🐷', '🐨', '👑', '🦄', '🌟', '🌸', '🤖', '😊'];
+const EMOJIS = [
+  '🐰',
+  '🐻',
+  '🐼',
+  '🦊',
+  '🐸',
+  '🐵',
+  '🐯',
+  '🦁',
+  '🐷',
+  '🐨',
+  '👑',
+  '🦄',
+  '🌟',
+  '🌸',
+  '🤖',
+  '😊',
+];
 
 const users = ref<AdminUser[]>([]);
 const loading = ref(true);
@@ -82,7 +115,8 @@ const openChips = (u: AdminUser) => {
 const applyChips = async (u: AdminUser, mode: 'add' | 'sub' | 'set') => {
   const n = Math.trunc(Number(chipsInput.value));
   if (!Number.isFinite(n) || (mode !== 'set' && n <= 0)) return;
-  const payload = mode === 'add' ? { delta: n } : mode === 'sub' ? { delta: -n } : { set: Math.max(0, n) };
+  const payload =
+    mode === 'add' ? { delta: n } : mode === 'sub' ? { delta: -n } : { set: Math.max(0, n) };
   const res = await adjustUserChips(u.id, payload).catch(() => null);
   if (res && typeof res.battleChips === 'number') {
     u.battleChips = res.battleChips;
@@ -114,7 +148,10 @@ const saveEdit = async (id: number) => {
 };
 
 const clearPin = async (u: AdminUser) => {
-  const ok = await confirmAction({ title: `清除「${u.nickname}」的角色口令？`, detail: '清除后任何人都能直接进入该角色。' });
+  const ok = await confirmAction({
+    title: `清除「${u.nickname}」的角色口令？`,
+    detail: '清除后任何人都能直接进入该角色。',
+  });
   if (!ok) return;
   await clearUserPin(u.id).catch(() => {});
   await load();

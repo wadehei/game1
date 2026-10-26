@@ -8,7 +8,7 @@ const page = await browser.newPage();
 await page.setViewport({ width: 1280, height: 800 });
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-let pageErrors = [];
+const pageErrors = [];
 page.on('pageerror', (err) => pageErrors.push(err.message));
 const check = (label, cond) => console.log(`${cond ? '✅' : '❌'} ${label}`);
 
@@ -40,7 +40,6 @@ await page.evaluate(async (adminPassword) => {
 // ═══ 1. 触发一个客户端错误（异步 throw → window error 事件） ═══
 await page.evaluate(() => {
   setTimeout(() => {
-    // eslint-disable-next-line no-undef
     throw new Error('E2E测试错误：这是一条故意制造的日志');
   }, 0);
 });
@@ -61,7 +60,9 @@ check(`上报带用户标识（实际：${clientLog?.message}）`, /用户\d+/.t
 await page.goto(`${BASE}/#/admin`, { waitUntil: 'networkidle2' });
 await sleep(1000);
 await page.evaluate(() => {
-  [...document.querySelectorAll('.nav-item, .mobile-tab')].find((t) => t.textContent.includes('错误日志'))?.click();
+  [...document.querySelectorAll('.nav-item, .mobile-tab')]
+    .find((t) => t.textContent.includes('错误日志'))
+    ?.click();
 });
 await sleep(1000);
 const rows = await page.evaluate(() => document.querySelectorAll('.log-row').length);
@@ -87,5 +88,7 @@ const afterClear = await page.evaluate(async () => {
 });
 check(`清空后日志为 0 条（实际 ${afterClear}）`, afterClear === 0);
 
-console.log(`\n页面异常：${pageErrors.length}${pageErrors.length ? ' → ' + pageErrors.join(' | ') : ' ✅ 无'}`);
+console.log(
+  `\n页面异常：${pageErrors.length}${pageErrors.length ? ' → ' + pageErrors.join(' | ') : ' ✅ 无'}`
+);
 await browser.close();

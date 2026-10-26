@@ -8,7 +8,7 @@ const page = await browser.newPage();
 await page.setViewport({ width: 390, height: 844 });
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-let pageErrors = [];
+const pageErrors = [];
 page.on('pageerror', (err) => pageErrors.push(err.message));
 const isNoise = (e) => /NetworkError|Failed to fetch|AxiosError|ERR_|404/i.test(e);
 const check = (label, cond) => console.log(`${cond ? '✅' : '❌'} ${label}`);
@@ -17,23 +17,30 @@ await page.goto(`${BASE}/#/`, { waitUntil: 'networkidle2', timeout: 30000 }).cat
 await sleep(800);
 const ctx = await page.evaluate(async (pw) => {
   // 建一个测试角色并登录
-  const created = await (await fetch('/api/user/login/family', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nickname: '账号测试', avatar: '🤖' }),
-  })).json();
-  const admin = await (await fetch('/api/admin/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ password: pw }),
-  })).json();
+  const created = await (
+    await fetch('/api/user/login/family', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nickname: '账号测试', avatar: '🤖' }),
+    })
+  ).json();
+  const admin = await (
+    await fetch('/api/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw }),
+    })
+  ).json();
   return { uid: created.data.userInfo.id, token: created.data.token, adminToken: admin.data.token };
 }, ADMIN_PASSWORD);
 const api = (path, opts = {}) =>
-  page.evaluate(async ({ path, opts }) => {
-    const res = await fetch(path, opts);
-    return { status: res.status, body: await res.json() };
-  }, { path, opts });
+  page.evaluate(
+    async ({ path, opts }) => {
+      const res = await fetch(path, opts);
+      return { status: res.status, body: await res.json() };
+    },
+    { path, opts }
+  );
 const loginAs = (body) =>
   api('/api/user/login/family', {
     method: 'POST',
@@ -121,11 +128,13 @@ check(`测试角色已创建（uid=${ctx.uid}）`, !!ctx.uid);
 
 // ═══ 9. UI：选角色页锁标 + PIN 键盘（用全新角色，避开上面的防爆破锁） ═══
 const ui = await page.evaluate(async () => {
-  const created = await (await fetch('/api/user/login/family', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nickname: '键盘测试', avatar: '🐯' }),
-  })).json();
+  const created = await (
+    await fetch('/api/user/login/family', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nickname: '键盘测试', avatar: '🐯' }),
+    })
+  ).json();
   const uid = created.data.userInfo.id;
   await fetch('/api/user/pin', {
     method: 'PUT',

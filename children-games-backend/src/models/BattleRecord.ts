@@ -17,7 +17,10 @@ interface BattleRecordAttributes {
 
 interface BattleRecordCreationAttributes extends Optional<BattleRecordAttributes, 'id'> {}
 
-export class BattleRecord extends Model<BattleRecordAttributes, BattleRecordCreationAttributes> implements BattleRecordAttributes {
+export class BattleRecord
+  extends Model<BattleRecordAttributes, BattleRecordCreationAttributes>
+  implements BattleRecordAttributes
+{
   public id!: number;
   public userId!: number;
   public gameType!: string;

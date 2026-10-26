@@ -8,7 +8,18 @@ import {
 describe('achievementService', () => {
   describe('GAME_RULES', () => {
     it('should have all expected games', () => {
-      const expectedGames = ['memory', 'puzzle', 'fruit', 'balloon', 'tank', 'mole', 'simon', 'math', 'match3', 'brick'];
+      const expectedGames = [
+        'memory',
+        'puzzle',
+        'fruit',
+        'balloon',
+        'tank',
+        'mole',
+        'simon',
+        'math',
+        'match3',
+        'brick',
+      ];
       expectedGames.forEach((game) => {
         expect(GAME_RULES[game]).toBeDefined();
         expect(typeof GAME_RULES[game].lowerScoreIsBetter).toBe('boolean');
@@ -56,33 +67,78 @@ describe('achievementService', () => {
     describe('achievement checks', () => {
       it('first_win should check totalStars > 0', () => {
         const firstWin = ACHIEVEMENTS.find((a) => a.id === 'first_win')!;
-        expect(firstWin.check({ totalStars: 0, levels: {}, distinctGames: 0, dailyRewardClaimed: false })).toBe(false);
-        expect(firstWin.check({ totalStars: 1, levels: {}, distinctGames: 0, dailyRewardClaimed: false })).toBe(true);
+        expect(
+          firstWin.check({ totalStars: 0, levels: {}, distinctGames: 0, dailyRewardClaimed: false })
+        ).toBe(false);
+        expect(
+          firstWin.check({ totalStars: 1, levels: {}, distinctGames: 0, dailyRewardClaimed: false })
+        ).toBe(true);
       });
 
       it('star_10 should check totalStars >= 10', () => {
         const star10 = ACHIEVEMENTS.find((a) => a.id === 'star_10')!;
-        expect(star10.check({ totalStars: 9, levels: {}, distinctGames: 0, dailyRewardClaimed: false })).toBe(false);
-        expect(star10.check({ totalStars: 10, levels: {}, distinctGames: 0, dailyRewardClaimed: false })).toBe(true);
+        expect(
+          star10.check({ totalStars: 9, levels: {}, distinctGames: 0, dailyRewardClaimed: false })
+        ).toBe(false);
+        expect(
+          star10.check({ totalStars: 10, levels: {}, distinctGames: 0, dailyRewardClaimed: false })
+        ).toBe(true);
       });
 
       it('memory_master should check memory level >= 10', () => {
         const memoryMaster = ACHIEVEMENTS.find((a) => a.id === 'memory_master')!;
-        expect(memoryMaster.check({ totalStars: 0, levels: { memory: 9 }, distinctGames: 0, dailyRewardClaimed: false })).toBe(false);
-        expect(memoryMaster.check({ totalStars: 0, levels: { memory: 10 }, distinctGames: 0, dailyRewardClaimed: false })).toBe(true);
+        expect(
+          memoryMaster.check({
+            totalStars: 0,
+            levels: { memory: 9 },
+            distinctGames: 0,
+            dailyRewardClaimed: false,
+          })
+        ).toBe(false);
+        expect(
+          memoryMaster.check({
+            totalStars: 0,
+            levels: { memory: 10 },
+            distinctGames: 0,
+            dailyRewardClaimed: false,
+          })
+        ).toBe(true);
       });
 
       it('all_rounder should check distinctGames >= total games', () => {
         const allRounder = ACHIEVEMENTS.find((a) => a.id === 'all_rounder')!;
         const totalGames = Object.keys(GAME_RULES).length;
-        expect(allRounder.check({ totalStars: 0, levels: {}, distinctGames: totalGames - 1, dailyRewardClaimed: false })).toBe(false);
-        expect(allRounder.check({ totalStars: 0, levels: {}, distinctGames: totalGames, dailyRewardClaimed: false })).toBe(true);
+        expect(
+          allRounder.check({
+            totalStars: 0,
+            levels: {},
+            distinctGames: totalGames - 1,
+            dailyRewardClaimed: false,
+          })
+        ).toBe(false);
+        expect(
+          allRounder.check({
+            totalStars: 0,
+            levels: {},
+            distinctGames: totalGames,
+            dailyRewardClaimed: false,
+          })
+        ).toBe(true);
       });
 
       it('daily_done should check dailyRewardClaimed', () => {
         const dailyDone = ACHIEVEMENTS.find((a) => a.id === 'daily_done')!;
-        expect(dailyDone.check({ totalStars: 0, levels: {}, distinctGames: 0, dailyRewardClaimed: false })).toBe(false);
-        expect(dailyDone.check({ totalStars: 0, levels: {}, distinctGames: 0, dailyRewardClaimed: true })).toBe(true);
+        expect(
+          dailyDone.check({
+            totalStars: 0,
+            levels: {},
+            distinctGames: 0,
+            dailyRewardClaimed: false,
+          })
+        ).toBe(false);
+        expect(
+          dailyDone.check({ totalStars: 0, levels: {}, distinctGames: 0, dailyRewardClaimed: true })
+        ).toBe(true);
       });
     });
   });

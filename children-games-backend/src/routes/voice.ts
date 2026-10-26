@@ -12,10 +12,17 @@ import { success, fail, asyncHandler } from '../utils/response';
 
 // 与前端 admin/VoicePanel 的台词清单保持一致（防任意文件写入）
 const VOICE_KEYS = new Set([
-  'memory_intro', 'fruit_intro', 'puzzle_intro', 'balloon_intro', 'tank_intro',
-  'mole_intro', 'simon_intro',
-  'math_correct', 'math_wrong',
-  'result_win', 'result_lose',
+  'memory_intro',
+  'fruit_intro',
+  'puzzle_intro',
+  'balloon_intro',
+  'tank_intro',
+  'mole_intro',
+  'simon_intro',
+  'math_correct',
+  'math_wrong',
+  'result_win',
+  'result_lose',
   'rest_start',
 ]);
 
@@ -51,18 +58,21 @@ const fileOf = (key: string): string | null => {
 const router = Router();
 
 // 已配音列表（孩子端启动时探测，公开）
-router.get('/', asyncHandler(async (req, res) => {
-  ensureDir();
-  const items: { key: string; size: number; updatedAt: number }[] = [];
-  for (const key of VOICE_KEYS) {
-    const p = fileOf(key);
-    if (p) {
-      const stat = fs.statSync(p);
-      items.push({ key, size: stat.size, updatedAt: Math.round(stat.mtimeMs) });
+router.get(
+  '/',
+  asyncHandler(async (req, res) => {
+    ensureDir();
+    const items: { key: string; size: number; updatedAt: number }[] = [];
+    for (const key of VOICE_KEYS) {
+      const p = fileOf(key);
+      if (p) {
+        const stat = fs.statSync(p);
+        items.push({ key, size: stat.size, updatedAt: Math.round(stat.mtimeMs) });
+      }
     }
-  }
-  success(res, items);
-}));
+    success(res, items);
+  })
+);
 
 // 播放某条录音（公开，长缓存）
 router.get('/:key', (req, res) => {
@@ -111,17 +121,21 @@ router.post(
 );
 
 // 删除录音（管理员，回退 TTS）
-router.delete('/:key', adminMiddleware, asyncHandler(async (req, res) => {
-  const key = String(req.params.key || '');
-  if (!validKey(key)) {
-    fail(res, '未知的台词 key');
-    return;
-  }
-  for (const e of ALLOWED_EXT) {
-    const p = path.join(VOICE_DIR, key + e);
-    if (fs.existsSync(p)) fs.unlinkSync(p);
-  }
-  success(res, { key });
-}));
+router.delete(
+  '/:key',
+  adminMiddleware,
+  asyncHandler(async (req, res) => {
+    const key = String(req.params.key || '');
+    if (!validKey(key)) {
+      fail(res, '未知的台词 key');
+      return;
+    }
+    for (const e of ALLOWED_EXT) {
+      const p = path.join(VOICE_DIR, key + e);
+      if (fs.existsSync(p)) fs.unlinkSync(p);
+    }
+    success(res, { key });
+  })
+);
 
 export default router;

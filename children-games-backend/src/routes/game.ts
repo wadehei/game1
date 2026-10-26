@@ -1,5 +1,12 @@
 import { Router } from 'express';
-import { getAllProgress, getGameProgress, updateGameProgress, getDailyTask, getAchievements, getLeaderboard } from '../controllers/gameController';
+import {
+  getAllProgress,
+  getGameProgress,
+  updateGameProgress,
+  getDailyTask,
+  getAchievements,
+  getLeaderboard,
+} from '../controllers/gameController';
 import { authMiddleware } from '../middleware/auth';
 
 const router = Router();

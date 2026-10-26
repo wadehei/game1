@@ -79,7 +79,14 @@ defineProps<{
   gameState: any;
   phase: string;
   mySeat: number;
-  members: Array<{ userId: number; nickname: string; avatar: string; seat: number; ready: boolean; online: boolean }>;
+  members: Array<{
+    userId: number;
+    nickname: string;
+    avatar: string;
+    seat: number;
+    ready: boolean;
+    online: boolean;
+  }>;
   events: Record<string, any>;
 }>();
 

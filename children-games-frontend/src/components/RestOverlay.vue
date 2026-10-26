@@ -71,8 +71,12 @@ const cancelSkipHold = () => {
 }
 
 @keyframes restFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .rest-content {
@@ -88,8 +92,14 @@ const cancelSkipHold = () => {
 }
 
 @keyframes eyeBlink {
-  0%, 90%, 100% { transform: scaleY(1); }
-  95% { transform: scaleY(0.1); }
+  0%,
+  90%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.1);
+  }
 }
 
 .rest-title {

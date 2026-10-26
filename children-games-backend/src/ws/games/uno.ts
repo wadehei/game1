@@ -4,7 +4,15 @@ import { addTimer, clearRoomTimers } from '../roomManager';
 import type { ActionResult, GameHandler } from './types';
 import { getRoomBus } from '../bus';
 import { getRoom } from '../roomManager';
-import { buildDeck, canPlay, cardScore, shuffle, isNumberCard, type UnoCard, type UnoColor } from './uno/engine';
+import {
+  buildDeck,
+  canPlay,
+  cardScore,
+  shuffle,
+  isNumberCard,
+  type UnoCard,
+  type UnoColor,
+} from './uno/engine';
 
 const TURN_SECONDS = 45;
 const INITIAL_HAND = 7;
@@ -58,7 +66,11 @@ const advance = (room: Room, st: UnoState, times = 1): void => {
 const beginTurn = (room: Room, st: UnoState): void => {
   st.drawnThisTurn = false;
   const bus = getRoomBus();
-  bus.broadcast(room, { t: 'uno_turn', seat: st.turnSeat, deadline: Date.now() + TURN_SECONDS * 1000 });
+  bus.broadcast(room, {
+    t: 'uno_turn',
+    seat: st.turnSeat,
+    deadline: Date.now() + TURN_SECONDS * 1000,
+  });
   if (st.turnTimer) clearTimeout(st.turnTimer);
   const timer = setTimeout(() => {
     const r = getRoom(room.id);
@@ -93,7 +105,10 @@ const emitState = (room: Room, st: UnoState): void => {
     currentColor: st.currentColor,
     direction: st.direction,
     turnSeat: st.turnSeat,
-    counts: seatPlayers(room).map((p) => ({ userId: p.userId, count: (st.hands.get(p.userId) || []).length })),
+    counts: seatPlayers(room).map((p) => ({
+      userId: p.userId,
+      count: (st.hands.get(p.userId) || []).length,
+    })),
   });
 };
 
@@ -181,7 +196,11 @@ export const unoHandler: GameHandler<UnoState> = {
     addTimer(room, timer);
 
     // 广播首回合
-    getRoomBus().broadcast(room, { t: 'uno_turn', seat: st.turnSeat, deadline: Date.now() + TURN_SECONDS * 1000 });
+    getRoomBus().broadcast(room, {
+      t: 'uno_turn',
+      seat: st.turnSeat,
+      deadline: Date.now() + TURN_SECONDS * 1000,
+    });
     emitState(room, st);
     return { toMember };
   },
@@ -194,15 +213,20 @@ export const unoHandler: GameHandler<UnoState> = {
     if (remaining.length < 2 && room.phase === 'playing') {
       // 只剩一人：直接终局
       const last = remaining[0];
-      const penalty = (st.hands.get(last?.userId || 0) || []).reduce((sum, c) => sum + cardScore(c), 0);
-      st.ranking = [
-        { userId: last?.userId || 0, nickname: last?.nickname || '', penalty },
-      ];
+      const penalty = (st.hands.get(last?.userId || 0) || []).reduce(
+        (sum, c) => sum + cardScore(c),
+        0
+      );
+      st.ranking = [{ userId: last?.userId || 0, nickname: last?.nickname || '', penalty }];
       st.endReason = '人数不足，提前结束';
       clearRoomTimers(room);
       if (st.turnTimer) clearTimeout(st.turnTimer);
       room.phase = 'ended';
-      getRoomBus().broadcast(room, { t: 'uno_final', ranking: st.ranking, reason: '人数不足，提前结束' });
+      getRoomBus().broadcast(room, {
+        t: 'uno_final',
+        ranking: st.ranking,
+        reason: '人数不足，提前结束',
+      });
       return { ended: { winnerSeat: last?.seat ?? -1, reason: '人数不足，提前结束' } };
     }
     // 弃牌入弃牌堆（不可再出）
@@ -258,8 +282,16 @@ export const unoHandler: GameHandler<UnoState> = {
         clearRoomTimers(room);
         if (st.turnTimer) clearTimeout(st.turnTimer);
         room.phase = 'ended';
-        getRoomBus().broadcast(room, { t: 'uno_final', ranking, reason: `${member.nickname} 出完了手牌` });
-        getRoomBus().broadcast(room, { t: 'game_over', winnerSeat: seat, reason: `${member.nickname} 获胜` });
+        getRoomBus().broadcast(room, {
+          t: 'uno_final',
+          ranking,
+          reason: `${member.nickname} 出完了手牌`,
+        });
+        getRoomBus().broadcast(room, {
+          t: 'game_over',
+          winnerSeat: seat,
+          reason: `${member.nickname} 获胜`,
+        });
         emitState(room, st);
         return {};
       }
@@ -305,7 +337,12 @@ export const unoHandler: GameHandler<UnoState> = {
       emitState(room, st);
       // 手牌可能已变化（出牌者少一张）
       busSendHand(room, member.userId, st.hands.get(member.userId) || []);
-      getRoomBus().broadcast(room, { t: 'uno_played', userId: member.userId, card, chooseColor: card.color === 'wild' ? st.currentColor : null });
+      getRoomBus().broadcast(room, {
+        t: 'uno_played',
+        userId: member.userId,
+        card,
+        chooseColor: card.color === 'wild' ? st.currentColor : null,
+      });
       return {};
     }
 
@@ -342,7 +379,10 @@ export const unoHandler: GameHandler<UnoState> = {
       currentColor: st.currentColor,
       direction: st.direction,
       turnSeat: st.turnSeat,
-      counts: seatPlayers(room).map((p) => ({ userId: p.userId, count: (st.hands.get(p.userId) || []).length })),
+      counts: seatPlayers(room).map((p) => ({
+        userId: p.userId,
+        count: (st.hands.get(p.userId) || []).length,
+      })),
       myHand: st.hands.get(viewer.userId) || [],
       ranking: st.ranking,
       // 终局摘要随快照走：刷新/重连后结算面板不依赖一次性事件

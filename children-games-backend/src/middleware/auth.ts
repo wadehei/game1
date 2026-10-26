@@ -33,7 +33,11 @@ export const userOrAdminAuth = (req: AuthRequest, res: Response, next: NextFunct
     return;
   }
   try {
-    const decoded = jwt.verify(token, config.jwt.secret) as { userId?: number; openid?: string; role?: string };
+    const decoded = jwt.verify(token, config.jwt.secret) as {
+      userId?: number;
+      openid?: string;
+      role?: string;
+    };
     if (typeof decoded.userId === 'number') {
       req.userId = decoded.userId;
       req.openid = decoded.openid;

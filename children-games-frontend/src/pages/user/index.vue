@@ -4,7 +4,7 @@
     <div class="user-card">
       <PlayerAvatar :avatar="userInfo?.avatar" :size="70" />
       <div class="user-details">
-        <div class="nickname">{{ userInfo?.nickname || "未登录" }}</div>
+        <div class="nickname">{{ userInfo?.nickname || '未登录' }}</div>
         <div class="level-info">
           <div class="level-badge">
             <span class="level-text">Lv.{{ userInfo?.level || 1 }}</span>
@@ -70,17 +70,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from "vue";
-import { useRouter } from "vue-router";
-import { useUserStore } from "@/store/user";
-import { getAchievements, type AchievementInfo } from "@/api/game";
-import { getMyCareer, type MyCareer } from "@/api/user";
-import { confirmAction } from "@/utils/confirmBus";
-import CareerSection from "./components/CareerSection.vue";
-import ProfilePinSection from "./components/ProfilePinSection.vue";
-import SettingsSection from "./components/SettingsSection.vue";
-import ParentCenter from "./components/ParentCenter.vue";
-import PlayerAvatar from "@/components/PlayerAvatar.vue";
+import { computed, ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+import { useUserStore } from '@/store/user';
+import { getAchievements, type AchievementInfo } from '@/api/game';
+import { getMyCareer, type MyCareer } from '@/api/user';
+import { API_ORIGIN } from '@/utils/apiOrigin';
+import { confirmAction } from '@/utils/confirmBus';
+import CareerSection from './components/CareerSection.vue';
+import ProfilePinSection from './components/ProfilePinSection.vue';
+import SettingsSection from './components/SettingsSection.vue';
+import ParentCenter from './components/ParentCenter.vue';
+import PlayerAvatar from '@/components/PlayerAvatar.vue';
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -88,9 +89,7 @@ const userStore = useUserStore();
 const userInfo = computed(() => userStore.userInfo);
 const totalGamesPlayed = ref(0);
 const achievements = ref<AchievementInfo[]>([]);
-const achievementCount = computed(
-  () => achievements.value.filter((a) => a.unlocked).length,
-);
+const achievementCount = computed(() => achievements.value.filter((a) => a.unlocked).length);
 
 // 等级经验：与后端一致，每 15 颗星升一级
 const LEVEL_STAR_THRESHOLD = 15;
@@ -115,7 +114,7 @@ const parentCenterRef = ref<InstanceType<typeof ParentCenter> | null>(null);
 
 // ─── 事件处理 ────────────────────────────────
 const goFeedback = () => {
-  router.push("/feedback");
+  router.push('/feedback');
 };
 
 const openParentGate = () => {
@@ -124,13 +123,13 @@ const openParentGate = () => {
 
 const handleLogout = async () => {
   const ok = await confirmAction({
-    title: "退出登录？",
-    detail: "返回选角页，进度不会丢失。",
-    confirmText: "退出",
+    title: '退出登录？',
+    detail: '返回选角页，进度不会丢失。',
+    confirmText: '退出',
   });
   if (!ok) return;
   userStore.logout();
-  router.push("/profiles");
+  router.push('/profiles');
 };
 
 onMounted(async () => {
@@ -147,10 +146,10 @@ onMounted(async () => {
   // 初始口令状态：探测一次（输错也算错，用设置接口无法探测——改由成员列表接口无此信息，
   // 这里用 profiles 公开列表查询自己是否带锁）
   try {
-    const profiles = await fetch("/api/user/profiles").then((r) => r.json());
-    const me = (
-      (profiles.data || []) as { id: number; hasPin?: boolean }[]
-    ).find((p) => p.id === userStore.userInfo?.id);
+    const profiles = await fetch(`${API_ORIGIN}/api/user/profiles`).then((r) => r.json());
+    const me = ((profiles.data || []) as { id: number; hasPin?: boolean }[]).find(
+      (p) => p.id === userStore.userInfo?.id
+    );
     if (profilePinRef.value) {
       profilePinRef.value.hasPin = !!me?.hasPin;
     }
@@ -183,7 +182,7 @@ onMounted(async () => {
 }
 
 .user-card::before {
-  content: "";
+  content: '';
   position: absolute;
   top: -50%;
   right: -20%;

@@ -43,13 +43,15 @@ interface SpyState {
   isRevote: boolean;
   revotePool: number[] | null;
   pair: WordPair;
-  finalSummary: { winner: string; spyUserIds: number[]; words: { civilian: string; spy: string } } | null;
+  finalSummary: {
+    winner: string;
+    spyUserIds: number[];
+    words: { civilian: string; spy: string };
+  } | null;
 }
 
 const aliveIds = (room: Room): number[] =>
-  [...(room.game as SpyState).roles]
-    .filter(([, r]) => r.alive)
-    .map(([userId]) => userId);
+  [...(room.game as SpyState).roles].filter(([, r]) => r.alive).map(([userId]) => userId);
 
 const aliveSpies = (room: Room): number =>
   [...(room.game as SpyState).roles].filter(([, r]) => r.role === 'spy' && r.alive).length;
@@ -309,7 +311,8 @@ export const spyHandler: GameHandler<SpyState> = {
       if (!Number.isInteger(target)) return { error: '无效的投票目标' };
       const targetRole = st.roles.get(target);
       if (!targetRole?.alive) return { error: '投票目标已出局' };
-      if (st.revotePool && !st.revotePool.includes(target)) return { error: '本轮只能投给平票候选人' };
+      if (st.revotePool && !st.revotePool.includes(target))
+        return { error: '本轮只能投给平票候选人' };
       if (target === member.userId && !st.isRevote) return { error: '不能投自己' };
     }
 

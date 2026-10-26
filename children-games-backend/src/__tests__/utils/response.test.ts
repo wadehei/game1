@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { success, fail, asyncHandler } from '../response';
+import { success, fail, asyncHandler } from '../../utils/response';
 import { Request, Response, NextFunction } from 'express';
 
 describe('response utils', () => {

@@ -3,8 +3,12 @@
     <!-- 终局 -->
     <template v-if="phase === 'ended' && final">
       <div class="spy-final">
-        <div class="sf-title">{{ final?.winner === 'civilian' ? '🎉 平民胜利' : '🕵️ 卧底胜利' }}</div>
-        <div class="sf-words">平民词「{{ final?.words.civilian }}」 vs 卧底词「{{ final?.words.spy }}」</div>
+        <div class="sf-title">
+          {{ final?.winner === 'civilian' ? '🎉 平民胜利' : '🕵️ 卧底胜利' }}
+        </div>
+        <div class="sf-words">
+          平民词「{{ final?.words.civilian }}」 vs 卧底词「{{ final?.words.spy }}」
+        </div>
         <div class="sf-spies">卧底是：{{ spyNames(final?.spyUserIds || []) || '无' }}</div>
         <div class="sf-tip">等待房主发起「再来一局」</div>
       </div>
@@ -13,7 +17,11 @@
     <template v-else>
       <!-- 身份卡 -->
       <div class="id-card" :class="{ spy: me?.role === 'spy' }" @click="showWord = !showWord">
-        <div class="id-label">{{ me?.role === 'spy' ? '你是卧底 🕵️' : '你是平民 🙂' }}（点击{{ showWord ? '隐藏' : '查看' }}词）</div>
+        <div class="id-label">
+          {{ me?.role === 'spy' ? '你是卧底 🕵️' : '你是平民 🙂' }}（点击{{
+            showWord ? '隐藏' : '查看'
+          }}词）
+        </div>
         <div v-if="showWord" class="id-word">{{ me?.word }}</div>
         <div v-else class="id-hint">词与「{{ state?.pairCategory }}」相关</div>
       </div>
@@ -41,7 +49,11 @@
           v-for="uid in state?.alive || []"
           :key="uid"
           class="alive-cell"
-          :class="{ me: uid === myId, voted: myVote === uid, candidate: state?.isRevote && !(state?.revotePool || []).includes(uid) }"
+          :class="{
+            me: uid === myId,
+            voted: myVote === uid,
+            candidate: state?.isRevote && !(state?.revotePool || []).includes(uid),
+          }"
           :disabled="!canVote || uid === myId"
           @click="vote(uid)"
         >
@@ -68,7 +80,11 @@
           {{ nameOf(c.target) }}：{{ c.count }} 票
         </div>
         <div class="vr-out">
-          {{ voteResult.out ? `${nameOf(voteResult.out)} 被淘汰（${voteResult.outRole === 'spy' ? '卧底' : '平民'}）` : '平票/弃权过多，无人出局' }}
+          {{
+            voteResult.out
+              ? `${nameOf(voteResult.out)} 被淘汰（${voteResult.outRole === 'spy' ? '卧底' : '平民'}）`
+              : '平票/弃权过多，无人出局'
+          }}
         </div>
       </div>
     </template>
@@ -114,7 +130,9 @@ const canVote = computed(
   () => props.state?.phase === 'vote' && me.value?.alive && props.phase === 'playing'
 );
 
-const myVoted = computed(() => myVote.value !== null || props.state?.votedCount === props.state?.total);
+const myVoted = computed(
+  () => myVote.value !== null || props.state?.votedCount === props.state?.total
+);
 
 watch(
   () => props.state?.phase,
@@ -139,7 +157,7 @@ onMounted(() => {
 onUnmounted(() => {
   if (tickTimer) clearInterval(tickTimer);
 });
-void tick;
+void tick.value;
 
 const vote = (target: number) => {
   if (!canVote.value) return;

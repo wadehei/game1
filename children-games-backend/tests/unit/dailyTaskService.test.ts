@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { localDateString, DAILY_TASK_GOAL, DAILY_TASK_REWARD } from '../../src/services/dailyTaskService';
+import {
+  localDateString,
+  DAILY_TASK_GOAL,
+  DAILY_TASK_REWARD,
+} from '../../src/services/dailyTaskService';
 
 describe('dailyTaskService', () => {
   describe('localDateString', () => {

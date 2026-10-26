@@ -1,5 +1,6 @@
 import js from '@eslint/js'
 import ts from 'typescript-eslint'
+import globals from 'globals'
 import prettier from 'eslint-plugin-prettier/recommended'
 
 export default [
@@ -42,6 +43,12 @@ export default [
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/no-non-null-assertion': 'warn',
+      // Sequelize 惯用法：interface XxxAttributes extends InferAttributes<Xxx> {} 空接口扩展
+      '@typescript-eslint/no-empty-object-type': 'off',
+
+      // TS 编译器已覆盖这些检查，交给 tsc
+      'no-undef': 'off',
+      'no-unused-vars': 'off',
 
       // Node.js specific
       'no-console': 'warn',
@@ -52,6 +59,9 @@ export default [
   // JavaScript files config
   {
     files: ['**/*.{js,mjs,cjs}'],
+    languageOptions: {
+      globals: { ...globals.node },
+    },
     rules: {
       'no-unused-vars': [
         'warn',
@@ -60,6 +70,7 @@ export default [
           varsIgnorePattern: '^_',
         },
       ],
+      '@typescript-eslint/no-unused-vars': 'off',
     },
   },
 

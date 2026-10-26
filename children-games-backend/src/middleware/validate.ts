@@ -19,7 +19,7 @@ export const validate = (schema: ZodSchema, source: 'body' | 'query' | 'params' 
     } catch (error) {
       if (error instanceof ZodError) {
         // 格式化错误信息
-        const errors = error.issues.map(issue => ({
+        const errors = error.issues.map((issue) => ({
           field: issue.path.join('.'),
           message: issue.message,
         }));

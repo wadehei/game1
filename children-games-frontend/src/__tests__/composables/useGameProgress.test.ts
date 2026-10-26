@@ -143,10 +143,7 @@ describe('useGameProgress', () => {
     });
 
     it('should only overwrite local cache if new progress is better', async () => {
-      localStorage.setItem(
-        'game_progress_puzzle',
-        JSON.stringify({ level: 8, score: 2000 })
-      );
+      localStorage.setItem('game_progress_puzzle', JSON.stringify({ level: 8, score: 2000 }));
       mockUpdateProgress.mockRejectedValue(new Error('Network error'));
 
       const { saveProgress } = useGameProgress('puzzle');
@@ -158,10 +155,7 @@ describe('useGameProgress', () => {
     });
 
     it('should overwrite local cache if same level but higher score', async () => {
-      localStorage.setItem(
-        'game_progress_puzzle',
-        JSON.stringify({ level: 5, score: 500 })
-      );
+      localStorage.setItem('game_progress_puzzle', JSON.stringify({ level: 5, score: 500 }));
       mockUpdateProgress.mockRejectedValue(new Error('Network error'));
 
       const { saveProgress } = useGameProgress('puzzle');

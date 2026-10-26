@@ -11,9 +11,15 @@ interface UserPlaytimeAttributes {
   updatedAt?: Date;
 }
 
-interface UserPlaytimeCreationAttributes extends Optional<UserPlaytimeAttributes, 'id' | 'seconds'> {}
+interface UserPlaytimeCreationAttributes extends Optional<
+  UserPlaytimeAttributes,
+  'id' | 'seconds'
+> {}
 
-export class UserPlaytime extends Model<UserPlaytimeAttributes, UserPlaytimeCreationAttributes> implements UserPlaytimeAttributes {
+export class UserPlaytime
+  extends Model<UserPlaytimeAttributes, UserPlaytimeCreationAttributes>
+  implements UserPlaytimeAttributes
+{
   public id!: number;
   public userId!: number;
   public date!: string;

@@ -4,20 +4,15 @@
     <GameHeader
       :items="headerItems"
       :muted="sounds.isMuted.value"
-      headerClass="balloon-header"
+      header-class="balloon-header"
       level-selectable
-      @toggleSound="sounds.toggleSound"
-      @goBack="router.back()"
-      @selectLevel="openLevelSelect"
+      @toggle-sound="sounds.toggleSound"
+      @go-back="router.back()"
+      @select-level="openLevelSelect"
     />
 
     <!-- 游戏画布 -->
-    <canvas
-      ref="canvasRef"
-      id="balloonCanvas"
-      class="game-canvas"
-      @click="shoot"
-    />
+    <canvas id="balloonCanvas" ref="canvasRef" class="game-canvas" @click="shoot" />
 
     <!-- 游戏结果弹窗 -->
     <ResultModal
@@ -78,8 +73,11 @@ const imagesLoaded = ref(false);
 
 // Color to image key mapping
 const colorToKey: Record<string, string> = {
-  '#FF6B6B': 'red', '#4ECDC4': 'teal', '#FFE66D': 'yellow',
-  '#95E1D3': 'green', '#F38181': 'pink',
+  '#FF6B6B': 'red',
+  '#4ECDC4': 'teal',
+  '#FFE66D': 'yellow',
+  '#95E1D3': 'green',
+  '#F38181': 'pink',
 };
 
 interface Balloon {
@@ -99,13 +97,14 @@ interface Bullet {
 }
 
 interface PopParticle {
-  x: number; y: number;
-  radius: number;   // 当前尺寸
-  grow: number;     // 每帧尺寸增量（闪光用，纸屑为 0）
+  x: number;
+  y: number;
+  radius: number; // 当前尺寸
+  grow: number; // 每帧尺寸增量（闪光用，纸屑为 0）
   alpha: number;
   color: string;
-  speed: number;    // 飞散速度
-  angle: number;    // 飞散方向
+  speed: number; // 飞散速度
+  angle: number; // 飞散方向
 }
 
 const balloonColors = ['#FF6B6B', '#4ECDC4', '#FFE66D', '#95E1D3', '#F38181'];
@@ -170,9 +169,13 @@ const initGame = async () => {
   // 加载图片资源
   if (!imagesLoaded.value) {
     await balloonImages.loadAll({
-      red: balloonRedSvg, teal: balloonTealSvg, yellow: balloonYellowSvg,
-      green: balloonGreenSvg, pink: balloonPinkSvg,
-      golden: balloonGoldenSvg, rainbow: balloonRainbowSvg,
+      red: balloonRedSvg,
+      teal: balloonTealSvg,
+      yellow: balloonYellowSvg,
+      green: balloonGreenSvg,
+      pink: balloonPinkSvg,
+      golden: balloonGoldenSvg,
+      rainbow: balloonRainbowSvg,
       dart: balloonDartSvg,
     });
     imagesLoaded.value = true;
@@ -298,27 +301,37 @@ const update = () => {
 
         // 爆裂效果：白色闪光 + 彩色纸屑飞散
         popParticles.push({
-          x: balloon.x, y: balloon.y,
-          radius: 8, grow: 2.4, alpha: 0.85,
-          color: '#FFFFFF', speed: 0, angle: 0,
+          x: balloon.x,
+          y: balloon.y,
+          radius: 8,
+          grow: 2.4,
+          alpha: 0.85,
+          color: '#FFFFFF',
+          speed: 0,
+          angle: 0,
         });
         for (let i = 0; i < 8; i++) {
           if (popParticles.length < 26) {
             popParticles.push({
-              x: balloon.x, y: balloon.y,
-              radius: 2 + Math.random() * 1.5, grow: 0,
+              x: balloon.x,
+              y: balloon.y,
+              radius: 2 + Math.random() * 1.5,
+              grow: 0,
               alpha: 1,
-              color: balloon.type === 'rainbow'
-                ? ['#FF6B6B', '#4ECDC4', '#FFE66D', '#F38181'][Math.floor(Math.random() * 4)]
-                : balloon.color,
+              color:
+                balloon.type === 'rainbow'
+                  ? ['#FF6B6B', '#4ECDC4', '#FFE66D', '#F38181'][Math.floor(Math.random() * 4)]
+                  : balloon.color,
               speed: 1.5 + Math.random() * 2,
               angle: Math.random() * Math.PI * 2,
             });
           }
         }
         floatTexts.push({
-          x: balloon.x, y: balloon.y - 10,
-          text: `+${balloon.points}`, life: 1,
+          x: balloon.x,
+          y: balloon.y - 10,
+          text: `+${balloon.points}`,
+          life: 1,
           color: balloon.type === 'golden' ? '#FF8F00' : '#FFFFFF',
         });
 
@@ -330,8 +343,11 @@ const update = () => {
           const bonus = balloons.length * 10;
           score.value += bonus;
           floatTexts.push({
-            x: balloon.x, y: balloon.y - 34,
-            text: `+${bonus}!`, life: 1.4, color: '#E91E63',
+            x: balloon.x,
+            y: balloon.y - 34,
+            text: `+${bonus}!`,
+            life: 1.4,
+            color: '#E91E63',
           });
           balloons = [];
           shakeOffset = { x: (Math.random() - 0.5) * 10, y: (Math.random() - 0.5) * 10 };
@@ -412,7 +428,7 @@ const render = () => {
 
   // 绘制爆裂效果：闪光 + 纸屑（带重力飞散）
   if (popParticles.length > 0) {
-    popParticles = popParticles.filter(p => {
+    popParticles = popParticles.filter((p) => {
       p.x += Math.cos(p.angle) * p.speed;
       p.y += Math.sin(p.angle) * p.speed + 0.12;
       p.radius += p.grow;
@@ -430,7 +446,7 @@ const render = () => {
 
   // 飘分数字
   if (floatTexts.length > 0) {
-    floatTexts = floatTexts.filter(t => {
+    floatTexts = floatTexts.filter((t) => {
       t.y -= 1.3;
       t.life -= 0.03;
       if (t.life <= 0) return false;
@@ -581,7 +597,7 @@ onUnmounted(() => {
 <style scoped>
 .balloon-game {
   min-height: 100vh;
-  background: linear-gradient(180deg, #87CEEB 0%, #E0F7FA 60%, #98FB98 100%);
+  background: linear-gradient(180deg, #87ceeb 0%, #e0f7fa 60%, #98fb98 100%);
   position: relative;
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -626,7 +642,7 @@ onUnmounted(() => {
 
 :deep(.balloon-header .value) {
   font-size: 22px;
-  color: #2C3E50;
+  color: #2c3e50;
   font-weight: 700;
 }
 

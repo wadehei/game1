@@ -1,5 +1,5 @@
 import { cacheGet, cacheSet, cacheDel, isRedisAvailable } from '../utils/redis';
-import { logInfo } from './logger';
+import { logInfo } from '../utils/logger';
 
 /**
  * 排行榜缓存服务
@@ -21,9 +21,7 @@ interface LeaderboardEntry {
 /**
  * 获取缓存的排行榜
  */
-export const getCachedLeaderboard = async (
-  gameId: string
-): Promise<LeaderboardEntry[] | null> => {
+export const getCachedLeaderboard = async (gameId: string): Promise<LeaderboardEntry[] | null> => {
   if (!isRedisAvailable()) return null;
 
   try {
@@ -43,10 +41,7 @@ export const getCachedLeaderboard = async (
 /**
  * 缓存排行榜数据
  */
-export const cacheLeaderboard = async (
-  gameId: string,
-  data: LeaderboardEntry[]
-): Promise<void> => {
+export const cacheLeaderboard = async (gameId: string, data: LeaderboardEntry[]): Promise<void> => {
   if (!isRedisAvailable()) return;
 
   try {
@@ -62,9 +57,7 @@ export const cacheLeaderboard = async (
  * 清除排行榜缓存
  * 在用户更新游戏进度后调用
  */
-export const invalidateLeaderboardCache = async (
-  gameId: string
-): Promise<void> => {
+export const invalidateLeaderboardCache = async (gameId: string): Promise<void> => {
   if (!isRedisAvailable()) return;
 
   try {
@@ -84,7 +77,19 @@ export const invalidateAllLeaderboards = async (): Promise<void> => {
 
   // 由于 Redis 没有直接的模式删除（在生产环境中 SCAN 更安全），
   // 这里我们只清除已知的游戏排行榜
-  const knownGames = ['memory', 'puzzle', 'fruit', 'balloon', 'tank', 'mole', 'simon', 'math', 'match3', 'brick'];
+  const knownGames = [
+    'memory',
+    'puzzle',
+    'fruit',
+    'balloon',
+    'tank',
+    'mole',
+    'simon',
+    'math',
+    'match',
+    'match3',
+    'brick',
+  ];
   for (const gameId of knownGames) {
     await invalidateLeaderboardCache(gameId);
   }

@@ -25,7 +25,8 @@ export const gomokuHandler: GameHandler<GomokuState> = {
       const color = colorOf(seat);
       const x = Number(payload?.x);
       const y = Number(payload?.y);
-      const err = placeStone(room.game, color, x, y);
+      const g = room.game as GomokuState;
+      const err = placeStone(g, color, x, y);
       if (err) return { error: err };
 
       const broadcast: Array<Record<string, unknown>> = [
@@ -35,18 +36,18 @@ export const gomokuHandler: GameHandler<GomokuState> = {
           y,
           color,
           userId: member.userId,
-          turn: room.game.turn,
-          lastMove: room.game.lastMove,
-          winner: room.game.winner,
-          winLine: room.game.winLine,
+          turn: g.turn,
+          lastMove: g.lastMove,
+          winner: g.winner,
+          winLine: g.winLine,
         },
       ];
 
       let ended: ActionResult['ended'] = null;
-      if (room.game.winner !== 0) {
+      if (g.winner !== 0) {
         ended = {
-          winnerSeat: room.game.winner === 1 ? 0 : room.game.winner === 2 ? 1 : -1,
-          reason: room.game.winner === 3 ? '棋盘已满' : '五连成线',
+          winnerSeat: g.winner === 1 ? 0 : g.winner === 2 ? 1 : -1,
+          reason: g.winner === 3 ? '棋盘已满' : '五连成线',
         };
       }
       return { broadcast, ended };
@@ -66,7 +67,7 @@ export const gomokuHandler: GameHandler<GomokuState> = {
   },
 
   serializeFor(room: Room, _viewer: Member): Record<string, unknown> {
-    const g = room.game;
+    const g = room.game as GomokuState;
     return {
       board: g.board,
       turn: g.turn,

@@ -7,7 +7,12 @@ export class AppError extends Error {
   public readonly isOperational: boolean;
   public readonly code: string;
 
-  constructor(message: string, statusCode: number = 500, code: string = 'INTERNAL_ERROR', isOperational: boolean = true) {
+  constructor(
+    message: string,
+    statusCode: number = 500,
+    code: string = 'INTERNAL_ERROR',
+    isOperational: boolean = true
+  ) {
     super(message);
     this.statusCode = statusCode;
     this.isOperational = isOperational;
@@ -75,7 +80,10 @@ export class DatabaseError extends AppError {
 }
 
 export class ServiceUnavailableError extends AppError {
-  constructor(message: string = '服务暂时不可用，请稍后再试', code: string = 'SERVICE_UNAVAILABLE') {
+  constructor(
+    message: string = '服务暂时不可用，请稍后再试',
+    code: string = 'SERVICE_UNAVAILABLE'
+  ) {
     super(message, 503, code, false);
   }
 }

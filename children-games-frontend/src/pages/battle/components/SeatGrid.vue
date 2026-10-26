@@ -19,7 +19,7 @@
 </template>
 
 <script setup lang="ts">
-import PlayerAvatar from "@/components/PlayerAvatar.vue";
+import PlayerAvatar from '@/components/PlayerAvatar.vue';
 
 export interface SeatMember {
   userId: number;

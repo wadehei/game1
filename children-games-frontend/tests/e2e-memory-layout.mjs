@@ -22,15 +22,19 @@ const { uid, level } = await page.evaluate(async (adminPassword) => {
   const data = await login.json();
   localStorage.setItem('token', data.data.token);
   localStorage.setItem('userInfo', JSON.stringify(data.data.userInfo));
-  const admin = await (await fetch('/api/admin/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ password: adminPassword }),
-  })).json();
+  const admin = await (
+    await fetch('/api/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: adminPassword }),
+    })
+  ).json();
   localStorage.setItem('admin_token', admin.data.token);
-  const progress = await (await fetch('/api/game/progress/memory', {
-    headers: { Authorization: `Bearer ${data.data.token}` },
-  })).json();
+  const progress = await (
+    await fetch('/api/game/progress/memory', {
+      headers: { Authorization: `Bearer ${data.data.token}` },
+    })
+  ).json();
   return { uid, level: progress.data?.currentLevel || 1 };
 }, ADMIN_PASSWORD);
 console.log(`成员 uid=${uid}，记忆翻牌当前第 ${level} 关`);
@@ -59,7 +63,10 @@ await page.screenshot({ path: 'test-results/memory-soft-default.png' });
 await page.evaluate(async (lv) => {
   await fetch(`/api/admin/levels/memory/${lv}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('admin_token')}` },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${localStorage.getItem('admin_token')}`,
+    },
     body: JSON.stringify({ config: { pairs: 8 } }),
   });
 }, level);
@@ -75,7 +82,10 @@ await page.screenshot({ path: 'test-results/memory-soft-16cards.png' });
 await page.evaluate(async (lv) => {
   await fetch(`/api/admin/levels/memory/${lv}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('admin_token')}` },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${localStorage.getItem('admin_token')}`,
+    },
     body: JSON.stringify({ config: { pairs: 3 } }),
   });
 }, level);

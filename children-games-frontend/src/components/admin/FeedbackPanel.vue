@@ -25,24 +25,15 @@
     <div v-else-if="filteredList.length === 0" class="empty">📭 暂无反馈</div>
 
     <div v-else class="fb-list">
-      <div
-        v-for="f in filteredList"
-        :key="f.id"
-        class="fb-card"
-        :class="`st-${f.status}`"
-      >
+      <div v-for="f in filteredList" :key="f.id" class="fb-card" :class="`st-${f.status}`">
         <div class="fb-head">
           <div class="fb-user">
             <PlayerAvatar :avatar="f.user?.avatar" :size="28" />
-            <span class="fb-nickname">{{
-              f.user?.nickname || `角色#${f.userId}`
-            }}</span>
+            <span class="fb-nickname">{{ f.user?.nickname || `角色#${f.userId}` }}</span>
           </div>
           <div class="fb-meta">
             <span class="fb-type-tag">{{ typeLabel(f.type) }}</span>
-            <span class="fb-status" :class="f.status">{{
-              statusLabel(f.status)
-            }}</span>
+            <span class="fb-status" :class="f.status">{{ statusLabel(f.status) }}</span>
             <span class="fb-time">{{ formatTime(f.createdAt) }}</span>
           </div>
         </div>
@@ -51,14 +42,9 @@
 
         <!-- 回复列表 -->
         <div v-if="f.replies.length" class="fb-replies">
-          <div
-            v-for="r in f.replies"
-            :key="r.id"
-            class="fb-reply"
-            :class="{ official: r.isAdmin }"
-          >
+          <div v-for="r in f.replies" :key="r.id" class="fb-reply" :class="{ official: r.isAdmin }">
             <span class="fb-reply-author">{{
-              r.isAdmin ? "📣 官方" : r.user?.nickname || `角色#${r.userId}`
+              r.isAdmin ? '📣 官方' : r.user?.nickname || `角色#${r.userId}`
             }}</span>
             <span class="fb-reply-content">{{ r.content }}</span>
             <span class="fb-reply-time">{{ formatTime(r.createdAt) }}</span>
@@ -111,58 +97,49 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from "vue";
-import PlayerAvatar from "@/components/PlayerAvatar.vue";
-import { showToast } from "@/utils/toastBus";
-import {
-  adminGetFeedbacks,
-  adminUpdateFeedback,
-  adminAddReply,
-} from "@/api/admin";
+import { computed, onMounted, reactive, ref } from 'vue';
+import PlayerAvatar from '@/components/PlayerAvatar.vue';
+import { showToast } from '@/utils/toastBus';
+import { adminGetFeedbacks, adminUpdateFeedback, adminAddReply } from '@/api/admin';
 import {
   FEEDBACK_TYPE_LABELS,
   FEEDBACK_STATUS_LABELS,
   type FeedbackItem,
   type FeedbackStatus,
-} from "@/api/feedback";
+} from '@/api/feedback';
 
 const list = ref<FeedbackItem[]>([]);
 const loading = ref(true);
-const filter = ref<"all" | FeedbackStatus>("all");
+const filter = ref<'all' | FeedbackStatus>('all');
 const replyContent = reactive<Record<number, string>>({});
 const replying = ref(false);
 
-const FILTERS: { value: "all" | FeedbackStatus; label: string }[] = [
-  { value: "all", label: "全部" },
-  { value: "pending", label: "待处理" },
-  { value: "processing", label: "处理中" },
-  { value: "done", label: "已完成" },
+const FILTERS: { value: 'all' | FeedbackStatus; label: string }[] = [
+  { value: 'all', label: '全部' },
+  { value: 'pending', label: '待处理' },
+  { value: 'processing', label: '处理中' },
+  { value: 'done', label: '已完成' },
 ];
 
 const STATUS_ACTIONS: { value: FeedbackStatus; label: string }[] = [
-  { value: "pending", label: "待处理" },
-  { value: "processing", label: "处理中" },
-  { value: "done", label: "已完成" },
+  { value: 'pending', label: '待处理' },
+  { value: 'processing', label: '处理中' },
+  { value: 'done', label: '已完成' },
 ];
 
 const filteredList = computed(() =>
-  filter.value === "all"
-    ? list.value
-    : list.value.filter((f) => f.status === filter.value),
+  filter.value === 'all' ? list.value : list.value.filter((f) => f.status === filter.value)
 );
 
-const countOf = (value: "all" | FeedbackStatus): number =>
-  value === "all"
-    ? list.value.length
-    : list.value.filter((f) => f.status === value).length;
+const countOf = (value: 'all' | FeedbackStatus): number =>
+  value === 'all' ? list.value.length : list.value.filter((f) => f.status === value).length;
 
 const typeLabel = (t: string): string =>
   FEEDBACK_TYPE_LABELS[t as keyof typeof FEEDBACK_TYPE_LABELS] || t;
 const statusLabel = (s: string): string =>
   FEEDBACK_STATUS_LABELS[s as keyof typeof FEEDBACK_STATUS_LABELS] || s;
 
-const formatTime = (iso: string): string =>
-  (iso || "").replace("T", " ").slice(5, 16);
+const formatTime = (iso: string): string => (iso || '').replace('T', ' ').slice(5, 16);
 
 const load = async () => {
   loading.value = true;
@@ -188,12 +165,12 @@ const saveNote = async (f: FeedbackItem) => {
 };
 
 const sendReply = async (f: FeedbackItem) => {
-  const text = (replyContent[f.id] || "").trim();
+  const text = (replyContent[f.id] || '').trim();
   if (!text || replying.value) return;
   replying.value = true;
   try {
     await adminAddReply(f.id, text);
-    replyContent[f.id] = "";
+    replyContent[f.id] = '';
     await load();
   } catch {
     // 留在输入框，用户可重试

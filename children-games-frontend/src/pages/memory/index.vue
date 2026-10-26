@@ -4,15 +4,21 @@
     <GameHeader
       :items="headerItems"
       :muted="sounds.isMuted.value"
-      headerClass="memory-header"
+      header-class="memory-header"
       level-selectable
-      @toggleSound="sounds.toggleSound"
-      @goBack="router.back()"
-      @selectLevel="openLevelSelect"
+      @toggle-sound="sounds.toggleSound"
+      @go-back="router.back()"
+      @select-level="openLevelSelect"
     />
 
     <!-- 游戏画布 -->
-    <div class="game-board" :style="{ gridTemplateColumns: `repeat(${gridSize}, 1fr)`, gridTemplateRows: `repeat(${Math.ceil(totalCards / gridSize)}, 1fr)` }">
+    <div
+      class="game-board"
+      :style="{
+        gridTemplateColumns: `repeat(${gridSize}, 1fr)`,
+        gridTemplateRows: `repeat(${Math.ceil(totalCards / gridSize)}, 1fr)`,
+      }"
+    >
       <div
         v-for="(card, index) in cards"
         :key="index"
@@ -118,7 +124,24 @@ interface Card {
 }
 
 const router = useRouter();
-const emojis = ['🐶', '🐱', '🐼', '🦊', '🐸', '🐵', '🐷', '🐮', '🐔', '🐙', '🦁', '🐯', '🐻', '🐨', '🐰', '🐲'];
+const emojis = [
+  '🐶',
+  '🐱',
+  '🐼',
+  '🦊',
+  '🐸',
+  '🐵',
+  '🐷',
+  '🐮',
+  '🐔',
+  '🐙',
+  '🦁',
+  '🐯',
+  '🐻',
+  '🐨',
+  '🐰',
+  '🐲',
+];
 
 const sounds = useGameSounds();
 
@@ -328,7 +351,7 @@ const checkMatch = () => {
 };
 
 const checkWin = () => {
-  const allMatched = cards.value.every(card => card.matched);
+  const allMatched = cards.value.every((card) => card.matched);
   if (allMatched) {
     endGame(true);
   }
@@ -484,8 +507,14 @@ onUnmounted(() => {
 }
 
 @keyframes cardAppear {
-  from { transform: scale(0.8); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .card.matched {
@@ -493,9 +522,15 @@ onUnmounted(() => {
 }
 
 @keyframes matchGlow {
-  0% { box-shadow: 0 0 0 0 rgba(226, 178, 96, 0.55); }
-  50% { box-shadow: 0 0 16px 8px rgba(226, 178, 96, 0.25); }
-  100% { box-shadow: 0 0 0 0 rgba(226, 178, 96, 0); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(226, 178, 96, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 16px 8px rgba(226, 178, 96, 0.25);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(226, 178, 96, 0);
+  }
 }
 
 .card-inner {
@@ -533,7 +568,9 @@ onUnmounted(() => {
   background-image:
     radial-gradient(rgba(255, 255, 255, 0.5) 2.5px, transparent 2.5px),
     linear-gradient(135deg, #f4e3c8 0%, #ead0ab 100%);
-  background-size: 18px 18px, 100% 100%;
+  background-size:
+    18px 18px,
+    100% 100%;
   box-shadow: 0 2px 8px rgba(47, 60, 85, 0.12);
 }
 
@@ -555,5 +592,4 @@ onUnmounted(() => {
   font-size: clamp(28px, 12vmin, 56px);
   filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.25));
 }
-
 </style>

@@ -6,10 +6,14 @@
       <div v-if="loading" class="board-loading">加载中…</div>
 
       <template v-else>
-        <div v-if="rows.length === 0" class="board-empty">
-          还没有记录，快来抢占第一名！🚀
-        </div>
-        <div v-for="row in rows" v-else :key="row.userId" class="board-row" :class="{ me: row.userId === myUserId }">
+        <div v-if="rows.length === 0" class="board-empty">还没有记录，快来抢占第一名！🚀</div>
+        <div
+          v-for="row in rows"
+          v-else
+          :key="row.userId"
+          class="board-row"
+          :class="{ me: row.userId === myUserId }"
+        >
           <span class="rank-medal">{{ medal(row.rank) }}</span>
           <PlayerAvatar :avatar="row.avatar" :size="38" />
           <span class="row-name">{{ row.nickname }}</span>
@@ -51,20 +55,24 @@ const myUserId = computed(() => userStore.userInfo?.id);
 const loading = ref(false);
 const rows = ref<LeaderboardRow[]>([]);
 
-const medal = (rank: number): string => ({ 1: '🥇', 2: '🥈', 3: '🥉' }[rank as 1 | 2 | 3] || `${rank}`);
+const medal = (rank: number): string =>
+  ({ 1: '🥇', 2: '🥈', 3: '🥉' })[rank as 1 | 2 | 3] || `${rank}`;
 
-watch(() => props.show, async (visible) => {
-  if (!visible) return;
-  loading.value = true;
-  rows.value = [];
-  try {
-    rows.value = await getLeaderboard(props.gameId, 20);
-  } catch {
+watch(
+  () => props.show,
+  async (visible) => {
+    if (!visible) return;
+    loading.value = true;
     rows.value = [];
-  } finally {
-    loading.value = false;
+    try {
+      rows.value = await getLeaderboard(props.gameId, 20);
+    } catch {
+      rows.value = [];
+    } finally {
+      loading.value = false;
+    }
   }
-});
+);
 </script>
 
 <style scoped>
@@ -81,8 +89,12 @@ watch(() => props.show, async (visible) => {
 }
 
 @keyframes boardFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .board-content {
@@ -98,8 +110,14 @@ watch(() => props.show, async (visible) => {
 }
 
 @keyframes boardBounceIn {
-  from { transform: scale(0.5); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .board-title {
@@ -152,7 +170,7 @@ watch(() => props.show, async (visible) => {
 .row-score {
   font-size: 15px;
   font-weight: bold;
-  color: #FF6B6B;
+  color: #ff6b6b;
   flex-shrink: 0;
 }
 

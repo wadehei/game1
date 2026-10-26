@@ -25,8 +25,8 @@ export class ImageLoader {
               resolve();
             };
             img.src = src;
-          }),
-      ),
+          })
+      )
     );
     return this;
   }

@@ -40,7 +40,8 @@ const shuffle = <T>(arr: T[]): T[] => {
   return a;
 };
 
-const playingUsers = (room: Room): Member[] => [...room.members.values()].filter((m) => m.seat >= 0);
+const playingUsers = (room: Room): Member[] =>
+  [...room.members.values()].filter((m) => m.seat >= 0);
 
 const clearQuizTimers = (state: QuizState): void => {
   if (state.revealTimer) clearTimeout(state.revealTimer);
@@ -75,7 +76,7 @@ export const quizHandler: GameHandler<QuizState> = {
 
   // 开局：随机抽取题目，稍后开始第一题
   start(room): void {
-    clearQuizTimers(room.game);
+    clearQuizTimers(room.game as QuizState);
     clearRoomTimers(room);
     void (async () => {
       try {
@@ -117,7 +118,7 @@ export const quizHandler: GameHandler<QuizState> = {
   },
 
   onPlayerQuit(room: Room, member: Member): ActionResult | void {
-    room.game.scores.delete(member.userId);
+    (room.game as QuizState).scores.delete(member.userId);
     // 人走光了由房间层解散；有存活玩家则对局继续，不强制终局
     const players = [...room.members.values()].filter((m) => m.seat >= 0);
     if (players.length === 0) {
@@ -284,11 +285,13 @@ function finish(room: Room): void {
   const bus = getRoomBus();
   bus.broadcast(room, { t: 'quiz_final', ranking });
 
-  const topSeat = ranking.length
-    ? room.members.get(ranking[0].userId)?.seat ?? -1
-    : -1;
+  const topSeat = ranking.length ? (room.members.get(ranking[0].userId)?.seat ?? -1) : -1;
   // 通过 bus 广播 game_over（ended 由 handler 返回通道不便在定时器里使用）
-  bus.broadcast(room, { t: 'game_over', winnerSeat: topSeat >= 0 ? topSeat : -1, reason: '竞答结束' });
+  bus.broadcast(room, {
+    t: 'game_over',
+    winnerSeat: topSeat >= 0 ? topSeat : -1,
+    reason: '竞答结束',
+  });
   room.phase = 'ended';
   clearRoomTimers(room);
 }

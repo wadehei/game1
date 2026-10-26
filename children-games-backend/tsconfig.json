@@ -13,16 +13,8 @@
     "moduleResolution": "node",
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true,
-    "baseUrl": ".",
-    "paths": {
-      "@children-games/shared": ["../packages/shared/src/index.ts"],
-      "@children-games/shared/*": ["../packages/shared/src/*"]
-    }
+    "sourceMap": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"],
-  "references": [
-    { "path": "../packages/shared" }
-  ]
+  "exclude": ["node_modules", "dist"]
 }

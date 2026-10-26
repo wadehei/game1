@@ -3,7 +3,16 @@ import { emitGamePause, emitGameResume } from '@/utils/gameEvents';
 import { api } from '@/utils/request';
 
 /** 游戏页面路由（大厅/个人中心不计入连续游玩时间） */
-const GAME_ROUTES = new Set(['/memory', '/fruit', '/puzzle', '/balloon', '/tank', '/mole', '/simon', '/math']);
+const GAME_ROUTES = new Set([
+  '/memory',
+  '/fruit',
+  '/puzzle',
+  '/balloon',
+  '/tank',
+  '/mole',
+  '/simon',
+  '/math',
+]);
 
 /** 每次护眼休息的时长（秒） */
 const REST_DURATION = 20;

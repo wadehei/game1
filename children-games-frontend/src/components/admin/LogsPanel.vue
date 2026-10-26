@@ -9,7 +9,9 @@
           class="act-btn"
           :class="{ on: sourceFilter === s.value }"
           @click="sourceFilter = s.value"
-        >{{ s.label }}</button>
+        >
+          {{ s.label }}
+        </button>
         <button class="act-btn" @click="load">刷新</button>
         <button class="act-btn danger" @click="clearAll">清空</button>
       </div>
@@ -48,7 +50,11 @@ const SOURCES = [
   { value: 'process', label: '进程' },
 ];
 
-const filtered = computed(() => (sourceFilter.value === 'all' ? logs.value : logs.value.filter((l) => l.source === sourceFilter.value)));
+const filtered = computed(() =>
+  sourceFilter.value === 'all'
+    ? logs.value
+    : logs.value.filter((l) => l.source === sourceFilter.value)
+);
 
 const load = async () => {
   loading.value = true;
@@ -57,14 +63,20 @@ const load = async () => {
 };
 
 const clearAll = async () => {
-  const ok = await confirmAction({ title: '清空全部错误日志？', danger: true, confirmText: '清空' });
+  const ok = await confirmAction({
+    title: '清空全部错误日志？',
+    danger: true,
+    confirmText: '清空',
+  });
   if (!ok) return;
   await clearErrorLogs().catch(() => {});
   await load();
 };
 
 const sourceLabel = (source: string): string =>
-  ({ chips: '💰 积分入账', server: '服务器', client: '客户端', process: '进程', raw: '原始' })[source] || source;
+  ({ chips: '💰 积分入账', server: '服务器', client: '客户端', process: '进程', raw: '原始' })[
+    source
+  ] || source;
 
 const formatTime = (iso: string): string => {
   if (!iso) return '';

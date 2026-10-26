@@ -25,23 +25,43 @@ import type {
   S2CBlackjackEvent,
   S2CZjhEvent,
 } from '@children-games/shared';
-import type { GameState, GameEvents, TypedWsLike, TypedRoomEventContext, GomokuGameState } from './wsTypes';
+import type {
+  GameState,
+  GameEvents,
+  TypedWsLike,
+  TypedRoomEventContext,
+  GomokuGameState,
+  DrawGameState,
+  SpyGameState,
+  UnoGameState,
+  BlackjackGameState,
+  ZjhGameState,
+} from './wsTypes';
 
 export interface RoomEventContext extends TypedRoomEventContext {}
 
 interface WsLike extends TypedWsLike {}
 
 // ─── composable ────────────────────────────────────
-export const useRoomEvents = (
-  ws: WsLike,
-  ctx: RoomEventContext,
-) => {
+export const useRoomEvents = (ws: WsLike, ctx: RoomEventContext) => {
   const {
-    myId, mySeat, gameType, members, phase,
-    board, game, chatList, voiceList,
-    overReason, rematchVotes, rematchDeadlineAt,
-    lastWsError, gameEvents,
-    applySnapshot, scrollChat, leaveToLobby,
+    myId,
+    mySeat,
+    gameType,
+    members,
+    phase,
+    board,
+    game,
+    chatList,
+    voiceList,
+    overReason,
+    rematchVotes,
+    rematchDeadlineAt,
+    lastWsError,
+    gameEvents,
+    applySnapshot,
+    scrollChat,
+    leaveToLobby,
   } = ctx;
 
   // ── 通用事件 ──
@@ -67,24 +87,37 @@ export const useRoomEvents = (
     ws.on('game_start', (m: S2CGameStart) => {
       phase.value = m.phase;
       board.value = Array.from({ length: 15 }, () => Array(15).fill(0));
-      game.value = { board: board.value, turn: 1, winner: 0, winLine: [], lastMove: null } as GomokuGameState;
-      Object.keys(gameEvents.value).forEach((k) => {
-        gameEvents.value[k as keyof GameEvents] = null;
+      game.value = {
+        board: board.value,
+        turn: 1,
+        winner: 0,
+        winLine: [],
+        lastMove: null,
+      } as GomokuGameState;
+      Object.keys(gameEvents).forEach((k) => {
+        (gameEvents as Record<string, unknown>)[k] = null;
       });
     });
     ws.on('game_restart', (m: S2CGameRestart) => {
       phase.value = m.phase;
       board.value = Array.from({ length: 15 }, () => Array(15).fill(0));
-      game.value = { board: board.value, turn: 1, winner: 0, winLine: [], lastMove: null } as GomokuGameState;
-      Object.keys(gameEvents.value).forEach((k) => {
-        gameEvents.value[k as keyof GameEvents] = null;
+      game.value = {
+        board: board.value,
+        turn: 1,
+        winner: 0,
+        winLine: [],
+        lastMove: null,
+      } as GomokuGameState;
+      Object.keys(gameEvents).forEach((k) => {
+        (gameEvents as Record<string, unknown>)[k] = null;
       });
     });
     ws.on('game_over', (m: S2CGameOver) => {
       phase.value = 'ended';
       overReason.value = m.reason || '';
       if (gameType.value === 'gomoku' && game.value && 'winner' in game.value) {
-        (game.value as GomokuGameState).winner = m.winnerSeat === 0 ? 1 : m.winnerSeat === 1 ? 2 : 3;
+        (game.value as GomokuGameState).winner =
+          m.winnerSeat === 0 ? 1 : m.winnerSeat === 1 ? 2 : 3;
       }
       rematchVotes.value = [];
     });
@@ -128,26 +161,26 @@ export const useRoomEvents = (
   // ── 答题对战 ──
   const registerQuiz = () => {
     ws.on('quiz_question', (m: Extract<S2CQuizEvent, { t: 'quiz_question' }>) => {
-      gameEvents.value.question = m;
-      gameEvents.value.result = null;
-      gameEvents.value.final = null;
+      gameEvents.question = m;
+      gameEvents.result = null;
+      gameEvents.final = null;
     });
     ws.on('quiz_result', (m: Extract<S2CQuizEvent, { t: 'quiz_result' }>) => {
-      gameEvents.value.result = m;
+      gameEvents.result = m;
     });
     ws.on('quiz_final', (m: Extract<S2CQuizEvent, { t: 'quiz_final' }>) => {
-      gameEvents.value.final = m;
+      gameEvents.final = m;
     });
   };
 
   // ── 你画我猜 ──
   const registerDraw = () => {
     ws.on('draw_round', (m: Extract<S2CDrawEvent, { t: 'draw_round' }>) => {
-      gameEvents.value.round = { ...m, ts: Date.now() };
-      gameEvents.value.stroke = null;
-      gameEvents.value.final = null;
-      gameEvents.value.hint = null;
-      gameEvents.value.guessResult = [];
+      gameEvents.round = { ...m, ts: Date.now() };
+      gameEvents.stroke = null;
+      gameEvents.final = null;
+      gameEvents.hint = null;
+      gameEvents.guessResult = [];
       if (game.value && typeof game.value === 'object') {
         const drawState = game.value as DrawGameState;
         drawState.phase = m.phase;
@@ -165,9 +198,9 @@ export const useRoomEvents = (
       }
     });
     ws.on('guess_result', (m: Extract<S2CDrawEvent, { t: 'guess_result' }>) => {
-      const list = Array.isArray(gameEvents.value.guessResult) ? gameEvents.value.guessResult : [];
+      const list = Array.isArray(gameEvents.guessResult) ? gameEvents.guessResult : [];
       list.push(m);
-      gameEvents.value.guessResult = list;
+      gameEvents.guessResult = list;
       if (m.userId === myId.value && game.value && typeof game.value === 'object') {
         const drawState = game.value as DrawGameState;
         drawState.myGuessed = true;
@@ -175,7 +208,7 @@ export const useRoomEvents = (
       }
     });
     ws.on('draw_candidates', (m: Extract<S2CDrawEvent, { t: 'draw_candidates' }>) => {
-      gameEvents.value.candidates = m.words || [];
+      gameEvents.candidates = m.words || [];
     });
     ws.on('draw_word', (m: Extract<S2CDrawEvent, { t: 'draw_word' }>) => {
       if (game.value && typeof game.value === 'object') {
@@ -183,22 +216,22 @@ export const useRoomEvents = (
       }
     });
     ws.on('draw_hint', (m: Extract<S2CDrawEvent, { t: 'draw_hint' }>) => {
-      gameEvents.value.hint = m;
+      gameEvents.hint = m;
     });
     ws.on('draw_stroke', (m: Extract<S2CDrawEvent, { t: 'draw_stroke' }>) => {
-      gameEvents.value.stroke = m;
+      gameEvents.stroke = m;
     });
     ws.on('draw_undo', () => {
-      gameEvents.value.undo = { ts: Date.now() };
+      gameEvents.undo = { ts: Date.now() };
     });
     ws.on('draw_clear', () => {
-      gameEvents.value.clear = { ts: Date.now() };
+      gameEvents.clear = { ts: Date.now() };
     });
     ws.on('draw_round_end', (m: Extract<S2CDrawEvent, { t: 'draw_round_end' }>) => {
-      gameEvents.value.roundEnd = m;
+      gameEvents.roundEnd = m;
     });
     ws.on('draw_final', (m: Extract<S2CDrawEvent, { t: 'draw_final' }>) => {
-      gameEvents.value.final = m;
+      gameEvents.final = m;
       phase.value = 'ended';
     });
   };
@@ -206,7 +239,7 @@ export const useRoomEvents = (
   // ── 卧底 ──
   const registerSpy = () => {
     ws.on('spy_phase', (m: Extract<S2CSpyEvent, { t: 'spy_phase' }>) => {
-      gameEvents.value.phase = m;
+      gameEvents.phase = m;
       if (game.value && typeof game.value === 'object') {
         const spyState = game.value as SpyGameState;
         spyState.phase = m.phase;
@@ -219,10 +252,10 @@ export const useRoomEvents = (
       }
     });
     ws.on('spy_deal', (m: Extract<S2CSpyEvent, { t: 'spy_deal' }>) => {
-      gameEvents.value.deal = m;
+      gameEvents.deal = m;
     });
     ws.on('spy_vote_update', (m: Extract<S2CSpyEvent, { t: 'spy_vote_update' }>) => {
-      gameEvents.value.voteUpdate = m;
+      gameEvents.voteUpdate = m;
       if (game.value && typeof game.value === 'object') {
         const spyState = game.value as SpyGameState;
         spyState.votedCount = m.votedCount;
@@ -230,13 +263,13 @@ export const useRoomEvents = (
       }
     });
     ws.on('spy_vote_result', (m: Extract<S2CSpyEvent, { t: 'spy_vote_result' }>) => {
-      gameEvents.value.voteResult = m;
+      gameEvents.voteResult = m;
     });
     ws.on('spy_eliminated', (m: Extract<S2CSpyEvent, { t: 'spy_eliminated' }>) => {
-      gameEvents.value.eliminated = m;
+      gameEvents.eliminated = m;
     });
     ws.on('spy_final', (m: Extract<S2CSpyEvent, { t: 'spy_final' }>) => {
-      gameEvents.value.final = m;
+      gameEvents.final = m;
       phase.value = 'ended';
     });
   };
@@ -244,8 +277,8 @@ export const useRoomEvents = (
   // ── UNO ──
   const registerUno = () => {
     ws.on('uno_state', (m: Extract<S2CUnoEvent, { t: 'uno_state' }>) => {
-      gameEvents.value.uno_state = m;
-      gameEvents.value.turn = { seat: m.turnSeat, seq: Date.now() };
+      gameEvents.uno_state = m;
+      gameEvents.turn = { seat: m.turnSeat, seq: Date.now() };
       if (game.value && typeof game.value === 'object') {
         const unoState = game.value as UnoGameState;
         unoState.top = m.top;
@@ -256,13 +289,13 @@ export const useRoomEvents = (
       }
     });
     ws.on('uno_turn', (m: Extract<S2CUnoEvent, { t: 'uno_turn' }>) => {
-      gameEvents.value.turn = { ...m, seq: Date.now() };
+      gameEvents.turn = { ...m, seq: Date.now() };
       if (game.value && typeof game.value === 'object') {
         (game.value as UnoGameState).turnSeat = m.seat;
       }
     });
     ws.on('uno_played', (m: Extract<S2CUnoEvent, { t: 'uno_played' }>) => {
-      gameEvents.value.uno_played = m;
+      gameEvents.uno_played = m;
       if (game.value && typeof game.value === 'object') {
         const unoState = game.value as UnoGameState;
         unoState.top = m.card;
@@ -270,13 +303,13 @@ export const useRoomEvents = (
       }
     });
     ws.on('uno_hand', (m: Extract<S2CUnoEvent, { t: 'uno_hand' }>) => {
-      gameEvents.value.uno_hand = m;
+      gameEvents.uno_hand = m;
     });
     ws.on('uno_drew', (m: Extract<S2CUnoEvent, { t: 'uno_drew' }>) => {
-      gameEvents.value.drew = { ...m, seq: Date.now() };
+      gameEvents.drew = { ...m, seq: Date.now() };
     });
     ws.on('uno_final', (m: Extract<S2CUnoEvent, { t: 'uno_final' }>) => {
-      gameEvents.value.final = m;
+      gameEvents.final = m;
       phase.value = 'ended';
     });
   };
@@ -288,7 +321,14 @@ export const useRoomEvents = (
     const bjEntry = (userId: number, round: number) => {
       if (!game.value || typeof game.value !== 'object') return null;
       const bjState = game.value as BlackjackGameState;
-      const log: Array<{ userId: number; round: number; stake: number; doubled: boolean; delta: number | null; outcome: string | null }> = bjState.betLedger || [];
+      const log: Array<{
+        userId: number;
+        round: number;
+        stake: number;
+        doubled: boolean;
+        delta: number | null;
+        outcome: string | null;
+      }> = bjState.betLedger || [];
       let entry = log.find((e) => e.userId === userId && e.round === round && e.delta === null);
       if (!entry) {
         entry = { userId, round, stake: 0, doubled: false, delta: null, outcome: null };
@@ -311,7 +351,7 @@ export const useRoomEvents = (
         bjState.canPassBank = !!m.canPassBank;
         bjState.isBanker = m.bankerSeat === mySeat.value;
         if (newRound && m.phase === 'betting') {
-          gameEvents.value.handsView = [];
+          gameEvents.handsView = [];
           bjState.myCards = [];
           bjState.myStake = 0;
           bjState.myDone = false;
@@ -326,7 +366,7 @@ export const useRoomEvents = (
     });
     ws.on('blackjack_deal', (m: Extract<S2CBlackjackEvent, { t: 'blackjack_deal' }>) => {
       soundManager.playDeal();
-      gameEvents.value.handsView = (m.hands || []).map((h) => ({
+      gameEvents.handsView = (m.hands || []).map((h) => ({
         ...h,
         seat: seatOfUser(h.userId),
         done: !!h.natural,
@@ -346,11 +386,14 @@ export const useRoomEvents = (
         }
       }
     });
-    ws.on('blackjack_your_banker', (m: Extract<S2CBlackjackEvent, { t: 'blackjack_your_banker' }>) => {
-      if (game.value && typeof game.value === 'object') {
-        (game.value as BlackjackGameState).bankerCards = m.cards || [];
+    ws.on(
+      'blackjack_your_banker',
+      (m: Extract<S2CBlackjackEvent, { t: 'blackjack_your_banker' }>) => {
+        if (game.value && typeof game.value === 'object') {
+          (game.value as BlackjackGameState).bankerCards = m.cards || [];
+        }
       }
-    });
+    );
     ws.on('blackjack_action', (m: Extract<S2CBlackjackEvent, { t: 'blackjack_action' }>) => {
       if (!game.value || typeof game.value !== 'object') return;
       const bjState = game.value as BlackjackGameState;
@@ -368,16 +411,16 @@ export const useRoomEvents = (
           bjState.myBusted = !!m.busted;
         }
         if (m.action === 'double') {
-          gameEvents.value.doubled = { userId: m.userId, stake: m.stake, seq: Date.now() };
+          gameEvents.doubled = { userId: m.userId, stake: m.stake ?? 0, seq: Date.now() };
           const entry = bjEntry(m.userId, bjState.round);
           if (entry) {
-            entry.stake = m.stake;
+            entry.stake = m.stake ?? entry.stake;
             entry.doubled = true;
           }
         }
-        const item = (gameEvents.value.handsView || []).find((x: any) => x.userId === m.userId);
+        const item = (gameEvents.handsView || []).find((x: any) => x.userId === m.userId);
         if (item && m.userId !== myId.value) {
-          item.cards = [...(item.cards || []), m.card];
+          item.cards = [...(item.cards || []), ...(m.card ? [m.card] : [])];
           item.done = finished;
           item.busted = !!m.busted;
         } else if (item) {
@@ -388,7 +431,7 @@ export const useRoomEvents = (
       }
       if (m.action === 'stand') {
         if (m.userId === myId.value) bjState.myDone = true;
-        const item = (gameEvents.value.handsView || []).find((x: any) => x.userId === m.userId);
+        const item = (gameEvents.handsView || []).find((x: any) => x.userId === m.userId);
         if (item) item.done = true;
         return;
       }
@@ -396,7 +439,7 @@ export const useRoomEvents = (
         soundManager.playChip();
         const entry = bjEntry(m.userId, bjState.round);
         if (entry) entry.stake = m.stake;
-        const item = (gameEvents.value.handsView || []).find((x: any) => x.userId === m.userId);
+        const item = (gameEvents.handsView || []).find((x: any) => x.userId === m.userId);
         if (item) item.stake = m.stake;
       }
     });
@@ -410,7 +453,7 @@ export const useRoomEvents = (
         bjState.phase = 'settle';
         for (const r of m.results || []) {
           const entry = (bjState.betLedger || []).find(
-            (e) => e.userId === r.userId && e.round === m.round && e.delta === null,
+            (e) => e.userId === r.userId && e.round === m.round && e.delta === null
           );
           if (entry) {
             entry.delta = r.delta;
@@ -425,7 +468,7 @@ export const useRoomEvents = (
         }
       }
       for (const r of m.results || []) {
-        const item = (gameEvents.value.handsView || []).find((x: any) => x.userId === r.userId);
+        const item = (gameEvents.handsView || []).find((x: any) => x.userId === r.userId);
         if (item) {
           item.done = true;
           if (r.outcome === 'bust') item.busted = true;
@@ -434,7 +477,7 @@ export const useRoomEvents = (
       }
     });
     ws.on('blackjack_final', (m: Extract<S2CBlackjackEvent, { t: 'blackjack_final' }>) => {
-      gameEvents.value.final = m;
+      gameEvents.final = m;
       phase.value = 'ended';
     });
   };
@@ -447,8 +490,13 @@ export const useRoomEvents = (
         zjhState.others = members.value
           .filter((m) => m.seat >= 0 && m.userId !== myId.value)
           .map((m) => ({
-            userId: m.userId, nickname: m.nickname, seat: m.seat,
-            seen: false, folded: false, allIn: false, betTotal: 10,
+            userId: m.userId,
+            nickname: m.nickname,
+            seat: m.seat,
+            seen: false,
+            folded: false,
+            allIn: false,
+            betTotal: 10,
           }));
       }
     };
@@ -476,12 +524,18 @@ export const useRoomEvents = (
           zjhState.myAllIn = false;
           zjhState.myBetTotal = 10;
           zjhState.myRank = null;
-          gameEvents.value.showdown = null;
-          gameEvents.value.settle = null;
-          gameEvents.value.compareCards = null;
+          gameEvents.showdown = null;
+          gameEvents.settle = null;
+          gameEvents.compareCards = null;
           resetZjhOthers();
           if (Array.isArray(m.entrants)) {
-            const log: Array<{ userId: number; round: number; betTotal: number; delta: number | null; ended: string | null }> = zjhState.betLedger || [];
+            const log: Array<{
+              userId: number;
+              round: number;
+              betTotal: number;
+              delta: number | null;
+              ended: string | null;
+            }> = zjhState.betLedger || [];
             for (const uid of m.entrants) {
               if (!log.some((e) => e.userId === uid && e.round === m.round)) {
                 log.push({ userId: uid, round: m.round, betTotal: 10, delta: null, ended: null });
@@ -520,7 +574,7 @@ export const useRoomEvents = (
           if (m.allIn) o.allIn = true;
         }
         const entry = (zjhState.betLedger || []).find(
-          (e) => e.userId === m.userId && e.round === zjhState.round && e.delta === null,
+          (e) => e.userId === m.userId && e.round === zjhState.round && e.delta === null
         );
         if (entry) entry.betTotal += m.cost || 0;
         return;
@@ -544,29 +598,37 @@ export const useRoomEvents = (
       zjhState.pot = m.pot ?? zjhState.pot;
       zjhState.aliveCount = m.aliveCount ?? zjhState.aliveCount;
       if (m.loser === myId.value) zjhState.myFolded = true;
-      const cmpLog: Array<{ userId: number; round: number; betTotal: number; delta: number | null; ended: string | null }> = zjhState.betLedger || [];
+      const cmpLog: Array<{
+        userId: number;
+        round: number;
+        betTotal: number;
+        delta: number | null;
+        ended: string | null;
+      }> = zjhState.betLedger || [];
       const cmpEntry = cmpLog.find(
-        (e) => e.userId === m.from && e.round === zjhState.round && e.delta === null,
+        (e) => e.userId === m.from && e.round === zjhState.round && e.delta === null
       );
-      if (cmpEntry) cmpEntry.betTotal += typeof m.cost === 'number' ? m.cost : Math.max(0, (m.pot || 0) - prevPot);
-      gameEvents.value.yanpai = { from: m.from, to: m.to, seq: Date.now() };
-      gameEvents.value.compare = { ...m, seq: Date.now() };
+      if (cmpEntry)
+        cmpEntry.betTotal +=
+          typeof m.cost === 'number' ? m.cost : Math.max(0, (m.pot || 0) - prevPot);
+      gameEvents.yanpai = { from: m.from, to: m.to, seq: Date.now() };
+      gameEvents.compare = { ...m, seq: Date.now() };
       zjhState.compareLog = [
         ...(zjhState.compareLog || []),
         { round: zjhState.round, from: m.from, to: m.to, winner: m.winner, seq: Date.now() },
       ];
     });
     ws.on('zjh_compare_cards', (m: Extract<S2CZjhEvent, { t: 'zjh_compare_cards' }>) => {
-      gameEvents.value.compareCards = m;
+      gameEvents.compareCards = m;
     });
     ws.on('zjh_showdown', (m: Extract<S2CZjhEvent, { t: 'zjh_showdown' }>) => {
-      gameEvents.value.showdown = m;
+      gameEvents.showdown = m;
       if (game.value && typeof game.value === 'object') {
         (game.value as ZjhGameState).phase = 'showdown';
       }
     });
     ws.on('zjh_settle', (m: Extract<S2CZjhEvent, { t: 'zjh_settle' }>) => {
-      gameEvents.value.settle = m;
+      gameEvents.settle = m;
       if (game.value && typeof game.value === 'object') {
         const zjhState = game.value as ZjhGameState;
         zjhState.pot = 0;
@@ -578,18 +640,23 @@ export const useRoomEvents = (
           if (meDelta) zjhState.myChips = meDelta.chips;
           const othersNow = zjhState.others || [];
           const isFolded = (uid: number) =>
-            uid === myId.value ? zjhState.myFolded : !!othersNow.find((x) => x.userId === uid)?.folded;
+            uid === myId.value
+              ? zjhState.myFolded
+              : !!othersNow.find((x) => x.userId === uid)?.folded;
           for (const d of m.deltas) {
             const entry = (zjhState.betLedger || []).find(
-              (e) => e.userId === d.userId && e.round === m.round && e.delta === null,
+              (e) => e.userId === d.userId && e.round === m.round && e.delta === null
             );
             if (entry) {
               entry.delta = d.delta;
-              entry.ended = m.winner === d.userId ? 'win' : isFolded(d.userId) ? 'fold' : 'showdown';
+              entry.ended =
+                m.winner === d.userId ? 'win' : isFolded(d.userId) ? 'fold' : 'showdown';
             }
           }
         }
-        const meInDeltas = Array.isArray(m.deltas) ? m.deltas.find((d) => d.userId === myId.value) : null;
+        const meInDeltas = Array.isArray(m.deltas)
+          ? m.deltas.find((d) => d.userId === myId.value)
+          : null;
         if (meInDeltas) {
           if (meInDeltas.delta > 0) soundManager.playSuccess();
           else if (meInDeltas.delta < 0) soundManager.playFail();
@@ -597,7 +664,7 @@ export const useRoomEvents = (
       }
     });
     ws.on('zjh_final', (m: Extract<S2CZjhEvent, { t: 'zjh_final' }>) => {
-      gameEvents.value.final = m;
+      gameEvents.final = m;
       phase.value = 'ended';
     });
   };

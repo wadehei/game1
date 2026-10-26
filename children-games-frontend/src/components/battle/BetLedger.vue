@@ -4,17 +4,27 @@
       <span class="bl-title">💰 投注明细</span>
       <span class="bl-sum">
         我的投入 <b>{{ myBet }}</b> 分
-        <template v-if="hasMySettled"> · 我的输赢 <b :class="myNet > 0 ? 'pos' : myNet < 0 ? 'neg' : ''">{{ myNetText }}</b></template>
+        <template v-if="hasMySettled">
+          · 我的输赢
+          <b :class="myNet > 0 ? 'pos' : myNet < 0 ? 'neg' : ''">{{ myNetText }}</b></template
+        >
       </span>
       <span class="bl-toggle">{{ open ? '收起 ▲' : `全员 ${entries.length} 条 ▼` }}</span>
     </button>
     <div v-if="open" class="bl-list">
       <div v-for="(e, i) in sorted" :key="i" class="bl-row" :class="{ mine: e.userId === myId }">
         <span class="bl-round">第{{ e.round }}手</span>
-        <span class="bl-name">{{ nameOf(e.userId) }}<template v-if="e.userId === myId">（我）</template></span>
-        <span class="bl-bet">投 {{ e.bet }} 分<template v-if="e.note">（{{ e.note }}）</template></span>
+        <span class="bl-name"
+          >{{ nameOf(e.userId) }}<template v-if="e.userId === myId">（我）</template></span
+        >
+        <span class="bl-bet"
+          >投 {{ e.bet }} 分<template v-if="e.note">（{{ e.note }}）</template></span
+        >
         <span class="bl-tag">{{ e.tag || (e.delta === null ? '未结算' : '') }}</span>
-        <span class="bl-delta" :class="e.delta == null ? '' : e.delta > 0 ? 'pos' : e.delta < 0 ? 'neg' : ''">
+        <span
+          class="bl-delta"
+          :class="e.delta == null ? '' : e.delta > 0 ? 'pos' : e.delta < 0 ? 'neg' : ''"
+        >
           {{ e.delta === null ? '—' : e.delta > 0 ? `+${e.delta}` : e.delta }}
         </span>
       </div>
@@ -51,7 +61,8 @@ const props = withDefaults(
 const open = ref(false);
 
 const sorted = computed(() => [...props.entries].sort((a, b) => a.round - b.round));
-const nameOf = (uid: number): string => props.members.find((m) => m.userId === uid)?.nickname || `角色${uid}`;
+const nameOf = (uid: number): string =>
+  props.members.find((m) => m.userId === uid)?.nickname || `角色${uid}`;
 
 const myEntries = computed(() => props.entries.filter((e) => e.userId === props.myId));
 const myBet = computed(() => myEntries.value.reduce((s, e) => s + (e.bet || 0), 0));

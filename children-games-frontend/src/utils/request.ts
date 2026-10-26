@@ -1,6 +1,9 @@
 import axios from 'axios';
+import { API_ORIGIN } from './apiOrigin';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+export { API_ORIGIN };
+
+const BASE_URL = `${API_ORIGIN}/api`;
 
 const instance = axios.create({
   baseURL: BASE_URL,

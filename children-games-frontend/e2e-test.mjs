@@ -5,7 +5,7 @@ const BASE_URL = 'http://localhost:8080';
 const API_URL = 'http://localhost:3001';
 
 // 等待函数
-const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 let browser;
 let page;
@@ -37,7 +37,7 @@ async function runTests() {
   // 启动浏览器
   browser = await puppeteer.launch({
     headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
   page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 800 });
@@ -58,7 +58,7 @@ async function runTests() {
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nickname: '测试用户' })
+        body: JSON.stringify({ nickname: '测试用户' }),
       });
       return res.json();
     }, `${API_URL}/api/user/login/test`);

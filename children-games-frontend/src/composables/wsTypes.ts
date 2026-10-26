@@ -59,7 +59,11 @@ export interface GomokuGameState {
  */
 export interface QuizGameState {
   question: S2CQuizEvent | null;
-  result: { questionId: number; correctAnswer: number; ranking: Array<{ userId: number; score: number }> } | null;
+  result: {
+    questionId: number;
+    correctAnswer: number;
+    ranking: Array<{ userId: number; score: number }>;
+  } | null;
   final: { ranking: Array<{ userId: number; nickname: string; score: number }> } | null;
 }
 
@@ -115,7 +119,7 @@ export interface BlackjackGameState {
   bankerSeat: number;
   turnSeat: number;
   deadline: number;
-  chips: Record<number, number>;
+  chips: Record<number, number> | Array<{ userId: number; chips: number }>;
   canPassBank: boolean;
   isBanker?: boolean;
   myCards?: unknown[];
@@ -126,7 +130,7 @@ export interface BlackjackGameState {
   myDoubled?: boolean;
   bankerCards?: unknown[];
   bankerValue?: number | null;
-  lastResults?: unknown[];
+  lastResults?: unknown[] | null;
   nextDeadline?: number;
   betLedger?: Array<{
     userId: number;
@@ -194,13 +198,17 @@ export interface ZjhGameState {
 export interface GameEvents {
   // 答题
   question: S2CQuizEvent | null;
-  result: { questionId: number; correctAnswer: number; ranking: Array<{ userId: number; score: number }> } | null;
+  result: {
+    questionId: number;
+    correctAnswer: number;
+    ranking: Array<{ userId: number; score: number }>;
+  } | null;
   final: unknown;
   // 你画我猜
   round: unknown;
   stroke: unknown;
   hint: unknown;
-  guessResult: unknown[];
+  guessResult: unknown[] | null;
   candidates: string[];
   undo: { ts: number } | null;
   clear: { ts: number } | null;
@@ -223,13 +231,23 @@ export interface GameEvents {
   blackjack_your_banker: unknown;
   blackjack_action: unknown;
   blackjack_settle: unknown;
-  handsView: unknown[];
+  handsView: Array<{
+    userId: number;
+    seat?: number;
+    nickname?: string;
+    cards?: string[];
+    stake?: number;
+    done?: boolean;
+    busted?: boolean;
+    natural?: boolean;
+  }> | null;
   doubled: { userId: number; stake: number; seq: number } | null;
   // 炸金花
   zjh_phase: unknown;
   zjh_your_cards: unknown;
   zjh_action: unknown;
   zjh_compare: unknown;
+  compareCards: unknown;
   zjh_compare_cards: unknown;
   zjh_showdown: unknown;
   zjh_settle: unknown;
@@ -330,7 +348,7 @@ export interface TypedRoomEventContext {
   rematchVotes: Ref<number[]>;
   rematchDeadlineAt: Ref<number>;
   lastWsError: Ref<string>;
-  gameEvents: Ref<Partial<GameEvents>>;
+  gameEvents: Partial<GameEvents>; // room.vue 的 reactive 事件袋（非 ref，直接读写）
   applySnapshot: (s: S2CSnapshot) => void;
   scrollChat: () => void;
   leaveToLobby: () => void;

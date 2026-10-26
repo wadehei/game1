@@ -1,5 +1,6 @@
 #!/usr/bin/env sh
 
-# Run lint-staged in both frontend and backend
+# Run lint-staged in both frontend and backend（任一失败即中断提交）
+set -e
 cd children-games-frontend && npx lint-staged
 cd ../children-games-backend && npx lint-staged

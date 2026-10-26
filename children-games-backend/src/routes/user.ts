@@ -1,10 +1,28 @@
 import { Router } from 'express';
-import { wxLogin, testLogin, familyLogin, getProfiles, getUserInfo, updateUserInfo, updateMyPin, getMyCareer, getBattleCareer, reportPlaytime } from '../controllers/userController';
+import {
+  wxLogin,
+  testLogin,
+  familyLogin,
+  getProfiles,
+  getUserInfo,
+  updateUserInfo,
+  updateMyPin,
+  getMyCareer,
+  getBattleCareer,
+  reportPlaytime,
+} from '../controllers/userController';
 import { authMiddleware } from '../middleware/auth';
 import { recordPlay } from '../controllers/gameController';
 import { loginLimiter } from '../middleware/rateLimiter';
 import { validateBody } from '../middleware/validate';
-import { wxLoginSchema, testLoginSchema, familyLoginSchema, updateUserInfoSchema, updatePinSchema, reportPlaytimeSchema } from '../validators/schemas';
+import {
+  wxLoginSchema,
+  testLoginSchema,
+  familyLoginSchema,
+  updateUserInfoSchema,
+  updatePinSchema,
+  reportPlaytimeSchema,
+} from '../validators/schemas';
 
 const router = Router();
 

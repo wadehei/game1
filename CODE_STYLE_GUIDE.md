@@ -1,208 +1,82 @@
-# 代码规范配置指南
+# 代码规范指南
 
-本文档说明如何配置和使用项目的代码规范工具。
+本文档说明项目的代码规范工具配置与使用方式（包管理器为 **npm**，勿用 pnpm）。
 
 ## 配置概览
 
-### 已配置工具
+| 工具 | 用途 | 配置位置 |
+| --- | --- | --- |
+| ESLint 9 (flat config) | 代码质量检查 | `children-games-{frontend,backend}/eslint.config.js` |
+| Prettier 3 | 代码格式化 | `children-games-{frontend,backend}/.prettierrc` |
+| Husky 9 | Git hooks | 根目录 `.husky/pre-commit` |
+| lint-staged | 只检查暂存文件 | 两端 `package.json` 的 `lint-staged` 字段 |
 
-- **ESLint**: 代码质量检查（TypeScript + Vue 3）
-- **Prettier**: 代码格式化
-- **Husky**: Git hooks 管理
-- **lint-staged**: 仅对暂存文件进行检查和格式化
-
-### 配置文件位置
-
-```
-game1/
-├── .editorconfig                          # 编辑器配置
-├── .husky/pre-commit                      # Git pre-commit hook
-└── children-games-frontend/
-    ├── eslint.config.js                   # ESLint 配置（前端）
-    ├── .prettierrc                        # Prettier 配置（前端）
-    └── package.json                       # lint-staged 配置
-└── children-games-backend/
-    ├── eslint.config.js                   # ESLint 配置（后端）
-    ├── .prettierrc                        # Prettier 配置（后端）
-    └── package.json                       # lint-staged 配置
-```
-
-## 安装依赖
+## 安装与初始化
 
 ```bash
-# 前端
-cd children-games-frontend
-pnpm install
+# 前端（在 children-games-frontend 内执行；npm install 会自动触发 prepare → husky）
+npm install
 
-# 后端
-cd children-games-backend
-pnpm install
+# 后端同上
+npm install
 ```
 
-## 使用方法
+`prepare` 脚本带降级守卫：在无 husky 可用的环境（如生产服务器 `npm install --omit=dev`、CI）会跳过而非报错。手动激活钩子：任一子包内执行 `npm run prepare`。
 
-### 1. 手动运行检查和格式化
+## 常用命令
 
 ```bash
-# 前端
-cd children-games-frontend
-pnpm lint              # 运行 ESLint 并自动修复
-pnpm lint:check        # 仅检查，不修复
-pnpm format            # 运行 Prettier 格式化
-pnpm format:check      # 仅检查格式
+# 前端（children-games-frontend）
+npm run lint          # ESLint 检查并自动修复
+npm run lint:check    # 仅检查（CI 使用，有 error 即失败）
+npm run typecheck     # vue-tsc 全量类型检查
+npm run test:run      # vitest 单测
 
-# 后端
-cd children-games-backend
-pnpm lint              # 运行 ESLint 并自动修复
-pnpm lint:check        # 仅检查，不修复
-pnpm format            # 运行 Prettier 格式化
-pnpm format:check      # 仅检查格式
+# 后端（children-games-backend）
+npm run lint
+npm run lint:check
+npm run build         # tsc 编译（含类型检查）
+npm test              # vitest 单测
 ```
 
-### 2. 自动检查（Git commit 时）
+## 规则要点
 
-配置 Husky 后，每次 `git commit` 会自动运行 `lint-staged`，对暂存的文件进行：
-- ESLint 检查 + 自动修复
-- Prettier 格式化
-
-如果检查失败，commit 会被阻止，需要先修复问题。
-
-### 3. 初始化 Husky（首次配置）
-
-```bash
-# 在项目根目录执行
-cd children-games-frontend
-pnpm prepare
-
-# 或手动初始化
-npx husky install
-```
-
-## 规则说明
-
-### ESLint 规则
-
-#### 前端（Vue 3 + TypeScript）
-
-- **推荐规则集**: `eslint:recommended` + `@typescript-eslint/recommended` + `plugin:vue/recommended`
-- **类型检查**: 启用 TypeScript 严格模式检查
-- **Vue 特定**:
-  - `vue/multi-word-component-names`: off（允许单词组件名）
-  - `vue/no-v-html`: warn（警告使用 v-html）
-  - `vue/attribute-hyphenation`: error（强制属性使用 kebab-case）
-- **通用**:
-  - `no-console`: warn（禁止 console.log，允许 console.warn/error）
-  - `prefer-const`: error（优先使用 const）
-  - `@typescript-eslint/no-explicit-any`: warn（警告使用 any）
-
-#### 后端（Express + TypeScript）
-
-- **推荐规则集**: `eslint:recommended` + `@typescript-eslint/recommended`
-- **Node.js 特定**:
-  - `no-process-exit`: warn（警告使用 process.exit）
-  - `no-throw-literal`: error（禁止抛出字面量）
-- **错误处理**:
-  - `prefer-promise-reject-errors`: error（Promise reject 必须使用 Error 对象）
-
-### Prettier 规则
+### Prettier（两端一致）
 
 ```json
 {
-  "semi": false,              // 不加分号
-  "singleQuote": true,        // 使用单引号
-  "tabWidth": 2,              // 缩进 2 空格
-  "trailingComma": "es5",     // ES5 尾随逗号
-  "printWidth": 100,          // 每行最大 100 字符
-  "arrowParens": "always",    // 箭头函数总是加括号
-  "endOfLine": "lf"           // 使用 LF 换行符
+  "singleQuote": true,        // 单引号
+  "tabWidth": 2,
+  "trailingComma": "es5",
+  "printWidth": 100,
+  "arrowParens": "always",
+  "endOfLine": "auto"         // 保留文件现有换行符，不做 CRLF/LF 强转
 }
 ```
 
-## 编辑器集成
+> 历史说明：早期配置曾为 `semi: false` + `endOfLine: "lf"`，与全仓分号 + Windows CRLF 现状冲突，产生 3 万余条假 lint 错误；2026-10-25 起改为与现状一致（分号保留、eol auto），`.gitattributes` 已加 `* text=auto` 保证 repo 内存储规范化。
 
-### VS Code
+### ESLint 约定
 
-安装以下扩展：
-- ESLint
-- Prettier - Code formatter
+- `prettier/prettier` 通过 `eslint-plugin-prettier/recommended` 接入（配置块必须最后加载）。
+- TS 文件关闭 `no-undef` / `no-unused-vars`（交给 tsc / `@typescript-eslint/no-unused-vars`）。
+- 宽松为 **warn** 的规则：`no-console`、`no-explicit-any`、`no-non-null-assertion`、`no-process-exist` 等——warn 不阻塞 CI，但建议新代码不要新增。
+- 严格为 **error** 的规则：`no-debugger`、`prefer-const`、`no-var`、`no-throw-literal`、`prefer-promise-reject-errors`、`vue/attribute-hyphenation`。
+- 后端关闭 `@typescript-eslint/no-empty-object-type`（Sequelize `interface XxxAttributes extends InferAttributes<Xxx> {}` 惯用法）。
+- 前端 `.vue` 文件与 TS 文件使用同一套宽松级别；`vue/no-mutating-props` 暂为 warn（对战组件共享 events 袋的既有设计，待类型化批次治理）。
 
-在 `.vscode/settings.json` 中添加：
+### Git 提交流程
+
+`.husky/pre-commit`（fail-closed）依次在两端运行 `lint-staged`：暂存的 `*.ts`/`*.vue` 会被 ESLint --fix + Prettier 格式化，失败则提交中断。临时跳过（不推荐）：`git commit --no-verify`。
+
+## 编辑器集成（VS Code）
+
+安装 ESLint + Prettier 扩展，`.vscode/settings.json`：
 
 ```json
 {
   "editor.formatOnSave": true,
   "editor.defaultFormatter": "esbenp.prettier-vscode",
-  "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "explicit"
-  }
+  "editor.codeActionsOnSave": { "source.fixAll.eslint": "explicit" }
 }
 ```
-
-### WebStorm / IntelliJ IDEA
-
-1. **Settings** → **Languages & Frameworks** → **JavaScript** → **Code Quality Tools**
-2. 启用 ESLint 和 Prettier
-3. 设置 "Run on save"
-
-## 常见问题
-
-### Q: Commit 时被 Husky 阻止怎么办？
-
-A: 运行以下命令修复问题：
-
-```bash
-# 前端
-cd children-games-frontend
-pnpm lint
-pnpm format
-
-# 后端
-cd children-games-backend
-pnpm lint
-pnpm format
-
-# 然后重新 add 和 commit
-git add .
-git commit -m "your message"
-```
-
-### Q: 如何临时跳过 Husky 检查？
-
-A: 使用 `--no-verify` 参数（不推荐）：
-
-```bash
-git commit -m "your message" --no-verify
-```
-
-### Q: ESLint 报错太多怎么办？
-
-A: 可以先运行自动修复：
-
-```bash
-pnpm lint          # 自动修复可修复的问题
-pnpm lint:check    # 查看剩余问题，手动修复
-```
-
-### Q: 如何添加自定义规则？
-
-A: 编辑对应的 `eslint.config.js` 文件，在 `rules` 对象中添加规则。
-
-## 持续改进
-
-建议定期运行完整检查：
-
-```bash
-# 前端
-cd children-games-frontend
-pnpm lint:check && pnpm format:check
-
-# 后端
-cd children-games-backend
-pnpm lint:check && pnpm format:check
-```
-
-## 下一步
-
-- [ ] 配置 CI/CD 自动运行 lint 检查
-- [ ] 添加更多 ESLint 规则（根据项目需求）
-- [ ] 考虑添加 stylelint（CSS 检查）

@@ -1,7 +1,7 @@
 <template>
   <div class="room-top">
     <button class="rt-exit" @click="$emit('exit')">‹ 退出</button>
-    <div class="rt-code" @click="$emit('copyCode')" title="复制邀请链接，朋友点开直接进房">
+    <div class="rt-code" title="复制邀请链接，朋友点开直接进房" @click="$emit('copyCode')">
       房间 <b>{{ roomId }}</b>
       <span class="rt-copy">{{ copied ? '链接已复制' : '复制链接' }}</span>
     </div>
@@ -18,9 +18,9 @@ defineProps<{
 }>();
 
 defineEmits<{
-  (e: "exit"): void;
-  (e: "disband"): void;
-  (e: "copyCode"): void;
+  (e: 'exit'): void;
+  (e: 'disband'): void;
+  (e: 'copyCode'): void;
 }>();
 </script>
 

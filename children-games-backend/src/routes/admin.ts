@@ -27,7 +27,13 @@ import { listFeedbacks, updateFeedback, addFeedbackReply } from '../controllers/
 import { adminMiddleware } from '../middleware/adminAuth';
 import { adminLoginLimiter } from '../middleware/rateLimiter';
 import { validateBody } from '../middleware/validate';
-import { adminLoginSchema, adjustChipsSchema, updateSettingsSchema, addReplySchema, quizSchema } from '../validators/schemas';
+import {
+  adminLoginSchema,
+  adjustChipsSchema,
+  updateSettingsSchema,
+  addReplySchema,
+  quizSchema,
+} from '../validators/schemas';
 
 const router = Router();
 

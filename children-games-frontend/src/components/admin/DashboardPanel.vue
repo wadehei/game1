@@ -2,12 +2,21 @@
   <div class="panel">
     <div class="panel-head">
       <h2 class="panel-title">📊 数据看板</h2>
-      <button class="refresh-btn" :disabled="loading" @click="load">{{ loading ? '刷新中…' : '🔄 刷新' }}</button>
+      <button class="refresh-btn" :disabled="loading" @click="load">
+        {{ loading ? '刷新中…' : '🔄 刷新' }}
+      </button>
     </div>
 
     <!-- 积分入账失败告警 -->
-    <div v-if="(overview?.chipFailures ?? 0) > 0" class="chip-alert" @click="$router.replace({ query: { tab: 'logs' } })">
-      ⚠️ 有 {{ overview?.chipFailures }} 条积分入账失败的记录，账号积分与桌面积分可能存在差异。点击前往「🐞 错误日志」查看（source=chips）并人工核对修正。
+    <div
+      v-if="(overview?.chipFailures ?? 0) > 0"
+      class="chip-alert"
+      @click="$router.replace({ query: { tab: 'logs' } })"
+    >
+      ⚠️ 有
+      {{ overview?.chipFailures }}
+      条积分入账失败的记录，账号积分与桌面积分可能存在差异。点击前往「🐞
+      错误日志」查看（source=chips）并人工核对修正。
     </div>
 
     <!-- 指标卡 -->
@@ -31,7 +40,7 @@
     </div>
 
     <!-- 成员星星对比 -->
-    <div class="section" v-if="overview?.members?.length">
+    <div v-if="overview?.members?.length" class="section">
       <h3 class="section-title">成员星星</h3>
       <div class="bar-list">
         <div v-for="m in overview.members" :key="m.id" class="bar-row">

@@ -4,11 +4,11 @@
     <GameHeader
       :items="headerItems"
       :muted="sounds.isMuted.value"
-      headerClass="simon-header"
+      header-class="simon-header"
       level-selectable
-      @toggleSound="sounds.toggleSound"
-      @goBack="router.back()"
-      @selectLevel="openLevelSelect"
+      @toggle-sound="sounds.toggleSound"
+      @go-back="router.back()"
+      @select-level="openLevelSelect"
     />
 
     <!-- 状态提示 -->
@@ -106,17 +106,25 @@ const playbackTimeouts: ReturnType<typeof setTimeout>[] = [];
 
 const headerItems = computed(() => [
   { label: '关卡', value: currentLevel.value },
-  { label: '进度', value: `${Math.min(inputIndex.value, levelConfig.value.seqLength)}/${levelConfig.value.seqLength}` },
+  {
+    label: '进度',
+    value: `${Math.min(inputIndex.value, levelConfig.value.seqLength)}/${levelConfig.value.seqLength}`,
+  },
   { label: '生命', value: '❤️'.repeat(hearts.value) },
 ]);
 
 const statusText = computed(() => {
   switch (phase.value) {
-    case 'ready': return '看好了～';
-    case 'playing': return '仔细听 👂';
-    case 'input': return '轮到你啦 👆';
-    case 'replay': return '没关系，再听一次～';
-    case 'done': return '太棒了！';
+    case 'ready':
+      return '看好了～';
+    case 'playing':
+      return '仔细听 👂';
+    case 'input':
+      return '轮到你啦 👆';
+    case 'replay':
+      return '没关系，再听一次～';
+    case 'done':
+      return '太棒了！';
   }
   return '';
 });
@@ -174,9 +182,12 @@ const playSequence = () => {
   sequence.forEach((padId, i) => {
     addTimeout(() => lightPad(padId, stepMs * 0.55), i * stepMs);
   });
-  addTimeout(() => {
-    phase.value = 'input';
-  }, sequence.length * stepMs + 150);
+  addTimeout(
+    () => {
+      phase.value = 'input';
+    },
+    sequence.length * stepMs + 150
+  );
 };
 
 const tapPad = (padId: number) => {
@@ -387,7 +398,7 @@ onUnmounted(() => {
   display: inline-block;
   font-size: 18px;
   font-weight: bold;
-  color: #FFE66D;
+  color: #ffe66d;
   background: rgba(255, 230, 109, 0.1);
   padding: 8px 22px;
   border-radius: 20px;
@@ -410,7 +421,10 @@ onUnmounted(() => {
   cursor: pointer;
   border: 3px solid rgba(255, 255, 255, 0.18);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
-  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    filter 0.12s ease;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
@@ -420,15 +434,25 @@ onUnmounted(() => {
   transform: scale(0.96);
 }
 
-.pad.red { background: linear-gradient(135deg, #FF6B6B 0%, #ee5253 100%); }
-.pad.yellow { background: linear-gradient(135deg, #FFE66D 0%, #feca57 100%); }
-.pad.teal { background: linear-gradient(135deg, #4ECDC4 0%, #1dd1a1 100%); }
-.pad.green { background: linear-gradient(135deg, #95E1D3 0%, #7acbb8 100%); }
+.pad.red {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5253 100%);
+}
+.pad.yellow {
+  background: linear-gradient(135deg, #ffe66d 0%, #feca57 100%);
+}
+.pad.teal {
+  background: linear-gradient(135deg, #4ecdc4 0%, #1dd1a1 100%);
+}
+.pad.green {
+  background: linear-gradient(135deg, #95e1d3 0%, #7acbb8 100%);
+}
 
 .pad.lit {
   transform: scale(1.07);
   filter: brightness(1.35);
-  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.85), 0 0 34px rgba(255, 255, 255, 0.6);
+  box-shadow:
+    0 0 0 4px rgba(255, 255, 255, 0.85),
+    0 0 34px rgba(255, 255, 255, 0.6);
 }
 
 .pad.wrong {
@@ -437,10 +461,19 @@ onUnmounted(() => {
 }
 
 @keyframes padShake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-7px); }
-  50% { transform: translateX(7px); }
-  75% { transform: translateX(-5px); }
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-7px);
+  }
+  50% {
+    transform: translateX(7px);
+  }
+  75% {
+    transform: translateX(-5px);
+  }
 }
 
 .pad-icon {

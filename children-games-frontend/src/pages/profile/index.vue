@@ -27,7 +27,9 @@
           class="emoji-cell"
           :class="{ picked: avatar === e }"
           @click="avatar = e"
-        >{{ e }}</button>
+        >
+          {{ e }}
+        </button>
       </div>
 
       <!-- 上传照片 -->
@@ -40,8 +42,12 @@
 
     <!-- 头像历史 -->
     <div class="section card">
-      <div class="section-title">头像历史<span class="sub-hint">点一下即可换回（最多保留 12 个）</span></div>
-      <div v-if="history.length === 0" class="history-empty">还没有历史头像，换一次头像就有了～</div>
+      <div class="section-title">
+        头像历史<span class="sub-hint">点一下即可换回（最多保留 12 个）</span>
+      </div>
+      <div v-if="history.length === 0" class="history-empty">
+        还没有历史头像，换一次头像就有了～
+      </div>
       <div v-else class="history-grid">
         <button
           v-for="(h, i) in history"
@@ -90,7 +96,9 @@
     <div class="section card battle-career">
       <div class="section-title">♟️ 好友对战生涯</div>
       <div class="chips-row">
-        <span class="chips-num">💰 {{ career?.chips ?? userStore.userInfo?.battleChips ?? 0 }}</span>
+        <span class="chips-num"
+          >💰 {{ career?.chips ?? userStore.userInfo?.battleChips ?? 0 }}</span
+        >
         <span class="chips-label">对战积分</span>
       </div>
       <div v-if="career?.games?.length" class="career-games">
@@ -130,7 +138,24 @@ import { getBattleCareer, type BattleCareer } from '@/api/room';
 import { uploadPhotoAvatar } from '@/utils/avatarUpload';
 import PlayerAvatar from '@/components/PlayerAvatar.vue';
 
-const AVATARS = ['🐰', '🐻', '🐼', '🦊', '🐸', '🐵', '🐯', '🦁', '🐷', '🐨', '👑', '🤖', '👻', '🦄', '🐢', '🐝'];
+const AVATARS = [
+  '🐰',
+  '🐻',
+  '🐼',
+  '🦊',
+  '🐸',
+  '🐵',
+  '🐯',
+  '🦁',
+  '🐷',
+  '🐨',
+  '👑',
+  '🤖',
+  '👻',
+  '🦄',
+  '🐢',
+  '🐝',
+];
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -155,7 +180,16 @@ const GAME_META: Record<string, { name: string; emoji: string }> = {
 };
 const gameName = (t: string): string => GAME_META[t]?.name || t;
 const gameEmoji = (t: string): string => GAME_META[t]?.emoji || '🎮';
-const resultText = (r: string): string => (r === 'win' ? '🏆 胜' : r === 'lose' ? '负' : r === 'draw' ? '平' : r.startsWith('rank:') ? `第 ${r.split(':')[1]} 名` : r);
+const resultText = (r: string): string =>
+  r === 'win'
+    ? '🏆 胜'
+    : r === 'lose'
+      ? '负'
+      : r === 'draw'
+        ? '平'
+        : r.startsWith('rank:')
+          ? `第 ${r.split(':')[1]} 名`
+          : r;
 
 const goBack = () => router.back();
 
@@ -259,7 +293,8 @@ onMounted(async () => {
 <style scoped>
 .profile-page {
   min-height: 100vh;
-  background: linear-gradient(180deg, #f5f7fa 0%, #e8ecf1 100%);  padding: 16px;
+  background: linear-gradient(180deg, #f5f7fa 0%, #e8ecf1 100%);
+  padding: 16px;
   max-width: 500px;
   margin: 0 auto;
   box-sizing: border-box;

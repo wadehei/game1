@@ -4,11 +4,11 @@
     <GameHeader
       :items="headerItems"
       :muted="sounds.isMuted.value"
-      headerClass="puzzle-header"
+      header-class="puzzle-header"
       level-selectable
-      @toggleSound="sounds.toggleSound"
-      @goBack="router.back()"
-      @selectLevel="openLevelSelect"
+      @toggle-sound="sounds.toggleSound"
+      @go-back="router.back()"
+      @select-level="openLevelSelect"
     />
 
     <!-- 原图预览 -->
@@ -23,7 +23,12 @@
         v-for="(piece, index) in pieces"
         :key="index"
         class="puzzle-piece"
-        :class="{ empty: piece.isEmpty, selected: selectedPiece === index, movable: adjacentToEmpty.has(index) && !piece.isEmpty, 'win-glow': gameWon && !piece.isEmpty }"
+        :class="{
+          empty: piece.isEmpty,
+          selected: selectedPiece === index,
+          movable: adjacentToEmpty.has(index) && !piece.isEmpty,
+          'win-glow': gameWon && !piece.isEmpty,
+        }"
         @click="selectPiece(index)"
       >
         <img
@@ -33,7 +38,7 @@
           :style="{
             width: gridSize * 100 + '%',
             height: gridSize * 100 + '%',
-            transform: `translate(${-(piece.correctPosition % gridSize) * (100 / gridSize)}%, ${-Math.floor(piece.correctPosition / gridSize) * (100 / gridSize)}%)`
+            transform: `translate(${-(piece.correctPosition % gridSize) * (100 / gridSize)}%, ${-Math.floor(piece.correctPosition / gridSize) * (100 / gridSize)}%)`,
           }"
         />
       </div>
@@ -130,7 +135,9 @@ const levelTimeLimit = computed(() => {
   if (typeof fromOverride === 'number') {
     return Math.max(Math.round(fromOverride), 10);
   }
-  return Math.round(defaultLevelConfig('puzzle', currentLevel.value).timeLimit * (1 + 0.3 * assist.level()));
+  return Math.round(
+    defaultLevelConfig('puzzle', currentLevel.value).timeLimit * (1 + 0.3 * assist.level())
+  );
 });
 
 const applyLevelConfig = async (level: number) => {
@@ -140,14 +147,19 @@ const applyLevelConfig = async (level: number) => {
 const currentImage = computed(() => images[(currentLevel.value - 1) % images.length]);
 
 const adjacentToEmpty = computed(() => {
-  const emptyIndex = pieces.value.findIndex(p => p.isEmpty);
+  const emptyIndex = pieces.value.findIndex((p) => p.isEmpty);
   const result = new Set<number>();
   const size = gridSize.value;
   const emptyRow = Math.floor(emptyIndex / size);
   const emptyCol = emptyIndex % size;
 
   // Check all 4 directions
-  [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr, dc]) => {
+  [
+    [-1, 0],
+    [1, 0],
+    [0, -1],
+    [0, 1],
+  ].forEach(([dr, dc]) => {
     const r = emptyRow + dr;
     const c = emptyCol + dc;
     if (r >= 0 && r < size && c >= 0 && c < size) {
@@ -319,12 +331,14 @@ const selectPiece = (index: number) => {
   const piece = pieces.value[index];
   if (piece.isEmpty || paused.value) return;
 
-  const emptyIndex = pieces.value.findIndex(p => p.isEmpty);
+  const emptyIndex = pieces.value.findIndex((p) => p.isEmpty);
 
   // If clicked piece is adjacent to empty slot, swap immediately
   if (isAdjacent(index, emptyIndex)) {
-    [pieces.value[index], pieces.value[emptyIndex]] =
-      [pieces.value[emptyIndex], pieces.value[index]];
+    [pieces.value[index], pieces.value[emptyIndex]] = [
+      pieces.value[emptyIndex],
+      pieces.value[index],
+    ];
     moves.value++;
     sounds.play('bounce');
     checkWin();
@@ -348,8 +362,9 @@ const isAdjacent = (index1: number, index2: number): boolean => {
   const row2 = Math.floor(index2 / size);
   const col2 = index2 % size;
 
-  return (Math.abs(row1 - row2) === 1 && col1 === col2) ||
-         (Math.abs(col1 - col2) === 1 && row1 === row2);
+  return (
+    (Math.abs(row1 - row2) === 1 && col1 === col2) || (Math.abs(col1 - col2) === 1 && row1 === row2)
+  );
 };
 
 const checkWin = () => {
@@ -455,7 +470,7 @@ onUnmounted(() => {
 }
 
 :deep(.puzzle-header .value.warning) {
-  color: #FFD700;
+  color: #ffd700;
 }
 
 :deep(.puzzle-header .sound-btn) {
@@ -507,7 +522,9 @@ onUnmounted(() => {
   overflow: hidden;
   position: relative;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .puzzle-piece:hover {
@@ -519,7 +536,7 @@ onUnmounted(() => {
 }
 
 .puzzle-piece.selected {
-  box-shadow: 0 0 0 3px #FFE66D;
+  box-shadow: 0 0 0 3px #ffe66d;
   transform: scale(1.05);
 }
 
@@ -533,9 +550,15 @@ onUnmounted(() => {
 }
 
 @keyframes winGlow {
-  0% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7); }
-  50% { box-shadow: 0 0 15px 5px rgba(255, 215, 0, 0.4); }
-  100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 15px 5px rgba(255, 215, 0, 0.4);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 215, 0, 0);
+  }
 }
 
 .piece-image {
@@ -543,7 +566,6 @@ onUnmounted(() => {
   top: 0;
   left: 0;
 }
-
 
 /* 响应式 */
 @media (max-width: 480px) {

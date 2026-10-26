@@ -5,9 +5,16 @@
       <div class="quiz-final">
         <div class="qf-title">🏁 竞答结束</div>
         <div class="qf-list">
-          <div v-for="(r, i) in final.ranking" :key="r.userId" class="qf-row" :class="{ me: r.userId === myId, top: i === 0 }">
+          <div
+            v-for="(r, i) in final.ranking"
+            :key="r.userId"
+            class="qf-row"
+            :class="{ me: r.userId === myId, top: i === 0 }"
+          >
             <span class="qf-rank">{{ ['🥇', '🥈', '🥉'][i] || `${i + 1}.` }}</span>
-            <span class="qf-name">{{ r.nickname }}<template v-if="r.userId === myId">（我）</template></span>
+            <span class="qf-name"
+              >{{ r.nickname }}<template v-if="r.userId === myId">（我）</template></span
+            >
             <span class="qf-score">{{ r.total }} 分</span>
           </div>
         </div>
@@ -15,10 +22,14 @@
       </div>
     </template>
 
-    <template v-else-if="question && (question.index >= 0)">
+    <template v-else-if="question && question.index >= 0">
       <!-- 倒计时条 -->
       <div class="timer-bar">
-        <div class="timer-fill" :class="{ hurry: remainSec <= 5 }" :style="{ width: `${remainPct}%` }" />
+        <div
+          class="timer-fill"
+          :class="{ hurry: remainSec <= 5 }"
+          :style="{ width: `${remainPct}%` }"
+        />
         <span class="timer-num">{{ remainSec }}s</span>
         <span class="timer-progress">{{ question.index + 1 }}/{{ question.total }}</span>
       </div>
@@ -38,7 +49,11 @@
             <span class="opt-key">{{ 'ABCD'[i] }}</span>
             <span class="opt-text">{{ opt }}</span>
             <span v-if="revealed && i === result?.answer" class="opt-mark">✓</span>
-            <span v-else-if="revealed && myChoice === i && i !== result?.answer" class="opt-mark wrong">✗</span>
+            <span
+              v-else-if="revealed && myChoice === i && i !== result?.answer"
+              class="opt-mark wrong"
+              >✗</span
+            >
           </button>
         </div>
         <div class="quiz-meta">
@@ -48,14 +63,24 @@
 
       <!-- 揭晓过渡 -->
       <div v-if="revealed && result" class="reveal-tip">
-        <span v-for="d in result.delta" :key="d.userId" class="reveal-item" :class="{ gain: d.gained > 0 }">
+        <span
+          v-for="d in result.delta"
+          :key="d.userId"
+          class="reveal-item"
+          :class="{ gain: d.gained > 0 }"
+        >
           {{ nameOf(d.userId) }} {{ d.gained > 0 ? `+${d.gained}` : '+0' }}
         </span>
       </div>
 
       <!-- 实时积分 -->
       <div class="score-bar">
-        <span v-for="s in scores" :key="s.userId" class="score-item" :class="{ me: s.userId === myId }">
+        <span
+          v-for="s in scores"
+          :key="s.userId"
+          class="score-item"
+          :class="{ me: s.userId === myId }"
+        >
           {{ nameOf(s.userId) }} {{ s.total }}分
         </span>
       </div>
@@ -91,7 +116,12 @@ let tickTimer: ReturnType<typeof setInterval> | null = null;
 const revealed = computed(() => !!props.result && props.result.qid === props.question?.qid);
 const locked = computed(() => myChoice.value !== null || revealed.value || props.mySeat < 0);
 
-const scores = computed<any[]>(() => props.question?.scores || props.final?.ranking?.map((r: any) => ({ userId: r.userId, total: r.total })) || []);
+const scores = computed<any[]>(
+  () =>
+    props.question?.scores ||
+    props.final?.ranking?.map((r: any) => ({ userId: r.userId, total: r.total })) ||
+    []
+);
 const nameOf = (userId: number): string => {
   if (userId === myId.value) return '我';
   return props.members?.find((m) => m.userId === userId)?.nickname || `角色${userId}`;

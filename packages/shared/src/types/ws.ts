@@ -240,11 +240,12 @@ export interface S2CGomokuMove {
   t: 'move';
   x: number;
   y: number;
-  color: 'black' | 'white';
-  turn: Seat;
-  lastMove: { x: number; y: number };
-  winner?: Seat;
-  winLine?: Array<{ x: number; y: number }>;
+  color: number; // 1=黑 2=白（与后端 gomoku 引擎一致）
+  userId: number;
+  turn: number;
+  lastMove: { x: number; y: number } | null;
+  winner?: number; // 0=进行中 1/2=某方胜 3=和棋
+  winLine?: Array<{ x: number; y: number }> | null;
 }
 
 export type S2CGomokuEvent = S2CGomokuMove;
@@ -303,11 +304,11 @@ export type S2CUnoEvent =
 // ─────────────────────────────────────────────────────────────
 
 export type S2CBlackjackEvent =
-  | { t: 'blackjack_phase'; round: number; totalRounds: number; phase: string; bankerSeat: Seat; turnSeat: Seat; deadline: number; chips: Record<number, number>; canPassBank: boolean }
-  | { t: 'blackjack_deal'; hands: Record<Seat, unknown[]>; bankerUpcard: unknown }
-  | { t: 'blackjack_your_banker'; cards: unknown[] }
-  | { t: 'blackjack_action'; action: string; userId: number; card?: unknown; stake?: number; total?: number; busted?: boolean }
-  | { t: 'blackjack_settle'; results: Array<{ userId: number; delta: number }>; chips: Record<number, number>; bankerCards: unknown[]; bankerValue: number; nextDeadline?: number }
+  | { t: 'blackjack_phase'; round: number; totalRounds: number; phase: string; bankerSeat: Seat; turnSeat: Seat; deadline: number; chips: Array<{ userId: number; chips: number }>; canPassBank: boolean }
+  | { t: 'blackjack_deal'; round: number; hands: Array<{ userId: number; cards: string[]; natural: boolean; stake: number }>; bankerUpcard?: string | null }
+  | { t: 'blackjack_your_banker'; cards: string[] }
+  | { t: 'blackjack_action'; action: string; userId: number; card?: string; stake?: number; total?: number; busted?: boolean }
+  | { t: 'blackjack_settle'; round: number; results: Array<{ userId: number; outcome: string; delta: number; chips: number }>; chips: Array<{ userId: number; chips: number }>; bankerCards: string[]; bankerValue: number; nextDeadline?: number }
   | { t: 'blackjack_final'; ranking: Array<{ userId: number; nickname: string; chips: number }> };
 
 // ─────────────────────────────────────────────────────────────
@@ -315,11 +316,11 @@ export type S2CBlackjackEvent =
 // ─────────────────────────────────────────────────────────────
 
 export type S2CZjhEvent =
-  | { t: 'zjh_phase'; round: number; totalRounds: number; phase: string; dealerSeat: Seat; pot: number; stake: number; roundNo: number; turnSeat: Seat; deadline: number; aliveCount: number; chips: Record<number, number>; entrants: number[] }
+  | { t: 'zjh_phase'; round: number; totalRounds: number; phase: string; dealerSeat: Seat; pot: number; stake: number; roundNo: number; turnSeat: Seat; deadline: number; aliveCount: number; chips: Record<number, number>; entrants: number[]; compareMinRound?: number }
   | { t: 'zjh_your_cards'; cards: unknown[]; rank: string }
   | { t: 'zjh_action'; action: string; userId: number; pot?: number; stake?: number; cost?: number; allIn?: boolean; aliveCount?: number }
   | { t: 'zjh_compare'; from: number; to: number; winner: number; loser: number; pot: number; aliveCount: number; cost: number }
   | { t: 'zjh_compare_cards'; cards: Record<number, unknown[]> }
   | { t: 'zjh_showdown'; hands: Record<number, { cards: unknown[]; rank: string }> }
-  | { t: 'zjh_settle'; deltas: Array<{ userId: number; delta: number; chips: number }>; nextDeadline?: number }
+  | { t: 'zjh_settle'; round: number; winner: number; winnerNickname?: string; reason?: string; winAmount?: number; reveals?: unknown; deltas: Array<{ userId: number; delta: number; chips: number }>; nextDeadline?: number }
   | { t: 'zjh_final'; ranking: Array<{ userId: number; nickname: string; chips: number }> };

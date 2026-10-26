@@ -7,4 +7,5 @@ export const BASE = process.env.BASE_URL || 'http://localhost:8080';
 export const ADMIN_PASSWORD =
   fs
     .readFileSync(path.resolve(import.meta.dirname, '../../children-games-backend/.env'), 'utf8')
-    .match(/^ADMIN_PASSWORD=(.*)$/m)?.[1]?.trim() || '';
+    .match(/^ADMIN_PASSWORD=(.*)$/m)?.[1]
+    ?.trim() || '';

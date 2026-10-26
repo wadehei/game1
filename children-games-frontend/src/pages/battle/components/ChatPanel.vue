@@ -1,6 +1,6 @@
 <template>
   <div class="chat-card">
-    <div class="chat-list" ref="chatListEl">
+    <div ref="chatListEl" class="chat-list">
       <div
         v-for="(m, i) in chatList"
         :key="i"
@@ -53,7 +53,9 @@
           :key="e"
           class="emoji-cell"
           @click="$emit('sendQuick', 'emoji', e)"
-        >{{ e }}</button>
+        >
+          {{ e }}
+        </button>
       </div>
     </div>
     <div v-if="panel === 'quick'" class="panel">
@@ -62,21 +64,19 @@
         :key="p"
         class="phrase-cell"
         @click="$emit('sendQuick', 'quick', p)"
-      >{{ p }}</button>
+      >
+        {{ p }}
+      </button>
     </div>
 
     <!-- 输入栏 -->
     <div class="chat-bar">
-      <button
-        class="bar-btn"
-        :class="{ on: panel === 'emoji' }"
-        @click="togglePanel('emoji')"
-      >😊</button>
-      <button
-        class="bar-btn"
-        :class="{ on: panel === 'quick' }"
-        @click="togglePanel('quick')"
-      >💬</button>
+      <button class="bar-btn" :class="{ on: panel === 'emoji' }" @click="togglePanel('emoji')">
+        😊
+      </button>
+      <button class="bar-btn" :class="{ on: panel === 'quick' }" @click="togglePanel('quick')">
+        💬
+      </button>
       <input
         v-model="chatInput"
         class="chat-input"
@@ -92,7 +92,9 @@
         @touchstart.prevent="$emit('micDown')"
         @touchend.prevent="$emit('micUp')"
         @touchcancel.prevent="$emit('micUp')"
-      >🎙️</button>
+      >
+        🎙️
+      </button>
       <button class="send-btn" :disabled="!chatInput.trim()" @click="handleSendText">发送</button>
     </div>
     <div v-if="recError" class="rec-err">{{ recError }}</div>
@@ -100,13 +102,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick } from "vue";
-import { QUICK_PHRASES, ROOM_EMOJIS } from "@/utils/quickChat";
+import { ref, computed, nextTick } from 'vue';
+import { QUICK_PHRASES, ROOM_EMOJIS } from '@/utils/quickChat';
 
 interface ChatItem {
   userId: number;
   nickname: string;
-  kind: "text" | "emoji" | "quick";
+  kind: 'text' | 'emoji' | 'quick';
   content: string;
   ts: number;
 }
@@ -132,32 +134,30 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: "sendText", text: string): void;
-  (e: "sendQuick", kind: "emoji" | "quick", content: string): void;
-  (e: "playVoice", v: VoiceItem): void;
-  (e: "micDown"): void;
-  (e: "micUp"): void;
+  (e: 'sendText', text: string): void;
+  (e: 'sendQuick', kind: 'emoji' | 'quick', content: string): void;
+  (e: 'playVoice', v: VoiceItem): void;
+  (e: 'micDown'): void;
+  (e: 'micUp'): void;
 }>();
 
-const chatInput = ref("");
-const panel = ref<"" | "emoji" | "quick">("");
+const chatInput = ref('');
+const panel = ref<'' | 'emoji' | 'quick'>('');
 const chatListEl = ref<HTMLElement | null>(null);
 
 const inputPlaceholder = computed(() =>
-  props.gameType === "draw" && props.phase === "playing"
-    ? "在这里输入你猜的词…"
-    : "说点什么…",
+  props.gameType === 'draw' && props.phase === 'playing' ? '在这里输入你猜的词…' : '说点什么…'
 );
 
-const togglePanel = (type: "emoji" | "quick") => {
-  panel.value = panel.value === type ? "" : type;
+const togglePanel = (type: 'emoji' | 'quick') => {
+  panel.value = panel.value === type ? '' : type;
 };
 
 const handleSendText = () => {
   const text = chatInput.value.trim();
   if (!text) return;
-  emit("sendText", text);
-  chatInput.value = "";
+  emit('sendText', text);
+  chatInput.value = '';
 };
 
 const scrollChat = () =>

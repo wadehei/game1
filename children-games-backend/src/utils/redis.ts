@@ -39,10 +39,21 @@ export const initRedis = async (): Promise<RedisClientType | null> => {
       isConnected = false;
     });
 
-    await redisClient.connect();
+    // connect() 在服务端握手失败时会随重连策略无限挂起（如老版本 Redis 不支持 HELLO），
+    // 这里限时 3s，超时按失败处理降级为无缓存，保证"失败不影响启动"的承诺
+    await Promise.race([
+      redisClient.connect(),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Redis 连接超时(3s)')), 3000).unref()
+      ),
+    ]);
     return redisClient;
   } catch (error) {
-    logError('redis', 'Redis 连接失败，将使用内存缓存', error instanceof Error ? error.stack : String(error));
+    logError(
+      'redis',
+      'Redis 连接失败，将使用内存缓存',
+      error instanceof Error ? error.stack : String(error)
+    );
     redisClient = null;
     isConnected = false;
     return null;
@@ -141,7 +152,11 @@ export const cacheIncr = async (key: string, ttlSeconds?: number): Promise<numbe
     }
     return count;
   } catch (error) {
-    logError('redis', `计数器递增失败: ${key}`, error instanceof Error ? error.stack : String(error));
+    logError(
+      'redis',
+      `计数器递增失败: ${key}`,
+      error instanceof Error ? error.stack : String(error)
+    );
     return null;
   }
 };
@@ -156,7 +171,11 @@ export const cacheExists = async (key: string): Promise<boolean> => {
     const exists = await redisClient.exists(key);
     return exists === 1;
   } catch (error) {
-    logError('redis', `键存在性检查失败: ${key}`, error instanceof Error ? error.stack : String(error));
+    logError(
+      'redis',
+      `键存在性检查失败: ${key}`,
+      error instanceof Error ? error.stack : String(error)
+    );
     return false;
   }
 };

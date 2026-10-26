@@ -4,11 +4,11 @@
     <GameHeader
       :items="headerItems"
       :muted="sounds.isMuted.value"
-      headerClass="mole-header"
+      header-class="mole-header"
       level-selectable
-      @toggleSound="sounds.toggleSound"
-      @goBack="router.back()"
-      @selectLevel="openLevelSelect"
+      @toggle-sound="sounds.toggleSound"
+      @go-back="router.back()"
+      @select-level="openLevelSelect"
     />
 
     <!-- 打地鼠 3x3 -->
@@ -387,7 +387,7 @@ onUnmounted(() => {
 <style scoped>
 .mole-game {
   min-height: 100vh;
-  background: linear-gradient(180deg, #A8E063 0%, #56ab2f 100%);
+  background: linear-gradient(180deg, #a8e063 0%, #56ab2f 100%);
   padding: 20px;
   position: relative;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -436,7 +436,9 @@ onUnmounted(() => {
   position: relative;
   border-radius: 50%;
   background: radial-gradient(ellipse at center, #3d2817 0%, #5d3a1a 55%, #8b5a2b 100%);
-  box-shadow: inset 0 6px 14px rgba(0, 0, 0, 0.55), 0 3px 0 rgba(255, 255, 255, 0.35);
+  box-shadow:
+    inset 0 6px 14px rgba(0, 0, 0, 0.55),
+    0 3px 0 rgba(255, 255, 255, 0.35);
   overflow: hidden;
 }
 
@@ -483,9 +485,18 @@ onUnmounted(() => {
 }
 
 @keyframes hammerSmack {
-  0% { transform: rotate(-70deg) scale(1.15); opacity: 1; }
-  55% { transform: rotate(6deg) scale(1); opacity: 1; }
-  100% { transform: rotate(6deg) translateY(5px); opacity: 0; }
+  0% {
+    transform: rotate(-70deg) scale(1.15);
+    opacity: 1;
+  }
+  55% {
+    transform: rotate(6deg) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(6deg) translateY(5px);
+    opacity: 0;
+  }
 }
 
 .hit-effect {
@@ -495,25 +506,45 @@ onUnmounted(() => {
 }
 
 @keyframes critterUp {
-  from { transform: translateX(-50%) translateY(90%); }
-  to { transform: translateX(-50%) translateY(0); }
+  from {
+    transform: translateX(-50%) translateY(90%);
+  }
+  to {
+    transform: translateX(-50%) translateY(0);
+  }
 }
 
 @keyframes critterWhacked {
-  0% { transform: translateX(-50%) scale(1); opacity: 1; }
-  100% { transform: translateX(-50%) scale(0.3) rotate(20deg); opacity: 0; }
+  0% {
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-50%) scale(0.3) rotate(20deg);
+    opacity: 0;
+  }
 }
 
 @keyframes temptWiggle {
-  0%, 100% { transform: rotate(-6deg); }
-  50% { transform: rotate(6deg); }
+  0%,
+  100% {
+    transform: rotate(-6deg);
+  }
+  50% {
+    transform: rotate(6deg);
+  }
 }
 
 @keyframes hitPop {
-  0% { transform: scale(0.5); opacity: 1; }
-  100% { transform: scale(1.6); opacity: 0; }
+  0% {
+    transform: scale(0.5);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
 }
-
 
 /* 响应式 */
 @media (max-width: 480px) {

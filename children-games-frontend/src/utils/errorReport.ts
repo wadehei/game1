@@ -4,6 +4,8 @@
  * - 同一错误 30 秒内只报一次，单次会话最多 20 条，防刷
  */
 
+import { API_ORIGIN } from './apiOrigin';
+
 const THROTTLE_MS = 30 * 1000;
 const MAX_PER_SESSION = 20;
 
@@ -20,7 +22,7 @@ const report = (message: string, detail?: string): void => {
     lastReported.set(key, now);
     sessionCount++;
 
-    fetch('/api/logs/client', {
+    fetch(`${API_ORIGIN}/api/logs/client`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -37,7 +39,10 @@ const report = (message: string, detail?: string): void => {
 
 /** 页面加载错误（资源加载失败、同步异常） */
 const onError = (event: ErrorEvent): void => {
-  report(`页面异常: ${event.message}`, `${event.filename}:${event.lineno}:${event.colno}\n${event.error?.stack || ''}`);
+  report(
+    `页面异常: ${event.message}`,
+    `${event.filename}:${event.lineno}:${event.colno}\n${event.error?.stack || ''}`
+  );
 };
 
 /** 未处理的 Promise 拒绝（接口异常漏接、异步报错） */

@@ -16,9 +16,22 @@ interface GameProgressAttributes {
   updatedAt?: Date;
 }
 
-interface GameProgressCreationAttributes extends Optional<GameProgressAttributes, 'id' | 'currentLevel' | 'highScore' | 'stars' | 'levelStars' | 'achievements' | 'playCount' | 'winCount'> {}
+interface GameProgressCreationAttributes extends Optional<
+  GameProgressAttributes,
+  | 'id'
+  | 'currentLevel'
+  | 'highScore'
+  | 'stars'
+  | 'levelStars'
+  | 'achievements'
+  | 'playCount'
+  | 'winCount'
+> {}
 
-export class GameProgress extends Model<GameProgressAttributes, GameProgressCreationAttributes> implements GameProgressAttributes {
+export class GameProgress
+  extends Model<GameProgressAttributes, GameProgressCreationAttributes>
+  implements GameProgressAttributes
+{
   public id!: number;
   public userId!: number;
   public gameId!: string;

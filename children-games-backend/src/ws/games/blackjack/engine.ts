@@ -7,7 +7,16 @@ export interface Card {
 export const SUITS: Card['suit'][] = ['♠', '♥', '♦', '♣'];
 
 export const cardLabel = (c: Card): string => {
-  const r = c.rank === 1 ? 'A' : c.rank === 11 ? 'J' : c.rank === 12 ? 'Q' : c.rank === 13 ? 'K' : String(c.rank);
+  const r =
+    c.rank === 1
+      ? 'A'
+      : c.rank === 11
+        ? 'J'
+        : c.rank === 12
+          ? 'Q'
+          : c.rank === 13
+            ? 'K'
+            : String(c.rank);
   return `${c.suit}${r}`;
 };
 
@@ -50,7 +59,8 @@ export const handValue = (cards: Card[]): { total: number; soft: boolean } => {
   return { total, soft };
 };
 
-export const isBlackjack = (cards: Card[]): boolean => cards.length === 2 && handValue(cards).total === 21;
+export const isBlackjack = (cards: Card[]): boolean =>
+  cards.length === 2 && handValue(cards).total === 21;
 
 export const isBusted = (cards: Card[]): boolean => handValue(cards).total > 21;
 
@@ -58,7 +68,11 @@ export const isBusted = (cards: Card[]): boolean => handValue(cards).total > 21;
 export const BET_OPTIONS = [10, 20, 50, 100];
 
 /** 结算单个闲家与庄家的输赢，返回派彩倍数（相对注金）：0=输，1=平退注，2=普通赢，2.5=Blackjack */
-export const payoutMultiplier = (playerCards: Card[], bankerCards: Card[], natural: boolean): number => {
+export const payoutMultiplier = (
+  playerCards: Card[],
+  bankerCards: Card[],
+  natural: boolean
+): number => {
   if (isBusted(playerCards)) return 0;
   const p = handValue(playerCards).total;
   const b = handValue(bankerCards).total;

@@ -21,22 +21,37 @@
         <line
           v-for="i in BOARD_SIZE"
           :key="`h${i}`"
-          :x1="0" :y1="i - 1" :x2="BOARD_SIZE - 1" :y2="i - 1"
+          :x1="0"
+          :y1="i - 1"
+          :x2="BOARD_SIZE - 1"
+          :y2="i - 1"
           class="grid-line"
         />
         <line
           v-for="i in BOARD_SIZE"
           :key="`v${i}`"
-          :x1="i - 1" :y1="0" :x2="i - 1" :y2="BOARD_SIZE - 1"
+          :x1="i - 1"
+          :y1="0"
+          :x2="i - 1"
+          :y2="BOARD_SIZE - 1"
           class="grid-line"
         />
         <!-- 星位 -->
-        <circle v-for="([sx, sy]) in STAR_POINTS" :key="`s${sx}-${sy}`" :cx="sx" :cy="sy" r="0.12" class="star" />
+        <circle
+          v-for="[sx, sy] in STAR_POINTS"
+          :key="`s${sx}-${sy}`"
+          :cx="sx"
+          :cy="sy"
+          r="0.12"
+          class="star"
+        />
         <!-- 胜利连线 -->
         <line
           v-if="state.winLine.length >= 2"
-          :x1="state.winLine[0][0]" :y1="state.winLine[0][1]"
-          :x2="state.winLine.at(-1)![0]" :y2="state.winLine.at(-1)![1]"
+          :x1="state.winLine[0][0]"
+          :y1="state.winLine[0][1]"
+          :x2="state.winLine.at(-1)![0]"
+          :y2="state.winLine.at(-1)![1]"
           class="win-line"
         />
         <!-- 棋子：落在线条交点 -->
@@ -44,7 +59,9 @@
           <template v-for="(cell, x) in row" :key="`c${x}-${y}`">
             <circle
               v-if="cell !== 0"
-              :cx="x" :cy="y" r="0.44"
+              :cx="x"
+              :cy="y"
+              r="0.44"
               class="stone"
               :class="[cell === 1 ? 'black' : 'white', { last: isLast(x, y) }]"
             />
@@ -53,7 +70,9 @@
         <!-- 最后一手标记 -->
         <circle
           v-if="state.lastMove"
-          :cx="state.lastMove.x" :cy="state.lastMove.y" r="0.1"
+          :cx="state.lastMove.x"
+          :cy="state.lastMove.y"
+          r="0.1"
           class="last-mark"
           :class="{ light: state.board[state.lastMove.y]?.[state.lastMove.x] === 1 }"
         />
@@ -88,7 +107,11 @@ const svgEl = ref<SVGSVGElement | null>(null);
 
 // 15 路棋盘星位
 const STAR_POINTS: [number, number][] = [
-  [3, 3], [11, 3], [3, 11], [11, 11], [7, 7],
+  [3, 3],
+  [11, 3],
+  [3, 11],
+  [11, 11],
+  [7, 7],
 ];
 
 const isLast = (x: number, y: number): boolean =>

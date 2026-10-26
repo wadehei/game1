@@ -4,17 +4,17 @@
     <GameHeader
       :items="headerItems"
       :muted="sounds.isMuted.value"
-      headerClass="tank-header"
+      header-class="tank-header"
       level-selectable
-      @toggleSound="sounds.toggleSound"
-      @goBack="router.back()"
-      @selectLevel="openLevelSelect"
+      @toggle-sound="sounds.toggleSound"
+      @go-back="router.back()"
+      @select-level="openLevelSelect"
     />
 
     <!-- 游戏画布 -->
     <canvas
-      ref="canvasRef"
       id="tank_canvas"
+      ref="canvasRef"
       class="game-canvas"
       @mousedown="startMove"
       @mousemove="movePlayer"
@@ -122,8 +122,10 @@ interface Bullet {
 }
 
 interface Explosion {
-  x: number; y: number;
-  radius: number; alpha: number;
+  x: number;
+  y: number;
+  radius: number;
+  alpha: number;
   color: string;
 }
 
@@ -365,7 +367,9 @@ const update = () => {
                   y: enemy.y + enemy.height / 2,
                   radius: 3 + Math.random() * 5,
                   alpha: 1,
-                  color: ['#FF4500', '#FF6347', '#FFA500', '#FFD700'][Math.floor(Math.random() * 4)],
+                  color: ['#FF4500', '#FF6347', '#FFA500', '#FFD700'][
+                    Math.floor(Math.random() * 4)
+                  ],
                 });
               }
             }
@@ -499,7 +503,7 @@ const render = () => {
 
   // 绘制爆炸效果：光晕 + 放射火花
   if (explosions.length > 0) {
-    explosions = explosions.filter(e => {
+    explosions = explosions.filter((e) => {
       e.radius += 1.5;
       e.alpha -= 0.04;
       if (e.alpha <= 0) return false;
@@ -535,7 +539,14 @@ const render = () => {
       muzzleFlash = null;
     } else {
       const r = 6 + (5 - muzzleFlash.life) * 2;
-      const flash = c.createRadialGradient(muzzleFlash.x, muzzleFlash.y, 0, muzzleFlash.x, muzzleFlash.y, r);
+      const flash = c.createRadialGradient(
+        muzzleFlash.x,
+        muzzleFlash.y,
+        0,
+        muzzleFlash.x,
+        muzzleFlash.y,
+        r
+      );
       flash.addColorStop(0, 'rgba(255,241,118,0.95)');
       flash.addColorStop(1, 'rgba(255,160,0,0)');
       c.fillStyle = flash;
@@ -753,7 +764,7 @@ onUnmounted(() => {
 
 :deep(.tank-header .value) {
   font-size: 22px;
-  color: #FFD700;
+  color: #ffd700;
   font-weight: 700;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
@@ -796,7 +807,7 @@ onUnmounted(() => {
 .control-btn {
   width: 64px;
   height: 64px;
-  background: linear-gradient(135deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.1) 100%);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.1) 100%);
   backdrop-filter: blur(8px);
   border-radius: 50%;
   display: flex;
@@ -812,12 +823,12 @@ onUnmounted(() => {
 
 .control-btn:active {
   transform: scale(0.9);
-  background: linear-gradient(135deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.2) 100%);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.2) 100%);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
 
 .control-btn.fire-btn {
-  background: linear-gradient(135deg, rgba(255,100,100,0.5) 0%, rgba(255,50,50,0.3) 100%);
+  background: linear-gradient(135deg, rgba(255, 100, 100, 0.5) 0%, rgba(255, 50, 50, 0.3) 100%);
   border-color: rgba(255, 150, 150, 0.5);
   width: 72px;
   height: 72px;
@@ -825,7 +836,7 @@ onUnmounted(() => {
 }
 
 .control-btn.fire-btn:active {
-  background: linear-gradient(135deg, rgba(255,120,120,0.6) 0%, rgba(255,70,70,0.4) 100%);
+  background: linear-gradient(135deg, rgba(255, 120, 120, 0.6) 0%, rgba(255, 70, 70, 0.4) 100%);
 }
 
 :deep(.result-content) {
@@ -837,7 +848,7 @@ onUnmounted(() => {
 }
 
 :deep(.result-title) {
-  color: #FFD700;
+  color: #ffd700;
 }
 
 :deep(.result-info) {
@@ -850,7 +861,7 @@ onUnmounted(() => {
 }
 
 :deep(.btn-next) {
-  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  background: linear-gradient(135deg, #ffd700 0%, #ffa500 100%);
   color: #1a1a2e;
   font-weight: 700;
 }

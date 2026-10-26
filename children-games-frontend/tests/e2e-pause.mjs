@@ -18,7 +18,7 @@ const page = await browser.newPage();
 await page.setViewport({ width: 390, height: 844 });
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-let pageErrors = [];
+const pageErrors = [];
 page.on('pageerror', (err) => pageErrors.push(err.message));
 const isNoise = (e) => /NetworkError|Failed to fetch|AxiosError|ERR_|401|404/i.test(e);
 
@@ -38,7 +38,8 @@ await page.evaluate(async () => {
   localStorage.setItem('userInfo', JSON.stringify(data.data.userInfo));
 });
 
-let pass = 0, fail = 0;
+let pass = 0,
+  fail = 0;
 for (const g of GAMES) {
   await page.goto(`${BASE}/${g.hash}`, { waitUntil: 'networkidle2' });
   await sleep(1500);
@@ -56,13 +57,17 @@ for (const g of GAMES) {
   const overlayShown = await page.evaluate(() => !!document.querySelector('.pause-overlay'));
 
   await page.evaluate(() => {
-    [...document.querySelectorAll('.pause-overlay .btn-resume')].find((b) => b.offsetParent !== null)?.click();
+    [...document.querySelectorAll('.pause-overlay .btn-resume')]
+      .find((b) => b.offsetParent !== null)
+      ?.click();
   });
   await sleep(500);
   const overlayGone = await page.evaluate(() => !document.querySelector('.pause-overlay'));
 
   const ok = overlayShown && overlayGone;
-  console.log(`${ok ? '✅' : '❌'} ${g.name}：暂停弹层${overlayShown ? '出现' : '未出现'} → 继续后${overlayGone ? '关闭' : '仍显示'}`);
+  console.log(
+    `${ok ? '✅' : '❌'} ${g.name}：暂停弹层${overlayShown ? '出现' : '未出现'} → 继续后${overlayGone ? '关闭' : '仍显示'}`
+  );
   ok ? pass++ : fail++;
 }
 
@@ -70,21 +75,29 @@ for (const g of GAMES) {
 await page.goto(`${BASE}/#/math`, { waitUntil: 'networkidle2' });
 await sleep(2500); // 等开局引导，计时走起来
 const readTimer = () =>
-  page.evaluate(() => parseInt(document.querySelector('.timer-bar')?.textContent?.match(/\d+/)?.[0] || '0', 10));
+  page.evaluate(() =>
+    parseInt(document.querySelector('.timer-bar')?.textContent?.match(/\d+/)?.[0] || '0', 10)
+  );
 const beforePause = await readTimer();
 await page.click('.pause-btn');
 await sleep(3000); // 暂停 3 秒
 const duringPause = await readTimer();
 await page.evaluate(() => {
-  [...document.querySelectorAll('.pause-overlay .btn-resume')].find((b) => b.offsetParent !== null)?.click();
+  [...document.querySelectorAll('.pause-overlay .btn-resume')]
+    .find((b) => b.offsetParent !== null)
+    ?.click();
 });
 await sleep(1200);
 const afterResume = await readTimer();
 const frozenOk = duringPause <= beforePause + 1 && afterResume >= beforePause; // 暂停不涨，恢复后继续走
-console.log(`${frozenOk ? '✅' : '❌'} 数学计时冻结：暂停前 ${beforePause}s → 暂停3秒后 ${duringPause}s（应不变）→ 恢复后 ${afterResume}s（继续走）`);
+console.log(
+  `${frozenOk ? '✅' : '❌'} 数学计时冻结：暂停前 ${beforePause}s → 暂停3秒后 ${duringPause}s（应不变）→ 恢复后 ${afterResume}s（继续走）`
+);
 frozenOk ? pass++ : fail++;
 
 const real = pageErrors.filter((e) => !isNoise(e));
-console.log(`\n${pass} 通过 / ${fail} 失败 · 页面异常 ${real.length}${real.length ? ' → ' + real.join(' | ') : ' ✅'}`);
+console.log(
+  `\n${pass} 通过 / ${fail} 失败 · 页面异常 ${real.length}${real.length ? ' → ' + real.join(' | ') : ' ✅'}`
+);
 await browser.close();
 process.exit(fail > 0 || real.length > 0 ? 1 : 0);

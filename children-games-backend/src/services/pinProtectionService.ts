@@ -1,5 +1,5 @@
 import { cacheIncr, cacheExists, cacheDel, cacheGet } from '../utils/redis';
-import { logInfo, logWarn } from './logger';
+import { logInfo, logWarn } from '../utils/logger';
 
 /**
  * PIN 防爆破服务（Redis 版，适用于多实例部署）
@@ -26,9 +26,7 @@ interface PinAttemptResult {
 /**
  * 检查 PIN 尝试是否允许
  */
-export const checkPinAttempt = async (
-  userId: number
-): Promise<PinAttemptResult> => {
+export const checkPinAttempt = async (userId: number): Promise<PinAttemptResult> => {
   const attemptKey = `${PIN_ATTEMPT_PREFIX}${userId}`;
   const lockoutKey = `${PIN_LOCKOUT_PREFIX}${userId}`;
 
@@ -83,10 +81,7 @@ export const recordPinFailure = async (
     );
 
     await cacheIncr(lockoutKey, lockoutTime);
-    logWarn(
-      'pin-protection',
-      `用户 ${userId} PIN 验证失败次数过多，锁定 ${lockoutTime} 秒`
-    );
+    logWarn('pin-protection', `用户 ${userId} PIN 验证失败次数过多，锁定 ${lockoutTime} 秒`);
 
     return { locked: true, remainingAttempts: 0 };
   }
@@ -110,9 +105,7 @@ export const clearPinAttempts = async (userId: number): Promise<void> => {
 /**
  * 获取当前尝试次数（用于调试）
  */
-export const getPinAttemptCount = async (
-  userId: number
-): Promise<number> => {
+export const getPinAttemptCount = async (userId: number): Promise<number> => {
   const attemptKey = `${PIN_ATTEMPT_PREFIX}${userId}`;
   const val = await cacheGet(attemptKey);
   return val ? parseInt(val, 10) || 0 : 0;
