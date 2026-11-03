@@ -160,8 +160,10 @@ const submitPin = async (pin: string) => {
     await familyLogin({ uid: pinTarget.value.id, pin });
     pinTarget.value = null;
     enter();
-  } catch (e: any) {
-    pinError.value = e?.response?.data?.message || '口令不正确，再试试';
+  } catch (e: unknown) {
+    pinError.value =
+      (e as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+      '口令不正确，再试试';
   }
 };
 

@@ -99,8 +99,13 @@ const savePin = async () => {
     pinOld.value = '';
     pinNew.value = '';
     flashPin(result.hasPin ? '口令已设置 🔒' : '口令已清除 🔓');
-  } catch (e: any) {
-    flashPin(e?.message || '操作失败，请重试', true);
+  } catch (e: unknown) {
+    // 优先展示后端返回的具体原因（如"旧口令不正确"），axios 默认报错文案对孩子无意义
+    const msg =
+      (e as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+      (e instanceof Error ? e.message : '') ||
+      '操作失败，请重试';
+    flashPin(msg, true);
   } finally {
     savingPin.value = false;
   }

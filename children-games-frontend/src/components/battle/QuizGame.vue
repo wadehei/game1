@@ -93,11 +93,42 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useUserStore } from '@/store/user';
+import type { QuizGameState } from '@/composables/wsTypes';
 
 const props = defineProps<{
-  question: any; // quiz_question 事件 / 快照拼装
-  result: any; // quiz_result 事件
-  final: any; // quiz_final 事件
+  question: {
+    index: number;
+    total: number;
+    qid?: number;
+    text?: string;
+    question?: string;
+    options?: string[];
+    deadline?: number;
+    myAnswered?: boolean;
+    scores?: Array<{ userId: number; total: number }>;
+  } | null; // quiz_question 事件 / 快照拼装
+  result: {
+    qid?: number;
+    questionId?: number;
+    answer?: number;
+    correctAnswer?: number;
+    delta?: Array<{ userId: number; gained: number }>;
+    ranking?: Array<{ userId: number; score: number }>;
+  } | null; // quiz_result 事件
+  // quiz_final 事件（tolerant：兼容 draw/uno/blackjack/zjh 的 ranking 字段差异）
+  final: {
+    t?: string;
+    ranking?: Array<{
+      userId: number;
+      nickname?: string;
+      total?: number;
+      score?: number;
+      chips?: number;
+      penalty?: number;
+    }>;
+    winner?: string;
+    [key: string]: unknown;
+  } | null;
   members: Array<{ userId: number; nickname: string }>;
   phase: string;
   mySeat: number;
@@ -116,10 +147,10 @@ let tickTimer: ReturnType<typeof setInterval> | null = null;
 const revealed = computed(() => !!props.result && props.result.qid === props.question?.qid);
 const locked = computed(() => myChoice.value !== null || revealed.value || props.mySeat < 0);
 
-const scores = computed<any[]>(
+const scores = computed<Array<{ userId: number; total: number }>>(
   () =>
     props.question?.scores ||
-    props.final?.ranking?.map((r: any) => ({ userId: r.userId, total: r.total })) ||
+    props.final?.ranking?.map((r) => ({ userId: r.userId, total: r.total ?? 0 })) ||
     []
 );
 const nameOf = (userId: number): string => {
@@ -148,7 +179,7 @@ watch(
 );
 
 const answer = (choice: number) => {
-  if (locked.value) return;
+  if (locked.value || !props.question) return;
   myChoice.value = choice;
   emit('action', { t: 'quiz_answer', qid: props.question.qid, choice });
 };

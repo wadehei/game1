@@ -94,10 +94,11 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useUserStore } from '@/store/user';
+import type { SpyGameState, GameEvents } from '@/composables/wsTypes';
 
 const props = defineProps<{
-  state: any; // serializeFor 输出
-  events: Record<string, any>;
+  state: SpyGameState; // serializeFor 输出
+  events: Partial<GameEvents>;
   members: Array<{ userId: number; nickname: string; seat: number }>;
   phase: string;
   mySeat: number;
@@ -141,8 +142,8 @@ watch(
   }
 );
 watch(
-  () => props.events.phase,
-  (m: any) => {
+  () => props.events.phase as { deadline?: number } | null | undefined,
+  (m) => {
     if (m?.deadline) remainSec.value = Math.ceil((m.deadline - Date.now()) / 1000);
   }
 );

@@ -466,12 +466,12 @@ const render = () => {
   c.restore();
 };
 
-const shoot = (e: any) => {
+const shoot = (e: MouseEvent | TouchEvent) => {
   if (paused.value || bullets.value <= 0) return;
   sounds.play('shoot');
 
   // 画布内坐标 = 视口坐标 - 画布偏移
-  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
   const rect = canvasRef.value?.getBoundingClientRect();
   const x = rect ? clientX - rect.left : clientX;
 

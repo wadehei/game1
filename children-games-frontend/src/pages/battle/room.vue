@@ -131,7 +131,18 @@ import { useRoomWs } from '@/composables/useRoomWs';
 import { useRoomEvents } from '@/composables/useRoomEvents';
 import { useRecorder } from '@/composables/useRecorder';
 import { useMemberState } from '@/composables/useMemberState';
-import type { GameEvents } from '@/composables/wsTypes';
+import type {
+  GameEvents,
+  GameState,
+  FinalData,
+  GomokuGameState,
+  QuizGameState,
+  DrawGameState,
+  SpyGameState,
+  UnoGameState,
+  BlackjackGameState,
+  ZjhGameState,
+} from '@/composables/wsTypes';
 import type { MemberInfo, S2CSnapshot } from '@children-games/shared';
 import { fetchRoomVoice, uploadRoomVoice } from '@/api/room';
 import { showToast } from '@/utils/toastBus';
@@ -174,11 +185,11 @@ const phase = ref<'waiting' | 'playing' | 'ended'>('waiting');
 const hostUserId = ref(0);
 const mySeat = ref(-1);
 const board = ref<number[][]>(Array.from({ length: 15 }, () => Array(15).fill(0)));
-const game = ref<any>({
-  board,
+const game = ref<GameState>({
+  board: board.value,
   turn: 1,
   winner: 0,
-  winLine: [] as [number, number][],
+  winLine: [] as Array<[number, number]>,
   lastMove: null,
 });
 const chatList = ref<ChatItem[]>([]);
@@ -232,7 +243,12 @@ const tickTimer = setInterval(() => (nowTick.value = Date.now()), 500);
 const myRematch = computed(() => rematchVotes.value.includes(myId.value));
 
 // 终局数据：优先实时 final 事件，兜底快照里的 ended 摘要（刷新/重连后事件已丢）
-const finalData = computed<any | null>(() => gameEvents.final || game.value?.ended || null);
+const finalData = computed<FinalData | null>(() => {
+  if (gameEvents.final) return gameEvents.final as FinalData;
+  const g = game.value;
+  if (g && 'ended' in g) return (g.ended as FinalData | null) || null;
+  return null;
+});
 
 // 使用 composable 获取成员状态函数
 const { memberState, isActiveMember } = useMemberState({
@@ -255,9 +271,9 @@ const waitingText = computed(() => {
 
 const overText = computed(() => {
   if (gameType.value === 'gomoku') {
-    if (game.value.winner === 3)
-      return overReason.value ? `平局！（${overReason.value}）` : '平局！';
-    const winnerSeat = game.value.winner - 1;
+    const g = game.value as GomokuGameState;
+    if (g.winner === 3) return overReason.value ? `平局！（${overReason.value}）` : '平局！';
+    const winnerSeat = g.winner - 1;
     const w = members.value.find((m) => m.seat === winnerSeat);
     const who = w ? (w.userId === myId.value ? '你' : w.nickname) : '';
     const reason = overReason.value ? `（${overReason.value}）` : '';
@@ -272,7 +288,7 @@ const overText = computed(() => {
   // 排名制游戏（你画我猜/答题对战/UNO）：取第一名
   const top = finalData.value?.ranking?.[0];
   if (top) {
-    const who = top.userId === myId.value ? '你' : top.nickname;
+    const who = top.userId === myId.value ? '你' : (top.nickname ?? '');
     return gameType.value === 'draw' ? `🏆 ${who}以 ${top.total} 分夺冠！` : `🎉 ${who}获胜！`;
   }
   return overReason.value ? `对局结束（${overReason.value}）` : '对局结束';
@@ -281,45 +297,48 @@ const overText = computed(() => {
 const playingStatusText = computed(() => {
   if (mySeat.value < 0) return '对局进行中，你正在观战';
   const gt = gameType.value;
-  if (gt === 'gomoku') return game.value.turn === myColor.value ? '轮到你落子' : '等待对方落子…';
+  if (gt === 'gomoku')
+    return (game.value as GomokuGameState).turn === myColor.value ? '轮到你落子' : '等待对方落子…';
   if (gt === 'uno') {
-    if (game.value.turnSeat === mySeat.value) return '轮到你出牌';
-    const name = members.value.find((m) => m.seat === game.value.turnSeat)?.nickname;
+    const g = game.value as UnoGameState;
+    if (g.turnSeat === mySeat.value) return '轮到你出牌';
+    const name = members.value.find((m) => m.seat === g.turnSeat)?.nickname;
     return name ? `等待 ${name} 出牌…` : '对局进行中';
   }
   if (gt === 'draw') {
-    if (game.value.drawerSeat === mySeat.value)
-      return game.value.phase === 'picking' ? '轮到你选词' : '你来画，大家来猜';
-    return game.value.myGuessed ? '你已猜对，等其他小伙伴…' : '看画面猜词，在下方输入你的答案';
+    const g = game.value as DrawGameState;
+    if (g.drawerSeat === mySeat.value)
+      return g.phase === 'picking' ? '轮到你选词' : '你来画，大家来猜';
+    return g.myGuessed ? '你已猜对，等其他小伙伴…' : '看画面猜词，在下方输入你的答案';
   }
   if (gt === 'spy') {
-    return game.value.phase === 'vote'
+    return (game.value as SpyGameState).phase === 'vote'
       ? '🗳️ 投票中，点击玩家名牌投票'
       : '🗣️ 描述阶段（线下口头描述）';
   }
   if (gt === 'quiz')
-    return game.value.myAnswered ? '你已作答，等待出下一题…' : '答题进行中，拼手速！';
+    return (game.value as QuizGameState).myAnswered
+      ? '你已作答，等待出下一题…'
+      : '答题进行中，拼手速！';
   if (gt === 'blackjack') {
-    if (game.value.isBanker)
-      return game.value.phase === 'dealer' ? '庄家自动结算中…' : '你是庄家，等待闲家行动';
-    if (game.value.phase === 'betting')
-      return game.value.myStake ? '已下注，等待其他玩家…' : '请选择下注金额';
-    if (game.value.phase === 'acting')
-      return game.value.turnSeat === mySeat.value
-        ? '轮到你行动（要牌/停牌/加倍）'
-        : '等待其他玩家行动…';
-    if (game.value.phase === 'dealer') return '庄家结算中…';
+    const g = game.value as BlackjackGameState;
+    if (g.isBanker) return g.phase === 'dealer' ? '庄家自动结算中…' : '你是庄家，等待闲家行动';
+    if (g.phase === 'betting') return g.myStake ? '已下注，等待其他玩家…' : '请选择下注金额';
+    if (g.phase === 'acting')
+      return g.turnSeat === mySeat.value ? '轮到你行动（要牌/停牌/加倍）' : '等待其他玩家行动…';
+    if (g.phase === 'dealer') return '庄家结算中…';
     return '本手结算中…';
   }
   if (gt === 'zjh') {
-    if (game.value.phase === 'showdown') return '开牌！比大小…';
-    if (game.value.phase === 'settle') return '本手结算中…';
-    if (game.value.turnSeat === mySeat.value) {
-      if (game.value.myFolded) return '你已弃牌，观战中';
-      if (game.value.myAllIn) return '你已 all-in，等待开牌';
-      return game.value.mySeen ? '轮到你行动（跟注/加注/比牌/弃牌）' : '轮到你：可先看牌再行动';
+    const g = game.value as ZjhGameState;
+    if (g.phase === 'showdown') return '开牌！比大小…';
+    if (g.phase === 'settle') return '本手结算中…';
+    if (g.turnSeat === mySeat.value) {
+      if (g.myFolded) return '你已弃牌，观战中';
+      if (g.myAllIn) return '你已 all-in，等待开牌';
+      return g.mySeen ? '轮到你行动（跟注/加注/比牌/弃牌）' : '轮到你：可先看牌再行动';
     }
-    const name = members.value.find((m) => m.seat === game.value.turnSeat)?.nickname;
+    const name = members.value.find((m) => m.seat === g.turnSeat)?.nickname;
     return name ? `等待 ${name} 行动…` : '对局进行中';
   }
   return '对局进行中';
@@ -339,19 +358,29 @@ const applySnapshot = (s: S2CSnapshot) => {
   if (s.gameType) gameType.value = s.gameType;
   board.value = (s.game?.board as number[][] | undefined) || board.value;
   // 保留 serializeFor 的全部字段（各游戏自带结构：五子棋棋盘/UNO 手牌+顶牌/卧底身份等）
-  game.value = { ...(s.game || {}) };
+  game.value = { ...(s.game ?? {}) } as GameState;
   chatList.value = s.chat || [];
   const me = members.value.find((m) => m.userId === myId.value);
   if (me) mySeat.value = me.seat;
   // 刷新/重连恢复：出题中的快照 game 段携带当前题目（见 quiz handler serializeFor），重建题目事件
   if (s.gameType === 'quiz') {
     const g = s.game as
-      { qid?: number; text?: string; options?: string[]; deadline?: number } | undefined;
+      | {
+          qid?: number;
+          text?: string;
+          options?: string[];
+          deadline?: number;
+          index?: number;
+          total?: number;
+        }
+      | undefined;
     if (g?.qid && g.text && g.options) {
       gameEvents.question = {
         t: 'quiz_question',
-        questionId: g.qid,
-        question: g.text,
+        index: g.index ?? 0,
+        total: g.total ?? 0,
+        qid: g.qid,
+        text: g.text,
         options: g.options,
         deadline: g.deadline || 0,
       };

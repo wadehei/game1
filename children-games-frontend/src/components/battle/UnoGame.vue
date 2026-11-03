@@ -101,6 +101,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useUserStore } from '@/store/user';
+import type { UnoGameState, GameEvents } from '@/composables/wsTypes';
 
 const UNO_COLORS = ['red', 'yellow', 'green', 'blue'];
 
@@ -111,8 +112,8 @@ interface Card {
 }
 
 const props = defineProps<{
-  state: any; // serializeFor
-  events: Record<string, any>;
+  state: UnoGameState; // serializeFor
+  events: Partial<GameEvents>;
   members: Array<{ userId: number; nickname: string; seat: number }>;
   phase: string;
   mySeat: number;
@@ -124,7 +125,7 @@ const userStore = useUserStore();
 const myId = computed(() => userStore.userInfo?.id || 0);
 
 const myHand = computed<Card[]>(() => {
-  const fromEvent = props.events?.uno_hand?.cards;
+  const fromEvent = (props.events?.uno_hand as { cards?: Card[] } | undefined)?.cards;
   if (Array.isArray(fromEvent) && fromEvent.length) return fromEvent;
   return props.state?.myHand || [];
 });
@@ -132,12 +133,14 @@ const top = computed<Card | null>(() => props.state?.top || null);
 const currentColor = computed(() => props.state?.currentColor || 'red');
 const direction = computed(() => props.state?.direction || 1);
 const turnSeat = computed(() => props.state?.turnSeat ?? -1);
-const counts = computed<any[]>(() => props.state?.counts || []);
+const counts = computed<Array<{ userId: number; count: number }>>(
+  () => (props.state?.counts as Array<{ userId: number; count: number }>) || []
+);
 const drawnThisTurn = computed(() => {
   // 以最近一次 uno_drew/uno_turn 事件判断（简化：uno_turn 重置，uno_drew 标记）
-  const drew = props.events.drew as any;
-  const turn = props.events.turn as any;
-  if (turn && drew && Number(drew.seq) >= Number(turn.seq)) return true;
+  const drew = props.events.drew;
+  const turn = props.events.turn;
+  if (turn && drew && drew.seq >= turn.seq) return true;
   return drawnLocal.value;
 });
 const drawnLocal = ref(false);

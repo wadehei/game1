@@ -31,7 +31,10 @@ import {
 } from '../../api/room';
 
 const mockedApi = vi.mocked(api);
-const mockedAxios = vi.mocked(axiosInstance);
+const mockedAxios = vi.mocked(axiosInstance, true) as unknown as Record<
+  'post' | 'get',
+  ReturnType<typeof vi.fn>
+>;
 
 describe('api/room', () => {
   beforeEach(() => {

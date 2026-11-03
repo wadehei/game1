@@ -246,9 +246,10 @@ import { useUserStore } from '@/store/user';
 import { soundManager } from '@/utils/sound';
 import BattleResultPanel from './BattleResultPanel.vue';
 import BetLedger from './BetLedger.vue';
+import type { ZjhGameState } from '@/composables/wsTypes';
 
 const props = defineProps<{
-  state: any;
+  state: ZjhGameState;
   events: Record<string, any>;
   members: Array<{ userId: number; nickname: string; avatar?: string; seat: number }>;
   phase: string;
@@ -286,7 +287,10 @@ const compareCost = computed(() =>
 );
 const raiseOptions = computed<number[]>(() => props.state?.raiseSteps || [10, 20, 50]);
 const compareTargets = computed(() =>
-  (props.state?.others || []).filter((o: any) => !o.folded && !o.allIn && o.userId !== myId.value)
+  (props.state?.others || []).filter(
+    (o: { userId: number; folded?: boolean; allIn?: boolean }) =>
+      !o.folded && !o.allIn && o.userId !== myId.value
+  )
 );
 
 // 轮到自己行动：提示音（仅状态切换沿触发，进房即轮到不响）
@@ -327,7 +331,7 @@ const compareLog = computed<any[]>(() => props.state?.compareLog || []);
 
 // 投注明细（全员可见）：每手的投入（底注+跟注/加注/比牌费）与输赢，行高亮自己
 const betLedger = computed<any[]>(() =>
-  (props.state?.betLedger || []).map((e: any) => ({
+  (props.state?.betLedger || []).map((e) => ({
     userId: e.userId,
     round: e.round,
     bet: e.betTotal,

@@ -1,4 +1,15 @@
 import { computed, type Ref, type ComputedRef } from 'vue';
+import type {
+  GameState,
+  FinalData,
+  GomokuGameState,
+  QuizGameState,
+  DrawGameState,
+  SpyGameState,
+  UnoGameState,
+  BlackjackGameState,
+  ZjhGameState,
+} from './wsTypes';
 
 export interface MemberInfo {
   userId: number;
@@ -13,9 +24,9 @@ interface UseMemberStateParams {
   myId: ComputedRef<number>;
   gameType: Ref<string>;
   phase: Ref<'waiting' | 'playing' | 'ended'>;
-  game: Ref<any>;
-  gameEvents: Record<string, any>;
-  finalData: ComputedRef<any>;
+  game: Ref<GameState>;
+  gameEvents: Record<string, unknown>;
+  finalData: ComputedRef<FinalData | null>;
   chipTableGames: string[];
 }
 
@@ -37,57 +48,72 @@ export function useMemberState({
     if (!m.online) return '离线';
     if (m.seat < 0) return '观战';
     if (phase.value === 'waiting') return m.ready ? '已准备' : '未准备';
+    // 各分支按 gameType 已互斥，game.value 必为对应游戏的状态对象，用窄化断言取字段
     if (chipTableGames.includes(gameType.value) && phase.value === 'playing') {
-      const chips = (game.value.chips || []).find((c: any) => c.userId === m.userId)?.chips;
-      if (chips !== undefined && chips <= 0) return '破产观战中';
+      const g = game.value as BlackjackGameState | ZjhGameState;
+      const chips = (g.chips as Array<{ userId: number; chips: number }> | undefined) || [];
+      if (chips.some((c) => c.userId === m.userId && c.chips <= 0)) return '破产观战中';
     }
     if (gameType.value === 'spy') {
+      const g = game.value as SpyGameState;
       if (phase.value === 'ended') {
         const spies: number[] = finalData.value?.spyUserIds || [];
         return spies.includes(m.userId) ? '🕵️ 卧底' : '🙂 平民';
       }
-      const eliminated = (game.value.eliminated || []).some((e: any) => e.userId === m.userId);
+      const eliminated = (g.eliminated || []).some((e) => e.userId === m.userId);
       return eliminated ? '出局' : '存活';
     }
     if (phase.value === 'ended') {
       if (gameType.value === 'gomoku') {
-        return game.value.winner === m.seat + 1
-          ? '获胜 🎉'
-          : game.value.winner === 3
-            ? '平局'
-            : '惜败';
+        const g = game.value as GomokuGameState;
+        return g.winner === m.seat + 1 ? '获胜 🎉' : g.winner === 3 ? '平局' : '惜败';
       }
       const top = finalData.value?.ranking?.[0];
       return top && top.userId === m.userId ? '🏆 第一名' : '已结束';
     }
     if (gameType.value === 'draw' && phase.value === 'playing') {
-      return game.value.drawerSeat === m.seat ? '🎨 画中' : '猜词中';
+      const g = game.value as DrawGameState;
+      return g.drawerSeat === m.seat ? '🎨 画中' : '猜词中';
     }
     if (gameType.value === 'uno' && phase.value === 'playing') {
-      return game.value.turnSeat === m.seat ? '出牌中' : '';
+      const g = game.value as UnoGameState;
+      return g.turnSeat === m.seat ? '出牌中' : '';
     }
     if (gameType.value === 'quiz' && phase.value === 'playing') {
-      const s = (game.value.scores || []).find((x: any) => x.userId === m.userId);
+      const g = game.value as QuizGameState;
+      const s = (g.scores || []).find((x) => x.userId === m.userId);
       return s ? `${s.total} 分` : '答题中';
     }
     if (gameType.value === 'blackjack' && phase.value === 'playing') {
-      if (game.value.bankerSeat === m.seat) return '🎲 庄家';
-      const h = (gameEvents.handsView || []).find((x: any) => x.userId === m.userId);
-      if (h?.busted) return '💥 爆牌';
-      if (h?.natural) return '✨ Blackjack';
-      if (h?.done) return '🛑 停牌';
-      if (h?.stake) return `押 ${h.stake}`;
-      return game.value.phase === 'betting' ? '下注中' : '行动中';
+      const g = game.value as BlackjackGameState;
+      if (g.bankerSeat === m.seat) return '🎲 庄家';
+      const h =
+        (gameEvents.handsView as
+          | Array<{
+              userId: number;
+              busted?: boolean;
+              natural?: boolean;
+              done?: boolean;
+              stake?: number;
+            }>
+          | undefined) || [];
+      const hit = h.find((x) => x.userId === m.userId);
+      if (hit?.busted) return '💥 爆牌';
+      if (hit?.natural) return '✨ Blackjack';
+      if (hit?.done) return '🛑 停牌';
+      if (hit?.stake) return `押 ${hit.stake}`;
+      return g.phase === 'betting' ? '下注中' : '行动中';
     }
     if (gameType.value === 'zjh' && phase.value === 'playing') {
-      const o = (game.value.others || []).find((x: any) => x.userId === m.userId);
+      const g = game.value as ZjhGameState;
+      const o = (g.others || []).find((x) => x.userId === m.userId);
       const self = m.userId === myId.value;
-      const folded = self ? game.value.myFolded : o?.folded;
-      const allIn = self ? game.value.myAllIn : o?.allIn;
-      const seen = self ? game.value.mySeen : o?.seen;
+      const folded = self ? g.myFolded : o?.folded;
+      const allIn = self ? g.myAllIn : o?.allIn;
+      const seen = self ? g.mySeen : o?.seen;
       if (folded) return '🚫 已弃';
       if (allIn) return '💰 all-in';
-      if (game.value.turnSeat === m.seat) return seen ? '👀 行动中' : '🙈 行动中';
+      if (g.turnSeat === m.seat) return seen ? '👀 行动中' : '🙈 行动中';
       return seen ? '👀 已看' : '🙈 闷牌';
     }
     if (gameType.value === 'gomoku' && phase.value === 'playing') {
@@ -98,10 +124,13 @@ export function useMemberState({
 
   const isActiveMember = (m: { userId: number; seat: number }): boolean => {
     if (phase.value !== 'playing') return false;
-    if (gameType.value === 'gomoku') return game.value.turn === (m.seat === 0 ? 1 : 2);
-    if (gameType.value === 'uno') return game.value.turnSeat === m.seat;
-    if (gameType.value === 'draw')
-      return game.value.drawerSeat === m.seat && game.value.word != null;
+    if (gameType.value === 'gomoku')
+      return (game.value as GomokuGameState).turn === (m.seat === 0 ? 1 : 2);
+    if (gameType.value === 'uno') return (game.value as UnoGameState).turnSeat === m.seat;
+    if (gameType.value === 'draw') {
+      const g = game.value as DrawGameState;
+      return g.drawerSeat === m.seat && g.word != null;
+    }
     return false;
   };
 

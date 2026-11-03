@@ -217,16 +217,25 @@ const pickHistory = async (h: string) => {
   }
 };
 
-const applyResult = (res: any) => {
-  if (res?.avatarHistory) {
-    history.value = res.avatarHistory;
+const applyResult = (res: unknown) => {
+  const r = res as {
+    id?: number;
+    nickname?: string;
+    avatar?: string;
+    avatarHistory?: string[];
+  } | null;
+  if (r?.avatarHistory) {
+    history.value = r.avatarHistory;
   }
+  const existing = userStore.userInfo;
   userStore.setUserInfo({
-    ...(userStore.userInfo || {}),
-    id: res?.id ?? userStore.userInfo?.id ?? 0,
-    nickname: res?.nickname ?? nickname.value,
-    avatar: res?.avatar ?? avatar.value,
-  } as any);
+    id: r?.id ?? existing?.id ?? 0,
+    nickname: r?.nickname ?? existing?.nickname ?? nickname.value,
+    avatar: r?.avatar ?? existing?.avatar ?? avatar.value,
+    level: existing?.level ?? 0,
+    totalStars: existing?.totalStars ?? 0,
+    battleChips: existing?.battleChips,
+  });
 };
 
 const save = async () => {
@@ -273,10 +282,11 @@ onMounted(async () => {
   // 拉最新资料（含头像历史）
   try {
     const info = await getUserInfo();
-    if (info) {
-      avatar.value = info.avatar || '🐰';
-      nickname.value = info.nickname || '';
-      history.value = (info as any).avatarHistory || [];
+    const r = info as { avatar?: string; nickname?: string; avatarHistory?: string[] };
+    if (r) {
+      avatar.value = r.avatar || '🐰';
+      nickname.value = r.nickname || '';
+      history.value = r.avatarHistory || [];
     }
   } catch {
     // ignore

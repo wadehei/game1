@@ -24,11 +24,23 @@ const { restShow, restCountdown, skipRest } = usePlayTimeGuard(() => route.path)
 initVoice();
 
 // 游戏过程中防止屏幕休眠（支持 WakeLock 的浏览器）
-let wakeLock: any = null;
+let wakeLock: {
+  release: () => Promise<void>;
+  addEventListener: (type: string, listener: () => void) => void;
+} | null = null;
 const requestWakeLock = async () => {
   try {
     if ('wakeLock' in navigator && !wakeLock) {
-      wakeLock = await (navigator as any).wakeLock.request('screen');
+      wakeLock = await (
+        navigator as unknown as {
+          wakeLock?: {
+            request: (type: string) => Promise<{
+              release: () => Promise<void>;
+              addEventListener: (type: string, listener: () => void) => void;
+            }>;
+          };
+        }
+      ).wakeLock!.request('screen');
       wakeLock.addEventListener('release', () => {
         wakeLock = null;
       });

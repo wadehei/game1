@@ -112,6 +112,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
 import { useUserStore } from '@/store/user';
+import type { DrawGameState, GameEvents, TotalRankingFinal } from '@/composables/wsTypes';
 
 const COLORS = ['#333333', '#e74c3c', '#2980b9', '#27ae60', '#f39c12', '#8e44ad'];
 const COLORS_CSS = {
@@ -129,8 +130,8 @@ interface Batch {
 }
 
 const props = defineProps<{
-  state: any; // serializeFor 输出
-  events: Record<string, any>;
+  state: DrawGameState; // serializeFor 输出
+  events: Partial<GameEvents>;
   members: Array<{ userId: number; nickname: string; seat: number }>;
   phase: string;
   mySeat: number;
@@ -148,7 +149,8 @@ const canDraw = computed(
 // 猜对名单：快照带 guessedUserIds（重连恢复），guess_result 事件实时追加
 const guessedIds = computed<number[]>(() => {
   const ids = new Set<number>((props.state?.guessedUserIds as number[]) || []);
-  for (const g of Array.isArray(props.events.guessResult) ? props.events.guessResult : []) {
+  for (const g of (props.events.guessResult as
+    Array<{ userId: number; correct?: boolean }> | undefined) || []) {
     if (g.correct) ids.add(g.userId);
   }
   return [...ids];
@@ -157,16 +159,20 @@ const guessedCount = computed(() => guessedIds.value.length);
 const guessedNames = computed(() => guessedIds.value.map(nameOfUser));
 
 // 终局：优先实时事件，兜底快照里的 ended 摘要（刷新/重连后事件已丢）
-const final = computed<any | null>(() => props.events.final || props.state?.ended || null);
+const final = computed(
+  () => (props.events.final as TotalRankingFinal | null | undefined) ?? props.state.ended ?? null
+);
 // 时间过半揭示的首字（画家不需要）
-const hintChar = computed(() => (isDrawer.value ? '' : props.events.hint?.char || ''));
+const hintChar = computed(() =>
+  isDrawer.value ? '' : (props.events.hint as { char?: string } | undefined)?.char || ''
+);
 // 候选词用本地 ref 保存：draw_candidates 私发事件早于 game_start 到达，
 // 而 game_start 会把 events 全部清空，直接读 events.candidates 会丢
-const candidates = ref<any[]>([]);
+const candidates = ref<string[]>([]);
 watch(
   () => props.events.candidates,
-  (v: any) => {
-    if (Array.isArray(v) && v.length) candidates.value = v;
+  (v: unknown) => {
+    if (Array.isArray(v) && v.length) candidates.value = v as string[];
   },
   { immediate: true }
 );
@@ -321,8 +327,8 @@ const onUp = () => {
 
 // ── 事件 → 渲染列表 ──
 watch(
-  () => props.events.stroke,
-  (m: any) => {
+  () => props.events.stroke as { stroke?: Batch } | null | undefined,
+  (m) => {
     if (!m?.stroke) return;
     batches.value.push(m.stroke);
     renderAll();
@@ -345,7 +351,7 @@ watch(
 // 快照带全量笔迹（重连/新进重放）
 watch(
   () => props.state?.strokes,
-  (strokes: any) => {
+  (strokes: Batch[]) => {
     if (Array.isArray(strokes)) {
       batches.value = strokes;
       renderAll();
@@ -356,7 +362,7 @@ watch(
 // 新回合清空画布与候选词（仅真实 round 事件触发；game_start 置 null 时不清，候选词本地副本要保留）
 watch(
   () => props.events.round,
-  (m: any) => {
+  (m: unknown) => {
     if (!m) return;
     batches.value = [];
     candidates.value = [];

@@ -1,5 +1,12 @@
 <template>
-  <img v-if="isUrl" class="player-avatar" :src="avatar" :style="sizeStyle" alt="头像" />
+  <img
+    v-if="isUrl"
+    class="player-avatar"
+    :src="avatar"
+    :style="sizeStyle"
+    alt="头像"
+    loading="lazy"
+  />
   <span v-else class="player-avatar avatar-emoji" :style="[sizeStyle, emojiBgStyle]">{{
     emoji
   }}</span>

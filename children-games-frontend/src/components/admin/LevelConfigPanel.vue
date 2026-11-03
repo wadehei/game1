@@ -220,8 +220,11 @@ const save = async () => {
     showMessage(`第 ${formLevel.value} 关配置已保存`);
     resetForm();
     await loadList();
-  } catch (e: any) {
-    showMessage(e?.response?.data?.message || '保存失败', true);
+  } catch (e: unknown) {
+    showMessage(
+      (e as { response?: { data?: { message?: string } } })?.response?.data?.message || '保存失败',
+      true
+    );
   } finally {
     saving.value = false;
   }

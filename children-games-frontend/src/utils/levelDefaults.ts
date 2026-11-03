@@ -11,6 +11,90 @@ export type LevelConfigMap = Record<string, LevelConfigValue>;
 
 type Formula = (level: number) => LevelConfigMap;
 
+// ─── 各游戏默认配置的精确类型（调用方按字面量 gameId 获得对应形状） ──────────────
+export interface MemoryLevelConfig {
+  pairs: number;
+  timeLimit: number;
+}
+export interface FruitLevelConfig {
+  spawnRate: number;
+  fallSpeed: number;
+  bombChance: number;
+  targetScore: number;
+  lives: number;
+}
+export interface PuzzleLevelConfig {
+  gridSize: number;
+  timeLimit: number;
+}
+export interface BalloonLevelConfig {
+  spawnRate: number;
+  moveSpeed: number;
+  targetScore: number;
+  bullets: number;
+  rainbowChance: number;
+  goldenChance: number;
+}
+export interface TankLevelDefaults {
+  enemyCount: number;
+  enemySpeed: number;
+  enemyFireRate: number;
+  bossLevel: boolean;
+  bossHP: number;
+  playerSpeed: number;
+  autoFireInterval: number;
+  enemyBulletSpeed: number;
+  playerBulletSpeed: number;
+}
+export interface MoleLevelConfig {
+  spawnInterval: number;
+  upDuration: number;
+  bunnyChance: number;
+  timeLimit: number;
+  targetHits: number;
+}
+export interface SimonLevelConfig {
+  seqLength: number;
+  playbackMs: number;
+}
+export interface MatchLevelConfig {
+  pairs: number;
+  timeLimit: number;
+}
+export interface MathLevelConfig {
+  targetCorrect: number;
+  forceMode: number;
+  countMax: number;
+  addMax: number;
+  level: number;
+}
+export interface Match3LevelConfig {
+  targetScore: number;
+  moves: number;
+  kinds: number;
+}
+export interface BrickLevelConfig {
+  rows: number;
+  ballSpeed: number;
+  paddleWidth: number;
+  lives: number;
+}
+
+/** gameId 为字面量时返回该游戏的精确配置形状；动态 string（后台面板）退化为通用表 */
+export interface LevelConfigByGame {
+  memory: MemoryLevelConfig;
+  fruit: FruitLevelConfig;
+  puzzle: PuzzleLevelConfig;
+  balloon: BalloonLevelConfig;
+  tank: TankLevelDefaults;
+  mole: MoleLevelConfig;
+  simon: SimonLevelConfig;
+  match: MatchLevelConfig;
+  math: MathLevelConfig;
+  match3: Match3LevelConfig;
+  brick: BrickLevelConfig;
+}
+
 // 难度设计原则：每一关都要有孩子能感知的变化（步长足够大），避免"连着几关一模一样"
 const FORMULAS: Record<string, Formula> = {
   // 记忆翻牌：对数每关 +1（2→8 对封顶），限时每关 -4s
@@ -91,10 +175,15 @@ const FORMULAS: Record<string, Formula> = {
   }),
 };
 
-/** 某游戏某关的内置默认配置（数值/布尔混合表，调用方按需取用） */
-export const defaultLevelConfig = (gameId: string, level: number): Record<string, any> => {
+/** 某游戏某关的内置默认配置（调用方按需取用；字面量 gameId 获得精确类型） */
+export const defaultLevelConfig = <K extends string>(
+  gameId: K,
+  level: number
+): K extends keyof LevelConfigByGame ? LevelConfigByGame[K] : LevelConfigMap => {
   const formula = FORMULAS[gameId];
-  return formula ? formula(level) : {};
+  return (formula ? formula(level) : {}) as K extends keyof LevelConfigByGame
+    ? LevelConfigByGame[K]
+    : LevelConfigMap;
 };
 
 /** 各字段中文说明（后台动态表单用）；isBool = 布尔开关 */

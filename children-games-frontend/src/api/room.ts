@@ -58,7 +58,7 @@ export const uploadRoomVoice = async (
       timeout: 10000,
     }
   );
-  return (res.data as any).data as { voiceId: string };
+  return (res.data as { data: { voiceId: string } }).data;
 };
 
 // 拉取房间语音（blob 响应不走统一拦截器，单独用 axios）

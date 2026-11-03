@@ -51,7 +51,16 @@ export const updateGameProgress = async (
 
 // 获取排行榜
 export const getLeaderboard = async (gameId: string, limit = 50) => {
-  return api.get(`/game/leaderboard/${gameId}`, { limit });
+  return api.get<
+    Array<{
+      rank: number;
+      userId: number;
+      nickname: string;
+      avatar: string;
+      highScore: number;
+      level: number;
+    }>
+  >(`/game/leaderboard/${gameId}`, { limit });
 };
 
 // 获取今日任务进度

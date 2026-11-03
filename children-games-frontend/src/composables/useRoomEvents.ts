@@ -8,7 +8,6 @@ import type {
   S2CJoined,
   S2CSnapshot,
   S2CMemberUpdate,
-  S2CGomokuMove,
   S2CGameStart,
   S2CGameRestart,
   S2CGameOver,
@@ -18,7 +17,6 @@ import type {
   S2CChat,
   S2CVoice,
   S2CClosed,
-  S2CQuizEvent,
   S2CDrawEvent,
   S2CSpyEvent,
   S2CUnoEvent,
@@ -36,6 +34,20 @@ import type {
   UnoGameState,
   BlackjackGameState,
   ZjhGameState,
+  QuizQuestionEvent,
+  QuizResultEvent,
+  TotalRankingFinal,
+  UnoFinalEvent,
+  UnoStateEvent,
+  UnoPlayedEvent,
+  UnoDrewEvent,
+  BlackjackActionEvent,
+  BlackjackPhaseEvent,
+  ZjhPhaseEvent,
+  ZjhYourCardsEvent,
+  GomokuMoveEvent,
+  SpyVoteResultEvent,
+  ChipsRankingFinal,
 } from './wsTypes';
 
 export interface RoomEventContext extends TypedRoomEventContext {}
@@ -72,7 +84,7 @@ export const useRoomEvents = (ws: WsLike, ctx: RoomEventContext) => {
     });
     ws.on('snapshot', applySnapshot);
     ws.on('member_update', (m: S2CMemberUpdate) => (members.value = m.members || []));
-    ws.on('move', (m: S2CGomokuMove) => {
+    ws.on('move', (m: GomokuMoveEvent) => {
       if (board.value[m.y]) board.value[m.y][m.x] = m.color;
       if (game.value && 'turn' in game.value) {
         (game.value as GomokuGameState).turn = m.turn;
@@ -160,15 +172,15 @@ export const useRoomEvents = (ws: WsLike, ctx: RoomEventContext) => {
 
   // ── 答题对战 ──
   const registerQuiz = () => {
-    ws.on('quiz_question', (m: Extract<S2CQuizEvent, { t: 'quiz_question' }>) => {
+    ws.on('quiz_question', (m: QuizQuestionEvent) => {
       gameEvents.question = m;
       gameEvents.result = null;
       gameEvents.final = null;
     });
-    ws.on('quiz_result', (m: Extract<S2CQuizEvent, { t: 'quiz_result' }>) => {
+    ws.on('quiz_result', (m: QuizResultEvent) => {
       gameEvents.result = m;
     });
-    ws.on('quiz_final', (m: Extract<S2CQuizEvent, { t: 'quiz_final' }>) => {
+    ws.on('quiz_final', (m: TotalRankingFinal) => {
       gameEvents.final = m;
     });
   };
@@ -230,7 +242,7 @@ export const useRoomEvents = (ws: WsLike, ctx: RoomEventContext) => {
     ws.on('draw_round_end', (m: Extract<S2CDrawEvent, { t: 'draw_round_end' }>) => {
       gameEvents.roundEnd = m;
     });
-    ws.on('draw_final', (m: Extract<S2CDrawEvent, { t: 'draw_final' }>) => {
+    ws.on('draw_final', (m: TotalRankingFinal) => {
       gameEvents.final = m;
       phase.value = 'ended';
     });
@@ -262,7 +274,7 @@ export const useRoomEvents = (ws: WsLike, ctx: RoomEventContext) => {
         spyState.total = m.total;
       }
     });
-    ws.on('spy_vote_result', (m: Extract<S2CSpyEvent, { t: 'spy_vote_result' }>) => {
+    ws.on('spy_vote_result', (m: SpyVoteResultEvent) => {
       gameEvents.voteResult = m;
     });
     ws.on('spy_eliminated', (m: Extract<S2CSpyEvent, { t: 'spy_eliminated' }>) => {
@@ -276,7 +288,7 @@ export const useRoomEvents = (ws: WsLike, ctx: RoomEventContext) => {
 
   // ── UNO ──
   const registerUno = () => {
-    ws.on('uno_state', (m: Extract<S2CUnoEvent, { t: 'uno_state' }>) => {
+    ws.on('uno_state', (m: UnoStateEvent) => {
       gameEvents.uno_state = m;
       gameEvents.turn = { seat: m.turnSeat, seq: Date.now() };
       if (game.value && typeof game.value === 'object') {
@@ -294,7 +306,7 @@ export const useRoomEvents = (ws: WsLike, ctx: RoomEventContext) => {
         (game.value as UnoGameState).turnSeat = m.seat;
       }
     });
-    ws.on('uno_played', (m: Extract<S2CUnoEvent, { t: 'uno_played' }>) => {
+    ws.on('uno_played', (m: UnoPlayedEvent) => {
       gameEvents.uno_played = m;
       if (game.value && typeof game.value === 'object') {
         const unoState = game.value as UnoGameState;
@@ -305,10 +317,10 @@ export const useRoomEvents = (ws: WsLike, ctx: RoomEventContext) => {
     ws.on('uno_hand', (m: Extract<S2CUnoEvent, { t: 'uno_hand' }>) => {
       gameEvents.uno_hand = m;
     });
-    ws.on('uno_drew', (m: Extract<S2CUnoEvent, { t: 'uno_drew' }>) => {
+    ws.on('uno_drew', (m: UnoDrewEvent) => {
       gameEvents.drew = { ...m, seq: Date.now() };
     });
-    ws.on('uno_final', (m: Extract<S2CUnoEvent, { t: 'uno_final' }>) => {
+    ws.on('uno_final', (m: UnoFinalEvent) => {
       gameEvents.final = m;
       phase.value = 'ended';
     });
@@ -337,7 +349,7 @@ export const useRoomEvents = (ws: WsLike, ctx: RoomEventContext) => {
       return entry;
     };
 
-    ws.on('blackjack_phase', (m: Extract<S2CBlackjackEvent, { t: 'blackjack_phase' }>) => {
+    ws.on('blackjack_phase', (m: BlackjackPhaseEvent) => {
       if (game.value && typeof game.value === 'object') {
         const bjState = game.value as BlackjackGameState;
         const newRound = bjState.round !== m.round;
@@ -349,6 +361,8 @@ export const useRoomEvents = (ws: WsLike, ctx: RoomEventContext) => {
         bjState.deadline = m.deadline || 0;
         bjState.chips = m.chips || bjState.chips;
         bjState.canPassBank = !!m.canPassBank;
+        // betOptions 随 phase 事件携带（开局不再补发快照，必须在此落库）
+        if (Array.isArray(m.betOptions)) bjState.betOptions = m.betOptions;
         bjState.isBanker = m.bankerSeat === mySeat.value;
         if (newRound && m.phase === 'betting') {
           gameEvents.handsView = [];
@@ -394,18 +408,18 @@ export const useRoomEvents = (ws: WsLike, ctx: RoomEventContext) => {
         }
       }
     );
-    ws.on('blackjack_action', (m: Extract<S2CBlackjackEvent, { t: 'blackjack_action' }>) => {
+    ws.on('blackjack_action', (m: BlackjackActionEvent) => {
       if (!game.value || typeof game.value !== 'object') return;
       const bjState = game.value as BlackjackGameState;
       if (m.action === 'banker_hit') {
-        bjState.bankerCards = [...(bjState.bankerCards || []), m.card];
+        bjState.bankerCards = [...(bjState.bankerCards || []), m.card as string];
         bjState.bankerValue = m.total;
         return;
       }
       if (m.action === 'hit' || m.action === 'double') {
         const finished = m.action === 'double' || !!m.busted || m.total === 21;
         if (m.userId === myId.value) {
-          bjState.myCards = [...(bjState.myCards || []), m.card];
+          bjState.myCards = [...(bjState.myCards || []), m.card as string];
           if (m.action === 'double') bjState.myStake = m.stake;
           bjState.myDone = finished;
           bjState.myBusted = !!m.busted;
@@ -418,7 +432,9 @@ export const useRoomEvents = (ws: WsLike, ctx: RoomEventContext) => {
             entry.doubled = true;
           }
         }
-        const item = (gameEvents.handsView || []).find((x: any) => x.userId === m.userId);
+        const item = (gameEvents.handsView || []).find(
+          (x: { userId: number }) => x.userId === m.userId
+        );
         if (item && m.userId !== myId.value) {
           item.cards = [...(item.cards || []), ...(m.card ? [m.card] : [])];
           item.done = finished;
@@ -431,7 +447,9 @@ export const useRoomEvents = (ws: WsLike, ctx: RoomEventContext) => {
       }
       if (m.action === 'stand') {
         if (m.userId === myId.value) bjState.myDone = true;
-        const item = (gameEvents.handsView || []).find((x: any) => x.userId === m.userId);
+        const item = (gameEvents.handsView || []).find(
+          (x: { userId: number }) => x.userId === m.userId
+        );
         if (item) item.done = true;
         return;
       }
@@ -439,7 +457,9 @@ export const useRoomEvents = (ws: WsLike, ctx: RoomEventContext) => {
         soundManager.playChip();
         const entry = bjEntry(m.userId, bjState.round);
         if (entry) entry.stake = m.stake;
-        const item = (gameEvents.handsView || []).find((x: any) => x.userId === m.userId);
+        const item = (gameEvents.handsView || []).find(
+          (x: { userId: number }) => x.userId === m.userId
+        );
         if (item) item.stake = m.stake;
       }
     });
@@ -468,7 +488,9 @@ export const useRoomEvents = (ws: WsLike, ctx: RoomEventContext) => {
         }
       }
       for (const r of m.results || []) {
-        const item = (gameEvents.handsView || []).find((x: any) => x.userId === r.userId);
+        const item = (gameEvents.handsView || []).find(
+          (x: { userId: number }) => x.userId === r.userId
+        );
         if (item) {
           item.done = true;
           if (r.outcome === 'bust') item.busted = true;
@@ -476,7 +498,7 @@ export const useRoomEvents = (ws: WsLike, ctx: RoomEventContext) => {
         }
       }
     });
-    ws.on('blackjack_final', (m: Extract<S2CBlackjackEvent, { t: 'blackjack_final' }>) => {
+    ws.on('blackjack_final', (m: ChipsRankingFinal) => {
       gameEvents.final = m;
       phase.value = 'ended';
     });
@@ -501,7 +523,7 @@ export const useRoomEvents = (ws: WsLike, ctx: RoomEventContext) => {
       }
     };
 
-    ws.on('zjh_phase', (m: Extract<S2CZjhEvent, { t: 'zjh_phase' }>) => {
+    ws.on('zjh_phase', (m: ZjhPhaseEvent) => {
       if (game.value && typeof game.value === 'object') {
         const zjhState = game.value as ZjhGameState;
         const newHand = zjhState.round !== m.round;
@@ -517,6 +539,9 @@ export const useRoomEvents = (ws: WsLike, ctx: RoomEventContext) => {
         zjhState.compareMinRound = m.compareMinRound || 3;
         zjhState.aliveCount = m.aliveCount;
         zjhState.chips = m.chips || zjhState.chips;
+        // raiseSteps/stakeCap 随 phase 事件携带（同上，必须在此落库）
+        if (Array.isArray(m.raiseSteps)) zjhState.raiseSteps = m.raiseSteps;
+        if (typeof m.stakeCap === 'number') zjhState.stakeCap = m.stakeCap;
         if (newHand && m.phase === 'betting') {
           zjhState.myCards = null;
           zjhState.mySeen = false;
@@ -546,7 +571,7 @@ export const useRoomEvents = (ws: WsLike, ctx: RoomEventContext) => {
         }
       }
     });
-    ws.on('zjh_your_cards', (m: Extract<S2CZjhEvent, { t: 'zjh_your_cards' }>) => {
+    ws.on('zjh_your_cards', (m: ZjhYourCardsEvent) => {
       if (game.value && typeof game.value === 'object') {
         const zjhState = game.value as ZjhGameState;
         zjhState.myCards = m.cards || [];
@@ -663,7 +688,7 @@ export const useRoomEvents = (ws: WsLike, ctx: RoomEventContext) => {
         }
       }
     });
-    ws.on('zjh_final', (m: Extract<S2CZjhEvent, { t: 'zjh_final' }>) => {
+    ws.on('zjh_final', (m: ChipsRankingFinal) => {
       gameEvents.final = m;
       phase.value = 'ended';
     });

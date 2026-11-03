@@ -173,10 +173,11 @@ import { useUserStore } from '@/store/user';
 import { soundManager } from '@/utils/sound';
 import BattleResultPanel from './BattleResultPanel.vue';
 import BetLedger from './BetLedger.vue';
+import type { BlackjackGameState, GameEvents } from '@/composables/wsTypes';
 
 const props = defineProps<{
-  state: any;
-  events: Record<string, any>;
+  state: BlackjackGameState;
+  events: Partial<GameEvents>;
   members: Array<{ userId: number; nickname: string; avatar?: string; seat: number }>;
   phase: string;
   mySeat: number;
@@ -187,11 +188,19 @@ const emit = defineEmits<{ (e: 'action', action: Record<string, unknown>): void 
 const userStore = useUserStore();
 const myId = computed(() => userStore.userInfo?.id || 0);
 
-const final = computed(() => props.events.final);
-const isBanker = computed(() => !!props.state?.isBanker);
-const myChips = computed(
-  () => props.state?.chips?.find((c: any) => c.userId === myId.value)?.chips ?? 0
+const final = computed(
+  () =>
+    props.events.final as
+      | { ranking: Array<{ userId: number; nickname: string; chips: number }>; reason?: string }
+      | null
+      | undefined
 );
+const isBanker = computed(() => !!props.state?.isBanker);
+const myChips = computed(() => {
+  const chips = props.state?.chips;
+  if (!Array.isArray(chips)) return 0;
+  return chips.find((c) => c.userId === myId.value)?.chips ?? 0;
+});
 const myTurnToAct = computed(
   () =>
     props.phase === 'playing' &&
@@ -238,7 +247,17 @@ watch(dblPop, (v) => {
 const myCardsLenAtDeal = ref(99);
 
 /** 闲家视图：优先用 deal/action 拼装的明牌（events.handsView），快照兜底只给张数 */
-const othersView = computed<any[]>(() => {
+const othersView = computed<
+  Array<{
+    userId: number;
+    seat: number;
+    cards: string[];
+    stake: number;
+    done: boolean;
+    busted: boolean;
+    natural: boolean;
+  }>
+>(() => {
   const view = props.events.handsView as
     | Array<{
         userId: number;
@@ -253,7 +272,7 @@ const othersView = computed<any[]>(() => {
   if (view?.length) {
     return view.filter((v) => v.userId !== myId.value);
   }
-  return (props.state?.others || []).map((o: any) => ({
+  return (props.state?.others || []).map((o) => ({
     ...o,
     seat: seatOfUser(o.userId),
     cards: [],
@@ -263,14 +282,23 @@ const othersView = computed<any[]>(() => {
 const lastResults = computed(() => props.state?.lastResults || null);
 
 // 投注明细（全员可见）：每手的押注/加倍与输赢，行高亮自己
-const betLedger = computed<any[]>(() =>
-  (props.state?.betLedger || []).map((e: any) => ({
+const betLedger = computed<
+  Array<{
+    userId: number;
+    round: number;
+    bet: number;
+    delta: number | null;
+    note: string;
+    tag: string;
+  }>
+>(() =>
+  (props.state?.betLedger || []).map((e) => ({
     userId: e.userId,
     round: e.round,
     bet: e.stake,
     delta: e.delta,
     note: e.doubled ? '加倍' : '',
-    tag: e.delta === null ? '' : outcomeText(e.outcome),
+    tag: e.delta === null ? '' : outcomeText(e.outcome ?? ''),
   }))
 );
 

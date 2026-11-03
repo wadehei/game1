@@ -272,7 +272,7 @@ const nextQuestion = () => {
   const info = iconInfo(q.icon);
   if (q.mode === 'count') {
     speak(`一共有几${info.mw}${info.name}呀？`);
-  } else if ((q as any).subtract) {
+  } else if (q.subtract) {
     speak(`${CN_NUM[q.countA]} 减 ${CN_NUM[q.countB]}，等于几？`);
   } else {
     speak(`${CN_NUM[q.countA]} 加 ${CN_NUM[q.countB]}，等于几？`);

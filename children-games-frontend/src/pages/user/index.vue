@@ -74,7 +74,7 @@ import { computed, ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useUserStore } from '@/store/user';
 import { getAchievements, type AchievementInfo } from '@/api/game';
-import { getMyCareer, type MyCareer } from '@/api/user';
+import { getMyCareer, logoutNotify, type MyCareer } from '@/api/user';
 import { API_ORIGIN } from '@/utils/apiOrigin';
 import { confirmAction } from '@/utils/confirmBus';
 import CareerSection from './components/CareerSection.vue';
@@ -128,6 +128,7 @@ const handleLogout = async () => {
     confirmText: '退出',
   });
   if (!ok) return;
+  logoutNotify();
   userStore.logout();
   router.push('/profiles');
 };

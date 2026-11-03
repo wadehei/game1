@@ -43,8 +43,10 @@ const doLogin = async () => {
   try {
     await adminLogin(password.value);
     router.replace('/admin');
-  } catch (e: any) {
-    error.value = e?.response?.data?.message || '登录失败，请重试';
+  } catch (e: unknown) {
+    error.value =
+      (e as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+      '登录失败，请重试';
   } finally {
     loading.value = false;
   }
