@@ -60,6 +60,9 @@ vi.mock('../../../src/models', () => ({
   BattleRecord: {
     destroy: vi.fn(),
   },
+  Admin: {
+    findOne: vi.fn().mockResolvedValue(null),
+  },
 }));
 
 vi.mock('../../../src/utils/transaction', () => ({

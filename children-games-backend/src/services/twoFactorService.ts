@@ -1,34 +1,54 @@
-import { authenticator } from 'otplib';
+import * as OTPAuth from 'otpauth';
 import QRCode from 'qrcode';
 import { Admin } from '../models/Admin';
 
-// TOTP 配置：30 秒时间窗口，6 位数字
-authenticator.setOptions({
-  window: 1, // 允许前后各 1 个时间窗口的偏移（容错网络延迟）
-  digits: 6,
-  step: 30,
-});
-
 const ISSUER = 'ChildrenGames';
+const DIGITS = 6;
+const PERIOD = 30; // 秒
 
-/** 生成 TOTP 密钥 */
+/** 创建 TOTP 实例 */
+const createTotp = (secret: OTPAuth.Secret, username: string): OTPAuth.TOTP => {
+  return new OTPAuth.TOTP({
+    issuer: ISSUER,
+    label: username,
+    algorithm: 'SHA1',
+    digits: DIGITS,
+    period: PERIOD,
+    secret,
+  });
+};
+
+/** 生成 TOTP 密钥（base32 编码字符串） */
 export const generateTotpSecret = (): string => {
-  return authenticator.generateSecret();
+  const secret = new OTPAuth.Secret({ size: 20 });
+  return secret.base32;
+};
+
+/** 解析 base32 密钥为 Secret 对象 */
+const parseSecret = (base32: string): OTPAuth.Secret => {
+  return OTPAuth.Secret.fromBase32(base32);
 };
 
 /** 生成 TOTP 当前验证码（仅测试/调试用） */
-export const generateTotpToken = (secret: string): string => {
-  return authenticator.generate(secret);
+export const generateTotpToken = (secretBase32: string): string => {
+  const secret = parseSecret(secretBase32);
+  const totp = createTotp(secret, 'test');
+  return totp.generate();
 };
 
-/** 验证 TOTP 验证码 */
-export const verifyTotpToken = (token: string, secret: string): boolean => {
-  return authenticator.verify({ token, secret });
+/** 验证 TOTP 验证码（允许前后各 1 个时间窗口偏移） */
+export const verifyTotpToken = (token: string, secretBase32: string): boolean => {
+  const secret = parseSecret(secretBase32);
+  const totp = createTotp(secret, 'verify');
+  const delta = totp.validate({ token, window: 1 });
+  return delta !== null;
 };
 
 /** 生成 OTP Auth URI（供二维码使用） */
-export const buildOtpAuthUri = (secret: string, username: string): string => {
-  return authenticator.keyuri(username, ISSUER, secret);
+export const buildOtpAuthUri = (secretBase32: string, username: string): string => {
+  const secret = parseSecret(secretBase32);
+  const totp = createTotp(secret, username);
+  return totp.toString();
 };
 
 /** 将 OTP Auth URI 转换为 QR Code base64 图片 */

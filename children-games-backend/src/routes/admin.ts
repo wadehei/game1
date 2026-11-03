@@ -79,6 +79,34 @@ const router = Router();
  */
 router.post('/login', adminLoginLimiter, validateBody(adminLoginSchema), auditLogin(), adminLogin);
 
+/**
+ * @swagger
+ * /api/admin/2fa/verify:
+ *   post:
+ *     summary: 验证 2FA 验证码（登录第二步 或 绑定确认）
+ *     tags: [Admin 2FA]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [code]
+ *             properties:
+ *               token: { type: string, description: 登录第二步时的临时令牌 }
+ *               code: { type: string, description: 6位数字验证码 }
+ *     responses:
+ *       200:
+ *         description: 验证成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Success'
+ */
+// 注意：/2fa/verify 必须放在 adminMiddleware 之前
+// 因为登录第二步使用临时令牌（purpose=2fa_pending），会被 adminMiddleware 拒绝
+router.post('/2fa/verify', validateBody(twoFactorVerifySchema), auditLog('2fa.verify'), verify2fa);
+
 // ─── 以下路由需要管理员认证 ────────────────────────────────
 router.use(adminMiddleware);
 
@@ -923,32 +951,6 @@ router.get('/audit-logs', adminMiddleware, getAuditLogs);
  *               $ref: '#/components/schemas/Success'
  */
 router.post('/2fa/setup', validateBody(twoFactorSetupSchema), auditLog('2fa.setup'), setup2fa);
-
-/**
- * @swagger
- * /api/admin/2fa/verify:
- *   post:
- *     summary: 验证 2FA 验证码（登录第二步 或 绑定确认）
- *     tags: [Admin 2FA]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [code]
- *             properties:
- *               token: { type: string, description: 登录第二步时的临时令牌 }
- *               code: { type: string, description: 6位数字验证码 }
- *     responses:
- *       200:
- *         description: 验证成功
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Success'
- */
-router.post('/2fa/verify', validateBody(twoFactorVerifySchema), auditLog('2fa.verify'), verify2fa);
 
 /**
  * @swagger

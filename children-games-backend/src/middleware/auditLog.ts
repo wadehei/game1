@@ -31,7 +31,7 @@ export const auditLog = (
       const { ipAddress, userAgent } = extractAuditInfo(req);
 
       // 提取目标信息
-      const target = options?.extractTarget?.(req) || { targetType: null, targetId: null };
+      const target = options?.extractTarget?.(req) || {};
 
       // 提取详细信息（默认包含 body 和 params）
       const details = options?.extractDetails?.(req) || {
@@ -50,8 +50,8 @@ export const auditLog = (
       recordAuditLog({
         adminId,
         action,
-        targetType: target.targetType,
-        targetId: target.targetId,
+        targetType: target.targetType || undefined,
+        targetId: target.targetId || undefined,
         details,
         ipAddress,
         userAgent,
@@ -93,8 +93,8 @@ export const auditLogin = () => {
         recordAuditLog({
           adminId: 0, // 登录时尚未确认管理员身份，使用默认值
           action: 'admin.login',
-          targetType: null,
-          targetId: null,
+          targetType: undefined,
+          targetId: undefined,
           details: {
             username: req.body?.username || 'unknown',
             success: true,

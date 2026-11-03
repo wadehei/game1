@@ -48,8 +48,8 @@ export const recordAuditLog = async (data: AuditLogData): Promise<void> => {
  */
 export const extractAuditInfo = (req: Request): Pick<AuditLogData, 'ipAddress' | 'userAgent'> => {
   return {
-    ipAddress: extractClientIp(req),
-    userAgent: req.get('user-agent') || null,
+    ipAddress: extractClientIp(req) || undefined,
+    userAgent: req.get('user-agent') || undefined,
   };
 };
 
@@ -87,7 +87,7 @@ export const queryAuditLogs = async (params: {
   endDate?: string;
 }): Promise<{ list: AuditLog[]; total: number; page: number; limit: number }> => {
   const { Op } = await import('sequelize');
-  const where: Record<string, unknown> = {};
+  const where: any = {};
 
   // 按动作类型过滤
   if (params.action) {
