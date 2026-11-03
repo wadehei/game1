@@ -19,12 +19,67 @@ const isGameType = (t: unknown): t is GameType => {
   }
 };
 
-// 可用游戏列表（大厅建房卡片用）
+/**
+ * @swagger
+ * /api/room/games:
+ *   get:
+ *     summary: 获取可用游戏列表（大厅建房卡片用）
+ *     tags: [Room]
+ *     responses:
+ *       200:
+ *         description: 成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       type: { type: string }
+ *                       name: { type: string }
+ */
 router.get('/games', (_req: Request, res: Response) => {
   success(res, gameList());
 });
 
-// 创建房间（需要登录）。config = 建房配置（handler 白名单校验+默认值，对局期间不可改）
+/**
+ * @swagger
+ * /api/room:
+ *   post:
+ *     summary: 创建对战房间
+ *     tags: [Room]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               gameType: { type: string, description: 游戏类型，默认 gomoku }
+ *               config: { type: object, description: 建房配置 }
+ *     responses:
+ *       200:
+ *         description: 创建成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     roomId: { type: string }
+ *                     gameType: { type: string }
+ *       401:
+ *         description: 未认证
+ */
 router.post(
   '/',
   authMiddleware,
@@ -44,7 +99,51 @@ router.post(
   })
 );
 
-// 上传房间语音（需要登录且在房间内）：raw body，最长 60 秒 / 600KB
+/**
+ * @swagger
+ * /api/room/{roomId}/voice:
+ *   post:
+ *     summary: 上传房间语音
+ *     description: raw body 二进制，最长 60 秒 / 600KB，语音仅存房间内存
+ *     tags: [Room]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: roomId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: duration
+ *         schema:
+ *           type: integer
+ *         description: 语音时长（秒），最大 60
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         audio/webm:
+ *           schema:
+ *             type: string
+ *             format: binary
+ *     responses:
+ *       200:
+ *         description: 上传成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     voiceId: { type: string }
+ *       403:
+ *         description: 不在房间内
+ *       404:
+ *         description: 房间不存在
+ */
 router.post(
   '/:roomId/voice',
   authMiddleware,
@@ -97,7 +196,33 @@ router.post(
   })
 );
 
-// 拉取房间语音（需要登录且在房间内）
+/**
+ * @swagger
+ * /api/room/{roomId}/voice/{voiceId}:
+ *   get:
+ *     summary: 拉取房间语音
+ *     tags: [Room]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: roomId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: voiceId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: 语音数据（音频二进制流）
+ *       403:
+ *         description: 不在房间内
+ *       404:
+ *         description: 房间或语音不存在
+ */
 router.get(
   '/:roomId/voice/:voiceId',
   authMiddleware,

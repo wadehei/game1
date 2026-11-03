@@ -1,6 +1,7 @@
 import { createClient, RedisClientType } from 'redis';
 import { config } from '../config';
 import { logError, logInfo } from './logger';
+import { redisMonitor } from '../services/redisMonitor';
 
 let redisClient: RedisClientType | null = null;
 let isConnected = false;
@@ -97,15 +98,18 @@ export const cacheSet = async (
 ): Promise<boolean> => {
   if (!redisClient || !isConnected) return false;
 
+  const start = Date.now();
   try {
     if (ttlSeconds) {
       await redisClient.set(key, value, { EX: ttlSeconds });
     } else {
       await redisClient.set(key, value);
     }
+    redisMonitor.recordHit(Date.now() - start);
     return true;
   } catch (error) {
     logError('redis', `缓存设置失败: ${key}`, error instanceof Error ? error.stack : String(error));
+    redisMonitor.recordMiss(Date.now() - start);
     return false;
   }
 };
@@ -116,10 +120,18 @@ export const cacheSet = async (
 export const cacheGet = async (key: string): Promise<string | null> => {
   if (!redisClient || !isConnected) return null;
 
+  const start = Date.now();
   try {
-    return await redisClient.get(key);
+    const result = await redisClient.get(key);
+    if (result !== null) {
+      redisMonitor.recordHit(Date.now() - start);
+    } else {
+      redisMonitor.recordMiss(Date.now() - start);
+    }
+    return result;
   } catch (error) {
     logError('redis', `缓存获取失败: ${key}`, error instanceof Error ? error.stack : String(error));
+    redisMonitor.recordMiss(Date.now() - start);
     return null;
   }
 };
@@ -130,11 +142,14 @@ export const cacheGet = async (key: string): Promise<string | null> => {
 export const cacheDel = async (key: string): Promise<boolean> => {
   if (!redisClient || !isConnected) return false;
 
+  const start = Date.now();
   try {
     await redisClient.del(key);
+    redisMonitor.recordHit(Date.now() - start);
     return true;
   } catch (error) {
     logError('redis', `缓存删除失败: ${key}`, error instanceof Error ? error.stack : String(error));
+    redisMonitor.recordMiss(Date.now() - start);
     return false;
   }
 };
@@ -147,6 +162,7 @@ export const cacheDel = async (key: string): Promise<boolean> => {
 export const cacheIncr = async (key: string, ttlSeconds?: number): Promise<number | null> => {
   if (!redisClient || !isConnected) return null;
 
+  const start = Date.now();
   try {
     if (ttlSeconds) {
       // Lua 原子操作：INCR + EXPIRE 在一次 EVAL 中完成
@@ -159,15 +175,19 @@ export const cacheIncr = async (key: string, ttlSeconds?: number): Promise<numbe
         keys: [key],
         arguments: [String(ttlSeconds)],
       });
+      redisMonitor.recordHit(Date.now() - start);
       return count as number;
     }
-    return await redisClient.incr(key);
+    const count = await redisClient.incr(key);
+    redisMonitor.recordHit(Date.now() - start);
+    return count;
   } catch (error) {
     logError(
       'redis',
       `计数器递增失败: ${key}`,
       error instanceof Error ? error.stack : String(error)
     );
+    redisMonitor.recordMiss(Date.now() - start);
     return null;
   }
 };
@@ -178,8 +198,14 @@ export const cacheIncr = async (key: string, ttlSeconds?: number): Promise<numbe
 export const cacheExists = async (key: string): Promise<boolean> => {
   if (!redisClient || !isConnected) return false;
 
+  const start = Date.now();
   try {
     const exists = await redisClient.exists(key);
+    if (exists === 1) {
+      redisMonitor.recordHit(Date.now() - start);
+    } else {
+      redisMonitor.recordMiss(Date.now() - start);
+    }
     return exists === 1;
   } catch (error) {
     logError(
@@ -187,6 +213,7 @@ export const cacheExists = async (key: string): Promise<boolean> => {
       `键存在性检查失败: ${key}`,
       error instanceof Error ? error.stack : String(error)
     );
+    redisMonitor.recordMiss(Date.now() - start);
     return false;
   }
 };

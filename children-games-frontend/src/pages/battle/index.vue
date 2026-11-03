@@ -24,6 +24,7 @@
           :key="g.type"
           class="game-card"
           :class="{ active: selected === g.type }"
+          :data-testid="`game-card-${g.type}`"
           @click="selected = g.type"
         >
           <span class="gc-icon">{{ g.emoji }}</span>
@@ -131,7 +132,7 @@
         <span class="cfg-note">关闭后只动积分、不记战绩</span>
       </div>
 
-      <button class="create-btn" :disabled="creating" @click="create">
+      <button class="create-btn" data-testid="create-room-btn" :disabled="creating" @click="create">
         {{ creating ? '创建中…' : `创建「${selectedTitle}」房间` }}
       </button>
     </div>
@@ -143,11 +144,14 @@
         <input
           v-model="joinCode"
           class="join-input"
+          data-testid="join-input"
           inputmode="text"
           placeholder="房间码或粘贴邀请链接"
           @keyup.enter="join"
         />
-        <button class="join-btn" :disabled="!joinCode.trim()" @click="join">加入</button>
+        <button class="join-btn" data-testid="join-btn" :disabled="!joinCode.trim()" @click="join">
+          加入
+        </button>
       </div>
       <div v-if="errMsg" class="err">{{ errMsg }}</div>
     </div>

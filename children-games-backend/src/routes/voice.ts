@@ -73,7 +73,31 @@ const fileOf = async (key: string): Promise<string | null> => {
 
 const router = Router();
 
-// 已配音列表（孩子端启动时探测，公开）
+/**
+ * @swagger
+ * /api/voice:
+ *   get:
+ *     summary: 获取已配音列表
+ *     description: 孩子端启动时探测，公开接口
+ *     tags: [Voice]
+ *     responses:
+ *       200:
+ *         description: 成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       key: { type: string }
+ *                       size: { type: integer }
+ *                       updatedAt: { type: integer }
+ */
 router.get(
   '/',
   asyncHandler(async (req, res) => {
@@ -95,7 +119,31 @@ router.get(
   })
 );
 
-// 播放某条录音（公开，长缓存）
+/**
+ * @swagger
+ * /api/voice/{key}:
+ *   get:
+ *     summary: 播放某条录音
+ *     description: 公开接口，长缓存（1 天）
+ *     tags: [Voice]
+ *     parameters:
+ *       - in: path
+ *         name: key
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 台词 key
+ *     responses:
+ *       200:
+ *         description: 音频二进制流
+ *         content:
+ *           audio/webm:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: 该台词未配音
+ */
 router.get('/:key', async (req, res) => {
   const p = await fileOf(String(req.params.key || ''));
   if (!p) {
@@ -107,7 +155,58 @@ router.get('/:key', async (req, res) => {
   res.sendFile(p);
 });
 
-// 上传录音（管理员；raw body 二进制）
+/**
+ * @swagger
+ * /api/voice/{key}:
+ *   post:
+ *     summary: 上传录音
+ *     description: 管理员上传家长原声配音，raw body 二进制
+ *     tags: [Voice]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: key
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 台词 key
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         audio/webm:
+ *           schema:
+ *             type: string
+ *             format: binary
+ *         audio/mp4:
+ *           schema:
+ *             type: string
+ *             format: binary
+ *         audio/ogg:
+ *           schema:
+ *             type: string
+ *             format: binary
+ *         audio/wav:
+ *           schema:
+ *             type: string
+ *             format: binary
+ *     responses:
+ *       200:
+ *         description: 上传成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     key: { type: string }
+ *                     size: { type: integer }
+ *       403:
+ *         description: 非管理员
+ */
 router.post(
   '/:key',
   express.raw({ type: () => true, limit: UPLOAD_MAX_SIZE }),
@@ -152,7 +251,38 @@ router.post(
   })
 );
 
-// 删除录音（管理员，回退 TTS）
+/**
+ * @swagger
+ * /api/voice/{key}:
+ *   delete:
+ *     summary: 删除录音
+ *     description: 管理员删除配音，回退 TTS
+ *     tags: [Voice]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: key
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 台词 key
+ *     responses:
+ *       200:
+ *         description: 删除成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     key: { type: string }
+ *       403:
+ *         description: 非管理员
+ */
 router.delete(
   '/:key',
   adminMiddleware,

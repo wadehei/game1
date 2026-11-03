@@ -1,11 +1,18 @@
 <template>
-  <div class="room-top">
-    <button class="rt-exit" @click="$emit('exit')">‹ 退出</button>
-    <div class="rt-code" title="复制邀请链接，朋友点开直接进房" @click="$emit('copyCode')">
-      房间 <b>{{ roomId }}</b>
+  <div class="room-top" data-testid="room-topbar">
+    <button class="rt-exit" data-testid="exit-btn" @click="$emit('exit')">‹ 退出</button>
+    <div
+      class="rt-code"
+      data-testid="room-code"
+      title="复制邀请链接，朋友点开直接进房"
+      @click="$emit('copyCode')"
+    >
+      房间 <b data-testid="room-id">{{ roomId }}</b>
       <span class="rt-copy">{{ copied ? '链接已复制' : '复制链接' }}</span>
     </div>
-    <button v-if="isHost" class="rt-disband" @click="$emit('disband')">解散</button>
+    <button v-if="isHost" class="rt-disband" data-testid="disband-btn" @click="$emit('disband')">
+      解散
+    </button>
     <span v-else class="rt-placeholder" />
   </div>
 </template>

@@ -1,14 +1,14 @@
 <template>
-  <div v-if="lastWsError" class="conn-tip">{{ lastWsError }}</div>
-  <div class="status-line">
+  <div v-if="lastWsError" class="conn-tip" data-testid="ws-error">{{ lastWsError }}</div>
+  <div class="status-line" data-testid="status-line">
     <template v-if="phase === 'waiting'">
-      {{ waitingText }}
+      <span data-testid="waiting-text">{{ waitingText }}</span>
     </template>
     <template v-else-if="phase === 'playing'">
-      {{ playingStatusText }}
+      <span data-testid="playing-text">{{ playingStatusText }}</span>
     </template>
     <template v-else>
-      {{ overText }}
+      <span data-testid="over-text">{{ overText }}</span>
     </template>
   </div>
 </template>

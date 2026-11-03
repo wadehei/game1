@@ -3,6 +3,7 @@ import { createPinia } from 'pinia';
 import router from './router';
 import App from './App.vue';
 import { installErrorReport } from './utils/errorReport';
+import { initSentry } from './utils/sentry';
 import { initTheme } from './utils/theme';
 import './styles/dark.css';
 
@@ -12,6 +13,9 @@ export function createApp() {
   app.use(pinia);
   app.use(router);
   installErrorReport(app);
+  // Sentry 放在 errorReport 之后：Vue errorHandler 由 Sentry 接管
+  // （installErrorReport 的 window 监听仍生效，Sentry 额外上报云端）
+  initSentry(app, router);
   return { app };
 }
 

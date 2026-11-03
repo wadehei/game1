@@ -1,6 +1,7 @@
 import { Sequelize } from 'sequelize';
 import { config } from './index';
 import { logInfo, logError } from '../utils/logger';
+import { recordSlowQuery } from '../services/slowQueryLogger';
 
 export const sequelize = new Sequelize(
   config.database.name,
@@ -10,7 +11,17 @@ export const sequelize = new Sequelize(
     host: config.database.host,
     port: config.database.port,
     dialect: 'mysql',
-    logging: config.nodeEnv === 'development' ? (msg) => logInfo('database', msg) : false,
+    benchmark: true,
+    logging: (msg, timing) => {
+      // 开发环境输出全部 SQL 到 info 日志
+      if (config.nodeEnv === 'development') {
+        logInfo('database', msg);
+      }
+      // 超过 1000ms 的查询记录为慢查询
+      if (typeof timing === 'number' && timing >= 1000) {
+        recordSlowQuery(timing, msg);
+      }
+    },
     pool: {
       max: 20,
       min: 2,

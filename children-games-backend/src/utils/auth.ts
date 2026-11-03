@@ -22,3 +22,29 @@ export function toUserInfo(user: User) {
     totalStars: user.totalStars,
   };
 }
+
+/** 签发 2FA 临时令牌（5 分钟有效，仅用于 2FA 验证步骤） */
+export function generate2faTempToken(adminId: number): string {
+  return jwt.sign({ adminId, purpose: '2fa_pending' }, config.jwt.secret, { expiresIn: '5m' });
+}
+
+/** 签发管理员完整 JWT（12 小时） */
+export function generateAdminToken(adminId: number, username: string): string {
+  return jwt.sign({ role: 'admin', adminId, username }, config.jwt.secret, { expiresIn: '12h' });
+}
+
+/** 验证 2FA 临时令牌，返回 adminId（失败返回 null） */
+export function verify2faTempToken(token: string): number | null {
+  try {
+    const decoded = jwt.verify(token, config.jwt.secret) as {
+      adminId?: number;
+      purpose?: string;
+    };
+    if (decoded.purpose !== '2fa_pending' || typeof decoded.adminId !== 'number') {
+      return null;
+    }
+    return decoded.adminId;
+  } catch {
+    return null;
+  }
+}

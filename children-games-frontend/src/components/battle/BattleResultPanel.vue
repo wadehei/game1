@@ -1,41 +1,46 @@
 <template>
-  <div class="brp-mask">
+  <div class="brp-mask" data-testid="result-panel">
     <!-- 彩带 -->
     <div class="confetti">
       <span v-for="n in 24" :key="n" class="confetti-bit" :style="confettiStyle(n)" />
     </div>
 
     <div class="brp-card">
-      <div class="brp-title">{{ title }}</div>
+      <div class="brp-title" data-testid="result-title">{{ title }}</div>
       <!-- 冠军 -->
       <div class="champ" :class="{ pop: show }">
         <div class="champ-crown">👑</div>
         <div class="champ-avatar">{{ champAvatar }}</div>
-        <div class="champ-name">
+        <div class="champ-name" data-testid="champ-name">
           {{ champ?.nickname }}<template v-if="champ?.userId === myId">（我）</template>
         </div>
-        <div class="champ-chips">{{ champ?.chips ?? 0 }} 分</div>
+        <div class="champ-chips" data-testid="champ-chips">{{ champ?.chips ?? 0 }} 分</div>
       </div>
       <!-- 排名 -->
-      <div class="rows">
+      <div class="rows" data-testid="ranking-rows">
         <div
           v-for="(r, i) in ranking"
           :key="r.userId"
           class="row"
           :class="{ me: r.userId === myId, top: i === 0 }"
           :style="{ animationDelay: `${0.15 + i * 0.12}s` }"
+          :data-testid="`ranking-row-${i}`"
         >
           <span class="rank">{{ ['🥇', '🥈', '🥉'][i] || `${i + 1}.` }}</span>
           <span class="name"
             >{{ r.nickname }}<template v-if="r.userId === myId">（我）</template></span
           >
-          <span class="delta" :class="{ pos: (r.delta || 0) > 0, neg: (r.delta || 0) < 0 }">
+          <span
+            class="delta"
+            :class="{ pos: (r.delta || 0) > 0, neg: (r.delta || 0) < 0 }"
+            :data-testid="`chips-delta-${i}`"
+          >
             {{ (r.delta || 0) > 0 ? '+' : '' }}{{ r.delta || 0 }}
           </span>
-          <span class="chips">{{ r.chips }}</span>
+          <span class="chips" :data-testid="`chips-total-${i}`">{{ r.chips }}</span>
         </div>
       </div>
-      <div v-if="reason" class="reason">{{ reason }}</div>
+      <div v-if="reason" class="reason" data-testid="result-reason">{{ reason }}</div>
       <div class="tip">等待房主发起「再来一局」</div>
     </div>
   </div>

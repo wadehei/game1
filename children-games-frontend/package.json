@@ -10,6 +10,9 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report",
     "smoke": "node tests/smoke.mjs",
     "gen:icons": "node tests/gen-icons.mjs",
     "lint": "eslint . --fix",
@@ -20,6 +23,7 @@
   },
   "dependencies": {
     "@children-games/shared": "file:../packages/shared",
+    "@sentry/vue": "^11.10.0",
     "axios": "^1.6.8",
     "pinia": "^2.1.7",
     "vue": "^3.4.21",

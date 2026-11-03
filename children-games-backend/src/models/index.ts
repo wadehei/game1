@@ -8,6 +8,8 @@ export { Feedback } from './Feedback';
 export { FeedbackReply } from './FeedbackReply';
 export { QuizQuestion } from './QuizQuestion';
 export { BattleRecord } from './BattleRecord';
+export { AuditLog } from './AuditLog';
+export { Admin } from './Admin';
 
 import { ModelStatic } from 'sequelize';
 import { sequelize } from '../config/database';
@@ -21,6 +23,8 @@ import { Feedback } from './Feedback';
 import { FeedbackReply } from './FeedbackReply';
 import { QuizQuestion } from './QuizQuestion';
 import { BattleRecord } from './BattleRecord';
+import { AuditLog } from './AuditLog';
+import { Admin } from './Admin';
 import { logInfo, logError } from '../utils/logger';
 
 // 定义模型关联关系
@@ -49,6 +53,8 @@ export const initModels = async (): Promise<void> => {
     await FeedbackReply.sync();
     await QuizQuestion.sync();
     await BattleRecord.sync();
+    await AuditLog.sync();
+    await Admin.sync();
     // sync 不会给旧表补列，逐一对比真实表结构补齐缺失列（防表结构漂移）
     await syncMissingColumns(User);
     await syncMissingColumns(GameProgress);
@@ -60,6 +66,8 @@ export const initModels = async (): Promise<void> => {
     await syncMissingColumns(FeedbackReply);
     await syncMissingColumns(QuizQuestion);
     await syncMissingColumns(BattleRecord);
+    await syncMissingColumns(AuditLog);
+    await syncMissingColumns(Admin);
     // sync 也不会给旧表补索引，手动检查并补齐缺失索引
     await syncMissingIndexes();
     logInfo('database', '✅ 数据表同步成功');
@@ -76,6 +84,7 @@ const syncMissingIndexes = async (): Promise<void> => {
     { model: GameProgress, tableName: 'game_progress' },
     { model: UserPlaytime, tableName: 'user_playtime' },
     { model: FeedbackReply, tableName: 'feedback_replies' },
+    { model: AuditLog, tableName: 'audit_logs' },
   ];
 
   for (const { model, tableName } of models) {
@@ -110,4 +119,24 @@ const syncMissingColumns = async (model: ModelStatic<any>): Promise<void> => {
     await queryInterface.addColumn(tableName, field, attr);
     logInfo('database', `✅ 已补充数据列: ${tableName}.${field}`);
   }
+};
+
+/** 确保默认管理员账号存在（从 ADMIN_USERNAME / ADMIN_PASSWORD 环境变量） */
+export const seedDefaultAdmin = async (): Promise<void> => {
+  const bcrypt = await import('bcrypt');
+  const username = process.env.ADMIN_USERNAME || 'admin';
+  const password = process.env.ADMIN_PASSWORD;
+
+  if (!password) {
+    return; // 未配置密码，跳过（开发环境可能不需要）
+  }
+
+  const existing = await Admin.findOne({ where: { username } });
+  if (existing) {
+    return; // 已存在
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  await Admin.create({ username, passwordHash });
+  logInfo('database', `✅ 默认管理员账号已创建: ${username}`);
 };

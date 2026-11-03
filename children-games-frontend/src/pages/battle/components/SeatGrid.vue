@@ -1,19 +1,22 @@
 <template>
-  <div class="seats-grid">
+  <div class="seats-grid" data-testid="seats-grid">
     <div
       v-for="m in members"
       :key="m.userId"
       class="seat-cell"
       :class="{ active: isActive(m), off: !m.online }"
+      :data-testid="`seat-${m.userId}`"
     >
       <div class="cell-top">
         <PlayerAvatar :avatar="m.avatar" :size="30" />
-        <span v-if="m.userId === hostUserId" class="host-mark" title="房主">👑</span>
+        <span v-if="m.userId === hostUserId" class="host-mark" data-testid="host-mark" title="房主"
+          >👑</span
+        >
       </div>
-      <div class="cell-name">
+      <div class="cell-name" :data-testid="`seat-name-${m.userId}`">
         {{ m.nickname }}<template v-if="m.userId === myId">（我）</template>
       </div>
-      <div class="cell-state">{{ getState(m) }}</div>
+      <div class="cell-state" :data-testid="`seat-state-${m.userId}`">{{ getState(m) }}</div>
     </div>
   </div>
 </template>

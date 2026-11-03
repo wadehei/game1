@@ -73,7 +73,48 @@ setInterval(
 
 const router = Router();
 
-// 上传（raw 二进制），返回可作 avatar 字段的相对 URL
+/**
+ * @swagger
+ * /api/upload/avatar:
+ *   post:
+ *     summary: 上传照片头像
+ *     description: raw 二进制上传，限 2MB / jpg|png|webp|gif，返回可作 avatar 字段的相对 URL
+ *     tags: [Avatar]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         image/jpeg:
+ *           schema:
+ *             type: string
+ *             format: binary
+ *         image/png:
+ *           schema:
+ *             type: string
+ *             format: binary
+ *         image/webp:
+ *           schema:
+ *             type: string
+ *             format: binary
+ *         image/gif:
+ *           schema:
+ *             type: string
+ *             format: binary
+ *     responses:
+ *       200:
+ *         description: 上传成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     url: { type: string, example: /api/avatars/xxx.jpg }
+ *       429:
+ *         description: 上传太频繁
+ */
 router.post(
   '/api/upload/avatar',
   express.raw({ type: () => true, limit: UPLOAD_MAX_SIZE }),
@@ -109,7 +150,43 @@ router.post(
   })
 );
 
-// 静态提供（公开，长缓存）
+/**
+ * @swagger
+ * /api/avatars/{file}:
+ *   get:
+ *     summary: 获取头像图片
+ *     description: 公开接口，长缓存（7 天）
+ *     tags: [Avatar]
+ *     parameters:
+ *       - in: path
+ *         name: file
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 文件名（含扩展名）
+ *     responses:
+ *       200:
+ *         description: 图片二进制流
+ *         content:
+ *           image/jpeg:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *           image/png:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *           image/webp:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *           image/gif:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: 文件不存在
+ */
 router.get('/api/avatars/:file', async (req, res) => {
   const file = String(req.params.file || '');
   if (!/^[A-Za-z0-9_-]+\.(jpg|png|webp|gif)$/.test(file)) {

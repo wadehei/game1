@@ -1,0 +1,36 @@
+{
+  "mcpServers": {
+    "node_repl": {
+      "command": "node",
+      "enabled_tools": [
+        "js",
+        "js_reset",
+        "turn_ended"
+      ],
+      "enabled": true,
+      "tools": {
+        "js": {
+          "output_token_limit": 25000
+        }
+      },
+      "args": [],
+      "startup_timeout_sec": 120
+    },
+    "cua_repl": {
+      "command": "node",
+      "enabled_tools": [
+        "js",
+        "js_reset",
+        "turn_ended"
+      ],
+      "enabled": true,
+      "tools": {
+        "js": {
+          "output_token_limit": 25000
+        }
+      },
+      "args": [],
+      "startup_timeout_sec": 120
+    }
+  }
+}

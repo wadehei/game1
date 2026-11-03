@@ -11,7 +11,10 @@
     />
 
     <!-- 连接状态 -->
-    <div v-if="wsStatus !== 'open'" class="conn-tip">连接中…（断线会自动重连）</div>
+    <div v-if="wsStatus !== 'open'" class="conn-tip" data-testid="ws-connecting">
+      连接中…（断线会自动重连）
+    </div>
+    <div v-else class="sr-only" data-testid="ws-connected" aria-hidden="true"></div>
 
     <!-- 座位条 -->
     <SeatGrid
@@ -43,19 +46,38 @@
     />
 
     <!-- 操作区 -->
-    <div class="actions">
+    <div class="actions" data-testid="game-actions">
       <template v-if="phase === 'waiting' && mySeat >= 0">
-        <button v-if="!myReady" class="act ready" @click="send({ t: 'ready' })">准备</button>
-        <button v-else class="act cancel-ready" @click="send({ t: 'ready' })">取消准备</button>
+        <button
+          v-if="!myReady"
+          class="act ready"
+          data-testid="ready-btn"
+          @click="send({ t: 'ready' })"
+        >
+          准备
+        </button>
+        <button
+          v-else
+          class="act cancel-ready"
+          data-testid="cancel-ready-btn"
+          @click="send({ t: 'ready' })"
+        >
+          取消准备
+        </button>
       </template>
       <template v-if="phase === 'playing' && mySeat >= 0 && !chipTableGames.includes(gameType)">
-        <button class="act resign" @click="askResign">认输</button>
+        <button class="act resign" data-testid="resign-btn" @click="askResign">认输</button>
       </template>
       <template v-if="phase === 'ended' && mySeat >= 0">
-        <button class="act ready" :disabled="myRematch" @click="send({ t: 'rematch' })">
+        <button
+          class="act ready"
+          data-testid="rematch-btn"
+          :disabled="myRematch"
+          @click="send({ t: 'rematch' })"
+        >
           {{ myRematch ? '已表决，等对方…' : '再来一局' }}
         </button>
-        <span v-if="rematchCountdown > 0" class="rematch-timer"
+        <span v-if="rematchCountdown > 0" class="rematch-timer" data-testid="rematch-timer"
           >⏱ {{ rematchCountdown }}s 后自动重开</span
         >
       </template>
@@ -492,6 +514,17 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
 .room-page {
   min-height: 100vh;
   background: linear-gradient(180deg, #f5f7fa 0%, #e8ecf1 100%);

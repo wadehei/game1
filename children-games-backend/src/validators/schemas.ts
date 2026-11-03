@@ -57,7 +57,21 @@ export const recordPlaySchema = z.object({
 
 // 管理员相关
 export const adminLoginSchema = z.object({
+  username: z.string().min(1, '用户名不能为空').max(50, '用户名最多50个字符').optional(),
   password: z.string().min(1, '密码不能为空'),
+});
+
+export const twoFactorVerifySchema = z.object({
+  token: z.string().min(1, '临时令牌不能为空'),
+  code: z.string().regex(/^\d{6}$/, '验证码必须是6位数字'),
+});
+
+export const twoFactorSetupSchema = z.object({
+  password: z.string().min(1, '请确认管理员密码'),
+});
+
+export const twoFactorDisableSchema = z.object({
+  password: z.string().min(1, '请确认管理员密码'),
 });
 
 export const adjustChipsSchema = z
@@ -107,6 +121,9 @@ export type UpdatePinInput = z.infer<typeof updatePinSchema>;
 export type ReportPlaytimeInput = z.infer<typeof reportPlaytimeSchema>;
 export type RecordPlayInput = z.infer<typeof recordPlaySchema>;
 export type AdminLoginInput = z.infer<typeof adminLoginSchema>;
+export type TwoFactorVerifyInput = z.infer<typeof twoFactorVerifySchema>;
+export type TwoFactorSetupInput = z.infer<typeof twoFactorSetupSchema>;
+export type TwoFactorDisableInput = z.infer<typeof twoFactorDisableSchema>;
 export type AdjustChipsInput = z.infer<typeof adjustChipsSchema>;
 export type UpdateSettingsInput = z.infer<typeof updateSettingsSchema>;
 export type SubmitFeedbackInput = z.infer<typeof submitFeedbackSchema>;

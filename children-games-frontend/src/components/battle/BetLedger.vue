@@ -1,18 +1,26 @@
 <template>
-  <div class="bet-ledger" :class="`theme-${theme}`">
-    <button class="bl-head" @click="open = !open">
+  <div class="bet-ledger" :class="`theme-${theme}`" data-testid="bet-ledger">
+    <button class="bl-head" data-testid="bet-ledger-toggle" @click="open = !open">
       <span class="bl-title">💰 投注明细</span>
       <span class="bl-sum">
-        我的投入 <b>{{ myBet }}</b> 分
+        我的投入 <b data-testid="my-bet-total">{{ myBet }}</b> 分
         <template v-if="hasMySettled">
           · 我的输赢
-          <b :class="myNet > 0 ? 'pos' : myNet < 0 ? 'neg' : ''">{{ myNetText }}</b></template
+          <b :class="myNet > 0 ? 'pos' : myNet < 0 ? 'neg' : ''" data-testid="my-net-text">{{
+            myNetText
+          }}</b></template
         >
       </span>
       <span class="bl-toggle">{{ open ? '收起 ▲' : `全员 ${entries.length} 条 ▼` }}</span>
     </button>
-    <div v-if="open" class="bl-list">
-      <div v-for="(e, i) in sorted" :key="i" class="bl-row" :class="{ mine: e.userId === myId }">
+    <div v-if="open" class="bl-list" data-testid="bet-ledger-list">
+      <div
+        v-for="(e, i) in sorted"
+        :key="i"
+        class="bl-row"
+        :class="{ mine: e.userId === myId }"
+        :data-testid="`ledger-row-${i}`"
+      >
         <span class="bl-round">第{{ e.round }}手</span>
         <span class="bl-name"
           >{{ nameOf(e.userId) }}<template v-if="e.userId === myId">（我）</template></span
@@ -24,6 +32,7 @@
         <span
           class="bl-delta"
           :class="e.delta == null ? '' : e.delta > 0 ? 'pos' : e.delta < 0 ? 'neg' : ''"
+          :data-testid="`ledger-delta-${i}`"
         >
           {{ e.delta === null ? '—' : e.delta > 0 ? `+${e.delta}` : e.delta }}
         </span>
