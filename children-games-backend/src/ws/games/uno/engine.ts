@@ -1,4 +1,6 @@
 // UNO 纯逻辑：108 张标准牌 + 规则判定（无状态，可单测）
+import { secureShuffle } from '../../../utils/secureRandom';
+
 export type UnoColor = 'red' | 'yellow' | 'green' | 'blue' | 'wild';
 export type UnoKind =
   | '0'
@@ -46,14 +48,7 @@ export const buildDeck = (): UnoCard[] => {
   return deck;
 };
 
-export const shuffle = <T>(arr: T[]): T[] => {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-};
+export const shuffle = <T>(arr: T[]): T[] => secureShuffle(arr);
 
 /** 能否出牌：万能牌恒可；同色或同符号可 */
 export const canPlay = (card: UnoCard, top: UnoCard, currentColor: string): boolean => {

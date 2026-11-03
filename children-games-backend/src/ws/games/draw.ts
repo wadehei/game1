@@ -5,6 +5,7 @@ import { getRoom, type Room, type Member, type ChatMsg } from '../roomManager';
 import { addTimer, clearRoomTimers, addChat } from '../roomManager';
 import type { ActionResult, GameHandler } from './types';
 import { getRoomBus } from '../bus';
+import { secureShuffle, securePickOne } from '../../utils/secureRandom';
 
 const PICK_SECONDS = 10;
 const DRAW_SECONDS = Math.max(10, Number(process.env.DRAW_SECONDS) || 90);
@@ -19,14 +20,7 @@ interface WordItem {
 
 const WORDS = wordsJson as unknown as WordItem[];
 
-const shuffle = <T>(arr: T[]): T[] => {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-};
+const shuffle = <T>(arr: T[]): T[] => secureShuffle(arr);
 
 const normalize = (s: string): string =>
   String(s || '')
@@ -138,7 +132,7 @@ const endRound = (room: Room, reason: string): void => {
     ) {
       // 超时未选词：随机选一个
       const s = r.game as DrawState;
-      beginDrawing(r, s.candidates[Math.floor(Math.random() * s.candidates.length)]);
+      beginDrawing(r, securePickOne(s.candidates));
     }
   }, PICK_SECONDS * 1000);
   st.roundTimer = timer;
@@ -261,7 +255,7 @@ export const drawHandler: GameHandler<DrawState> = {
       const r = getRoom(room.id);
       if (r && (r.game as DrawState).phase === 'picking' && (r.game as DrawState).round === 1) {
         const s = r.game as DrawState;
-        beginDrawing(r, s.candidates[Math.floor(Math.random() * s.candidates.length)]);
+        beginDrawing(r, securePickOne(s.candidates));
       }
     }, PICK_SECONDS * 1000);
     st.roundTimer = timer;

@@ -1,6 +1,7 @@
 // 比大小纯逻辑：三张牌牌型判定与比较。规则写死处：QKA 最大顺、A23 算最小顺、
 // 特殊 235（不同花 2-3-5）可反杀豹子（建房开关）、完全同点比最大单张花色（♠>♥>♣>♦）
 import { SUITS, type Card } from '../blackjack/engine';
+import { secureShuffle } from '../../../utils/secureRandom';
 
 export interface ZjhRank {
   type: 6 | 5 | 4 | 3 | 2 | 1; // 6豹子 5顺金 4金花 3顺子 2对子 1散牌
@@ -75,9 +76,5 @@ export const buildZjhDeck = (): Card[] => {
   for (const suit of SUITS) {
     for (let rank = 1; rank <= 13; rank += 1) deck.push({ suit, rank });
   }
-  for (let i = deck.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [deck[i], deck[j]] = [deck[j], deck[i]];
-  }
-  return deck;
+  return secureShuffle(deck);
 };

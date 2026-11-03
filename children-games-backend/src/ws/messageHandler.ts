@@ -15,6 +15,7 @@ import {
 import { logError } from '../utils/logger';
 import { send, broadcast, broadcastSnapshot } from './messaging';
 import { startGame, endGame, restartGame, REMATCH_AUTO_MS, type GameFlowDeps } from './gameFlow';
+import { filterChatMessage } from '../utils/contentFilter';
 import type WebSocket from 'ws';
 
 /** 已知房间级消息类型白名单（游戏动作由各 handler 自行校验） */
@@ -114,11 +115,23 @@ export const dispatchMessage = (
       const msgKind = msg.kind;
       const kind: 'text' | 'emoji' | 'quick' =
         msgKind === 'text' || msgKind === 'emoji' || msgKind === 'quick' ? msgKind : 'text';
-      const content = String(msg.content || '')
+      const rawContent = String(msg.content || '')
         .trim()
         .slice(0, 200);
-      if (!content) return;
+      if (!rawContent) return;
       if (me.lastChatAt && Date.now() - me.lastChatAt < 300) return;
+
+      // 文本消息需要内容过滤（emoji/快捷消息跳过）
+      let content = rawContent;
+      if (kind === 'text') {
+        const filterResult = filterChatMessage(rawContent);
+        if (!filterResult.passed) {
+          send(ws, { t: 'error', message: '消息包含不当内容，请修改后发送' });
+          return;
+        }
+        content = filterResult.filtered;
+      }
+
       me.lastChatAt = Date.now();
       const chat: ChatMsg = {
         userId: me.userId,

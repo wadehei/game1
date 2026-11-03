@@ -5,6 +5,7 @@ import { addTimer, clearRoomTimers } from '../roomManager';
 import type { ActionResult, GameHandler } from './types';
 import { getRoomBus } from '../bus';
 import { QuizQuestion } from '../../models';
+import { secureShuffle } from '../../utils/secureRandom';
 
 const QUESTION_SECONDS = 15;
 const REVEAL_SECONDS = 3;
@@ -31,14 +32,7 @@ interface QuizState {
 
 const QUESTION_COUNT = 10;
 
-const shuffle = <T>(arr: T[]): T[] => {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-};
+const shuffle = <T>(arr: T[]): T[] => secureShuffle(arr);
 
 const playingUsers = (room: Room): Member[] =>
   [...room.members.values()].filter((m) => m.seat >= 0);

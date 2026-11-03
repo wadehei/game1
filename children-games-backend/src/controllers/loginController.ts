@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { randomUUID } from 'node:crypto';
 import { Op } from 'sequelize';
 import { User } from '../models';
 import { config } from '../config';
@@ -31,7 +32,7 @@ export const wxLogin = asyncHandler(async (req: Request, res: Response) => {
   if (!code) throw new BadRequestError('缺少 code 参数');
 
   // TODO: 调用微信接口获取 openid
-  const openid = `mock_${Date.now()}`;
+  const openid = `mock_${randomUUID()}`;
 
   const [user] = await User.findOrCreate({
     where: { openid },
@@ -53,7 +54,7 @@ export const testLogin = asyncHandler(async (req: Request, res: Response) => {
   }
 
   const { nickname } = req.body;
-  const openid = `test_${Date.now()}`;
+  const openid = `test_${randomUUID()}`;
 
   const [user] = await User.findOrCreate({
     where: { openid },
@@ -96,7 +97,7 @@ export const familyLogin = asyncHandler(async (req: Request, res: Response) => {
     if (!nickname || !String(nickname).trim()) {
       throw new BadRequestError('请填写昵称');
     }
-    const openid = `family_${Date.now()}`;
+    const openid = `family_${randomUUID()}`;
     const [created] = await User.findOrCreate({
       where: { openid },
       defaults: {

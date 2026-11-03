@@ -1,4 +1,6 @@
 // 21点纯逻辑：一副 52 张、A 软硬点自动取优；handler 只编排状态机，判定全在这里（可独立测试）
+import { secureShuffle } from '../../../utils/secureRandom';
+
 export interface Card {
   suit: '♠' | '♥' | '♦' | '♣';
   rank: number; // 1..13，1=A，11=J，12=Q，13=K
@@ -28,14 +30,7 @@ export const buildDeck = (): Card[] => {
   return shuffle(deck);
 };
 
-export const shuffle = <T>(arr: T[]): T[] => {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-};
+export const shuffle = <T>(arr: T[]): T[] => secureShuffle(arr);
 
 /** 手牌点数：A 按 1/11 取最优；soft=存在按 11 计的 A */
 export const handValue = (cards: Card[]): { total: number; soft: boolean } => {

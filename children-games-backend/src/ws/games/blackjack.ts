@@ -5,6 +5,7 @@ import { addTimer, clearRoomTimers, getRoom } from '../roomManager';
 import type { ActionResult, GameHandler } from './types';
 import { getRoomBus } from '../bus';
 import { applyChipDelta, writeCareerRecords } from '../../services/battleChips';
+import { securePickOne } from '../../utils/secureRandom';
 import {
   buildDeck,
   handValue,
@@ -156,13 +157,6 @@ const dealCards = (room: Room): void => {
   const st = room.game as BJState;
   if (st.handPhase !== 'betting') return; // 防重入（超时与全员下完竞态）
   clearTimer(st);
-  // 测试钩子：BLACKJACK_RIGGED=banker 时庄家固定 Blackjack（市面规则：庄家 BJ 立即开牌）
-  if (process.env.BLACKJACK_RIGGED === 'banker') {
-    st.banker.cards = [
-      { suit: '♠', rank: 1 },
-      { suit: '♥', rank: 13 },
-    ];
-  }
   st.handPhase = 'acting';
   // 闲家各 2 张明牌，庄家 1 明 1 暗
   const bus = getRoomBus();
@@ -175,10 +169,8 @@ const dealCards = (room: Room): void => {
   };
   const actives = activePlayers(room, st);
   for (const m of actives) dealCardsTo(m.userId);
-  if (process.env.BLACKJACK_RIGGED !== 'banker') {
-    st.banker.cards = [st.deck.pop()!];
-    st.banker.cards.push(st.deck.pop()!);
-  }
+  st.banker.cards = [st.deck.pop()!];
+  st.banker.cards.push(st.deck.pop()!);
   // 庄家 Blackjack：立即亮牌开牌，闲家不再行动（玩家 BJ 平局退注，其余输原注）
   if (isBlackjack(st.banker.cards)) {
     for (const [, h] of st.hands) h.done = true;
@@ -505,7 +497,7 @@ export const blackjackHandler: GameHandler<BJState> = {
     // 首庄：keep 模式随机，其余座位 0（若座位 0 无积分取第一个有积分的）
     const funded = players.filter((m) => (st.chips.get(m.userId) || 0) > 0);
     if (st.config.bankerMode === 'keep') {
-      st.bankerSeat = funded.length ? funded[Math.floor(Math.random() * funded.length)].seat : 0;
+      st.bankerSeat = funded.length ? securePickOne(funded).seat : 0;
     } else {
       st.bankerSeat = funded.some((m) => m.seat === 0) ? 0 : (funded[0]?.seat ?? 0);
     }
