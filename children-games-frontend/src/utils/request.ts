@@ -33,10 +33,17 @@ const tryRefresh = (): Promise<string> => {
         { refreshToken },
         { timeout: 10000 }
       );
-      const envelope = resp.data as { code?: number; data?: { accessToken?: string } };
+      const envelope = resp.data as {
+        code?: number;
+        data?: { accessToken?: string; refreshToken?: string };
+      };
       const newToken = envelope?.data?.accessToken;
       if (envelope?.code !== 200 || !newToken) throw new Error('刷新失败');
       localStorage.setItem('token', newToken);
+      // rotation：每次刷新返回全新 refresh token，同步落库
+      if (envelope.data?.refreshToken) {
+        localStorage.setItem('refresh_token', envelope.data.refreshToken);
+      }
       return newToken;
     })().finally(() => {
       refreshing = null;

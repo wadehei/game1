@@ -33,3 +33,13 @@ export const adminLoginLimiter = rateLimit({
   legacyHeaders: false,
   message: { code: 429, message: '管理员登录尝试过多，请 15 分钟后再试' },
 });
+
+/** Refresh 限速：每 IP 每 15 分钟最多 60 次（家庭多设备共享出口 IP；
+ *  正常节奏=每设备 15 分钟刷 1 次，放宽防重试风暴耗尽预算，又不给爆破空间） */
+export const refreshLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: envMax('REFRESH_RATE_MAX', 60),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { code: 429, message: '刷新过于频繁，请稍后再试' },
+});

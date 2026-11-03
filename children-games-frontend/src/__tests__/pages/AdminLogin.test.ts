@@ -13,10 +13,12 @@ vi.mock('vue-router', () => ({
 }));
 
 const mockAdminLogin = vi.fn();
+const mockVerify2fa = vi.fn();
 const mockIsAdminLoggedIn = vi.fn();
 
 vi.mock('@/api/admin', () => ({
   adminLogin: (...args: unknown[]) => mockAdminLogin(...args),
+  verify2faLogin: (...args: unknown[]) => mockVerify2fa(...args),
   isAdminLoggedIn: (...args: unknown[]) => mockIsAdminLoggedIn(...args),
 }));
 
@@ -91,13 +93,43 @@ describe('AdminLogin', () => {
   });
 
   it('navigates to /admin on successful login', async () => {
-    mockAdminLogin.mockResolvedValueOnce(undefined);
+    mockAdminLogin.mockResolvedValueOnce({ token: 'admin-jwt' });
     const wrapper = mount(AdminLogin);
     await wrapper.find('.login-input').setValue('correct');
     await wrapper.find('.login-btn').trigger('click');
     await vi.waitFor(() => {
       expect(mockReplace).toHaveBeenCalledWith('/admin');
     });
+  });
+
+  it('shows 2FA step when require2FA, then verifies code and navigates', async () => {
+    mockAdminLogin.mockResolvedValueOnce({ require2FA: true, tempToken: 'tmp-123' });
+    const wrapper = mount(AdminLogin);
+    await wrapper.find('.login-input').setValue('correct');
+    await wrapper.find('.login-btn').trigger('click');
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('6 位验证码');
+    });
+    expect(mockReplace).not.toHaveBeenCalled();
+
+    await wrapper.find('.login-input').setValue('123456');
+    await wrapper.find('.login-btn').trigger('click');
+    await vi.waitFor(() => {
+      expect(mockVerify2fa).toHaveBeenCalledWith('tmp-123', '123456');
+      expect(mockReplace).toHaveBeenCalledWith('/admin');
+    });
+  });
+
+  it('back button in 2FA step returns to password step', async () => {
+    mockAdminLogin.mockResolvedValueOnce({ require2FA: true, tempToken: 'tmp-123' });
+    const wrapper = mount(AdminLogin);
+    await wrapper.find('.login-input').setValue('correct');
+    await wrapper.find('.login-btn').trigger('click');
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('6 位验证码');
+    });
+    await wrapper.find('.login-back').trigger('click');
+    expect(wrapper.text()).toContain('请输入管理密码');
   });
 
   it('navigates to / when back button clicked', async () => {

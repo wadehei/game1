@@ -66,7 +66,7 @@
 | SP-02 | 微信 OAuth 回调伪造 | 伪造微信回调请求，注入虚假 openid | state 参数校验 | 🟢 低 | 确保 state 随机且一次性；验证 signature |
 | SP-03 | 管理员身份冒用 | 通过弱密码或泄露凭证登录后台 | 密码哈希 + 限流 | 🟡 中 | 强制强密码策略；启用 2FA |
 | SP-04 | WebSocket 连接冒充 | 未认证用户发送 WS 消息 | 连接时 JWT 验证 | 🟢 低 | 定期 re-auth；消息签名 |
-| SP-05 | JWT 长期令牌无撤销 | 365天家庭令牌被盗后无法作废 | ✅ 15min access token（黑名单可撤销）+ 30天 refresh token（服务端存储，logout/logout-all 可撤销）；⚠️ 迁移期：存量无 type 字段的旧令牌兼容但不可撤销，待自然过期 | 🟡 中（迁移期） | refresh rotation 与重用检测待排期 |
+| SP-05 | JWT 长期令牌无撤销 | 365天家庭令牌被盗后无法作废 | ✅ 15min access token（黑名单可撤销）+ 30天 refresh token（rotation 每次刷新轮换 + 重用检测触发全量撤销；logout/logout-all 可撤销）；⚠️ 迁移期：存量无 type 字段的旧令牌兼容但不可撤销，待自然过期 | 🟢 低（迁移期残留） | 存量令牌到期后彻底闭环 |
 | SP-06 | 可预测 OpenID | `Date.now()` 生成的 openid 可被猜测碰撞 | 无 | 🟠 高 | 使用 `crypto.randomUUID()` |
 
 ### 3.2 Tampering（篡改）

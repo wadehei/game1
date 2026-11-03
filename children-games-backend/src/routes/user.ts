@@ -10,7 +10,7 @@ import { updateMyPin } from '../controllers/pinController';
 import { getMyCareer, getBattleCareer, reportPlaytime } from '../controllers/careerController';
 import { authMiddleware } from '../middleware/auth';
 import { recordPlay } from '../controllers/gameController';
-import { loginLimiter } from '../middleware/rateLimiter';
+import { loginLimiter, refreshLimiter } from '../middleware/rateLimiter';
 import { validateBody } from '../middleware/validate';
 import {
   wxLoginSchema,
@@ -113,8 +113,8 @@ router.post('/login/family', loginLimiter, validateBody(familyLoginSchema), fami
  * @swagger
  * /api/user/refresh:
  *   post:
- *     summary: 刷新 Access Token
- *     description: 使用 refresh token 获取新的 access token
+ *     summary: 刷新 Token（rotation）
+ *     description: 使用 refresh token 换取全新的 access + refresh token 对；检测到已轮换 token 重放时撤销该用户全部会话
  *     tags: [User]
  *     requestBody:
  *       required: true
@@ -135,7 +135,7 @@ router.post('/login/family', loginLimiter, validateBody(familyLoginSchema), fami
  *       401:
  *         description: Refresh token 无效或已撤销
  */
-router.post('/refresh', loginLimiter, validateBody(refreshTokenSchema), refreshAccessToken);
+router.post('/refresh', refreshLimiter, validateBody(refreshTokenSchema), refreshAccessToken);
 
 /**
  * @swagger

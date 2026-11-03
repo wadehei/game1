@@ -314,14 +314,6 @@ export async function generateTokenPair(user: User): Promise<{
 }
 
 /**
- * 仅为用户签发新的 access token（refresh 流程使用，refresh token 保持不变）
- */
-export function issueAccessToken(user: User): { accessToken: string; expiresIn: number } {
-  const { token } = generateAccessToken(user);
-  return { accessToken: token, expiresIn: ACCESS_TOKEN_EXPIRES_SECONDS };
-}
-
-/**
  * 获取内存存储统计（用于监控/测试）
  */
 export function getMemoryStats(): { blacklist: number; refreshTokens: number } {

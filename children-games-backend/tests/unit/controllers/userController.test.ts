@@ -71,7 +71,6 @@ vi.mock('../../../src/services/tokenService', () => ({
     refreshToken: 'mock-refresh-token',
     expiresIn: 900,
   }),
-  issueAccessToken: vi.fn().mockReturnValue({ accessToken: 'mock-access-token', expiresIn: 900 }),
   isTokenBlacklisted: vi.fn().mockResolvedValue(false),
   blacklistToken: vi.fn().mockResolvedValue(true),
   storeRefreshToken: vi.fn().mockResolvedValue(true),

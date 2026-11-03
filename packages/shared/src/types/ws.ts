@@ -245,7 +245,7 @@ export interface S2CGomokuMove {
   turn: number;
   lastMove: { x: number; y: number } | null;
   winner?: number; // 0=进行中 1/2=某方胜 3=和棋
-  winLine?: Array<{ x: number; y: number }> | null;
+  winLine?: Array<[number, number]> | null; // 获胜五连坐标（后端为元组数组）
 }
 
 export type S2CGomokuEvent = S2CGomokuMove;
@@ -255,25 +255,25 @@ export type S2CGomokuEvent = S2CGomokuMove;
 // ─────────────────────────────────────────────────────────────
 
 export type S2CQuizEvent =
-  | { t: 'quiz_question'; questionId: number; question: string; options: string[]; deadline: number }
-  | { t: 'quiz_result'; questionId: number; correctAnswer: number; ranking: Array<{ userId: number; score: number }> }
-  | { t: 'quiz_final'; ranking: Array<{ userId: number; nickname: string; score: number }> };
+  | { t: 'quiz_question'; index: number; total: number; qid: number; text: string; options: string[]; deadline: number }
+  | { t: 'quiz_result'; qid: number; answer: number; delta: Array<{ userId: number; gained: number; total: number }> }
+  | { t: 'quiz_final'; ranking: Array<{ userId: number; nickname: string; total: number }> };
 
 // ─────────────────────────────────────────────────────────────
 // 你画我猜事件
 // ─────────────────────────────────────────────────────────────
 
 export type S2CDrawEvent =
-  | { t: 'draw_round'; drawerSeat: Seat; round: number; totalRounds: number; deadline: number; wordLen: number; category: string; phase: string }
+  | { t: 'draw_round'; drawerSeat: number; round: number; totalRounds: number; phase: string; wordLen?: number; category?: string; deadline?: number }
   | { t: 'draw_candidates'; words: string[] }
   | { t: 'draw_word'; word: string }
-  | { t: 'draw_hint'; hint: string }
-  | { t: 'draw_stroke'; strokes: unknown[] }
+  | { t: 'draw_hint'; char: string }
+  | { t: 'draw_stroke'; stroke: { seq: number; points: number[][]; color: string; width: number } }
   | { t: 'draw_undo' }
   | { t: 'draw_clear' }
-  | { t: 'draw_round_end'; word: string; guessed: number[] }
+  | { t: 'draw_round_end'; word: string; category: string; reason: string; scores: Array<{ userId: number; total: number }> }
   | { t: 'guess_result'; userId: number; nickname: string; correct: boolean }
-  | { t: 'draw_final'; ranking: Array<{ userId: number; nickname: string; score: number }> };
+  | { t: 'draw_final'; ranking: Array<{ userId: number; nickname: string; total: number }>; reason?: string };
 
 // ─────────────────────────────────────────────────────────────
 // 谁是卧底事件
@@ -281,30 +281,36 @@ export type S2CDrawEvent =
 
 export type S2CSpyEvent =
   | { t: 'spy_phase'; phase: string; deadline: number; alive: number[]; isRevote: boolean; revotePool?: number[] }
-  | { t: 'spy_deal'; word: string; spyCount: number }
+  | { t: 'spy_deal'; role: string; word: string }
   | { t: 'spy_vote_update'; votedCount: number; total: number }
-  | { t: 'spy_vote_result'; eliminated: number; word: string }
-  | { t: 'spy_eliminated'; userId: number; nickname: string; word: string }
+  | { t: 'spy_vote_result'; counts: Array<{ target: number; count: number }>; out: number | null; outRole: string | null }
+  | { t: 'spy_eliminated'; userId: number; role: string }
   | { t: 'spy_final'; winner: 'civilian' | 'spy'; spyWord: string; civilianWord: string; spies: number[] };
 
 // ─────────────────────────────────────────────────────────────
 // UNO 事件
 // ─────────────────────────────────────────────────────────────
 
+export interface UnoCardLike {
+  id: string;
+  color: string;
+  kind: string;
+}
+
 export type S2CUnoEvent =
-  | { t: 'uno_state'; top: unknown; currentColor: string; direction: 1 | -1; turnSeat: Seat; counts: Record<Seat, number> }
-  | { t: 'uno_turn'; seat: Seat }
-  | { t: 'uno_played'; card: unknown; chooseColor?: string }
-  | { t: 'uno_hand'; cards: unknown[] }
-  | { t: 'uno_drew'; card?: unknown }
-  | { t: 'uno_final'; ranking: Array<{ userId: number; nickname: string; score: number }> };
+  | { t: 'uno_state'; top: UnoCardLike | null; currentColor: string; direction: 1 | -1; turnSeat: number; counts: Array<{ userId: number; count: number }> }
+  | { t: 'uno_turn'; seat: number; deadline: number }
+  | { t: 'uno_played'; userId: number; card: UnoCardLike; chooseColor: string | null }
+  | { t: 'uno_hand'; cards: UnoCardLike[] }
+  | { t: 'uno_drew'; userId: number }
+  | { t: 'uno_final'; ranking: Array<{ userId: number; nickname: string; penalty: number }> };
 
 // ─────────────────────────────────────────────────────────────
 // 21 点事件
 // ─────────────────────────────────────────────────────────────
 
 export type S2CBlackjackEvent =
-  | { t: 'blackjack_phase'; round: number; totalRounds: number; phase: string; bankerSeat: Seat; turnSeat: Seat; deadline: number; chips: Array<{ userId: number; chips: number }>; canPassBank: boolean }
+  | { t: 'blackjack_phase'; round: number; totalRounds: number; phase: string; bankerSeat: number; turnSeat: number; deadline: number; chips: Array<{ userId: number; chips: number }>; betOptions: number[]; canPassBank: boolean }
   | { t: 'blackjack_deal'; round: number; hands: Array<{ userId: number; cards: string[]; natural: boolean; stake: number }>; bankerUpcard?: string | null }
   | { t: 'blackjack_your_banker'; cards: string[] }
   | { t: 'blackjack_action'; action: string; userId: number; card?: string; stake?: number; total?: number; busted?: boolean }
@@ -316,11 +322,11 @@ export type S2CBlackjackEvent =
 // ─────────────────────────────────────────────────────────────
 
 export type S2CZjhEvent =
-  | { t: 'zjh_phase'; round: number; totalRounds: number; phase: string; dealerSeat: Seat; pot: number; stake: number; roundNo: number; turnSeat: Seat; deadline: number; aliveCount: number; chips: Record<number, number>; entrants: number[]; compareMinRound?: number }
-  | { t: 'zjh_your_cards'; cards: unknown[]; rank: string }
-  | { t: 'zjh_action'; action: string; userId: number; pot?: number; stake?: number; cost?: number; allIn?: boolean; aliveCount?: number }
-  | { t: 'zjh_compare'; from: number; to: number; winner: number; loser: number; pot: number; aliveCount: number; cost: number }
-  | { t: 'zjh_compare_cards'; cards: Record<number, unknown[]> }
-  | { t: 'zjh_showdown'; hands: Record<number, { cards: unknown[]; rank: string }> }
+  | { t: 'zjh_phase'; round: number; totalRounds: number; phase: string; dealerSeat: number; pot: number; stake: number; roundNo: number; turnSeat: number; deadline: number; aliveCount: number; entrants: number[]; chips: Array<{ userId: number; chips: number }>; compareMinRound: number; raiseSteps: number[]; stakeCap: number }
+  | { t: 'zjh_your_cards'; cards: string[]; rank: string }
+  | { t: 'zjh_action'; userId: number; nickname: string; action: string; pot?: number; stake?: number; cost?: number; allIn?: boolean; aliveCount?: number }
+  | { t: 'zjh_compare'; from: number; to: number; winner: number; loser: number; pot: number; aliveCount: number; cost: number; reveals?: Array<{ userId: number; nickname: string; cards: string[]; typeName: string; result: string }> }
+  | { t: 'zjh_compare_cards'; oppCards: string[]; oppType: string; myCards: string[]; myType: string; result: 'win' | 'lose' }
+  | { t: 'zjh_showdown'; reveals: unknown }
   | { t: 'zjh_settle'; round: number; winner: number; winnerNickname?: string; reason?: string; winAmount?: number; reveals?: unknown; deltas: Array<{ userId: number; delta: number; chips: number }>; nextDeadline?: number }
   | { t: 'zjh_final'; ranking: Array<{ userId: number; nickname: string; chips: number }> };

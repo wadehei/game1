@@ -6,19 +6,23 @@ import { success, asyncHandler } from '../utils/response';
 import { UnauthorizedError, BadRequestError } from '../errors/AppError';
 import { User } from '../models';
 import { verifyRefreshToken } from '../utils/auth';
+import { logWarn } from '../utils/logger';
 import {
   logout,
   validateRefreshToken,
   revokeRefreshToken,
   revokeAllRefreshTokens,
   blacklistToken,
-  issueAccessToken,
+  generateTokenPair,
 } from '../services/tokenService';
 
 /**
- * 刷新 Access Token
+ * 刷新 Token（rotation 模式）
  * POST /api/user/refresh
  * Body: { refreshToken: string }
+ *
+ * 每次 refresh 签发全新的 access + refresh token 对并撤销旧 refresh token；
+ * 已轮换的旧 refresh token 再次出现 = 疑似被盗 → 撤销该用户全部会话（重用检测）
  */
 export const refreshAccessToken = asyncHandler(async (req: Request, res: Response) => {
   const { refreshToken } = req.body;
@@ -32,10 +36,17 @@ export const refreshAccessToken = asyncHandler(async (req: Request, res: Respons
     throw new UnauthorizedError('Refresh token 无效或已过期');
   }
 
-  // 检查 refresh token 是否已被撤销
+  // 检查 refresh token 是否仍有效（未被轮换/撤销）
   const storedUserId = await validateRefreshToken(payload.jti);
   if (!storedUserId) {
-    throw new UnauthorizedError('Refresh token 已被撤销');
+    // 签名合法但服务端记录已不存在 = 已轮换/已登出的 token 被重放，疑似被盗
+    // 重用检测：撤销该用户全部 refresh token，强制所有设备重新登录
+    await revokeAllRefreshTokens(payload.userId);
+    logWarn(
+      'auth',
+      `检测到 refresh token 重用（jti=${payload.jti}，userId=${payload.userId}），已撤销该用户全部会话`
+    );
+    throw new UnauthorizedError('登录状态已过期，请重新登录');
   }
 
   // 验证用户存在
@@ -49,13 +60,11 @@ export const refreshAccessToken = asyncHandler(async (req: Request, res: Respons
     throw new UnauthorizedError('Token 验证失败');
   }
 
-  // 签发新的 access token（refresh token 不变策略；如需 rotation 在此处扩展）
-  const { accessToken, expiresIn } = issueAccessToken(user);
+  // Rotation：撤销旧 refresh token，签发全新 token 对
+  await revokeRefreshToken(payload.jti);
+  const tokens = await generateTokenPair(user);
 
-  success(res, {
-    accessToken,
-    expiresIn,
-  });
+  success(res, tokens);
 });
 
 /**

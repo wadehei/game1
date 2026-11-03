@@ -34,9 +34,29 @@ export const adminLogout = (): void => {
   localStorage.removeItem(TOKEN_KEY);
 };
 
-export const adminLogin = async (password: string): Promise<void> => {
+export interface AdminLoginResult {
+  /** 启用 2FA 时返回，需要再调 verify2faLogin 完成第二步 */
+  require2FA?: boolean;
+  /** 2FA 临时令牌（5 分钟有效，仅用于第二步验证） */
+  tempToken?: string;
+  /** 未启用 2FA 时直接返回完整管理员 JWT */
+  token?: string;
+}
+
+export const adminLogin = async (password: string): Promise<AdminLoginResult> => {
   // 响应拦截器已解包出业务数据，这里对齐类型
-  const data = (await client.post('/login', { password })) as unknown as { token: string };
+  const data = (await client.post('/login', { password })) as unknown as AdminLoginResult;
+  if (data.token) {
+    localStorage.setItem(TOKEN_KEY, data.token);
+  }
+  return data;
+};
+
+/** 登录第二步：2FA 临时令牌 + 验证码 → 完整管理员 JWT（后端 /2fa/verify） */
+export const verify2faLogin = async (tempToken: string, code: string): Promise<void> => {
+  const data = (await client.post('/2fa/verify', { token: tempToken, code })) as unknown as {
+    token: string;
+  };
   localStorage.setItem(TOKEN_KEY, data.token);
 };
 
