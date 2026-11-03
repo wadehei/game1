@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Op } from 'sequelize';
+import { Op, Transaction } from 'sequelize';
 import { z } from 'zod';
 import { GameProgress, User } from '../models';
 import { AuthRequest } from '../middleware/auth';
@@ -244,7 +244,7 @@ async function upsertGameProgress(
   starsNum: number,
   achievements: string[] | undefined,
   rule: { lowerScoreIsBetter: boolean },
-  t: any
+  t: Transaction
 ) {
   const [progress, created] = await GameProgress.findOrCreate({
     where: { userId, gameId },
@@ -294,7 +294,7 @@ async function upsertGameProgress(
 }
 
 /** Step 2: 重算用户总星星和等级 */
-async function recalcUserStats(userId: number, t: any) {
+async function recalcUserStats(userId: number, t: Transaction) {
   const user = await User.findByPk(userId, { transaction: t, lock: t.LOCK.UPDATE });
   if (!user) throw new Error('用户不存在');
 
@@ -313,7 +313,7 @@ async function recalcUserStats(userId: number, t: any) {
 }
 
 /** Step 3: 成就判定 + 记录新解锁成就 */
-async function processNewAchievements(userId: number, user: any, t: any) {
+async function processNewAchievements(userId: number, user: User, t: Transaction) {
   const unlockedDefs = await evaluateAchievements(userId, t);
   const owned = safeJsonParse<string[]>(user.achievements, []);
   const fresh = unlockedDefs.filter((def) => !owned.includes(def.id));

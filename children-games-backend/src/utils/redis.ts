@@ -141,16 +141,27 @@ export const cacheDel = async (key: string): Promise<boolean> => {
 
 /**
  * 递增计数器（用于限流）
+ * 使用 Lua 脚本将 INCR + EXPIRE 合并为原子操作，
+ * 避免进程崩溃后 key 永不过期导致限流/PIN 锁定永远不释放
  */
 export const cacheIncr = async (key: string, ttlSeconds?: number): Promise<number | null> => {
   if (!redisClient || !isConnected) return null;
 
   try {
-    const count = await redisClient.incr(key);
-    if (ttlSeconds && count === 1) {
-      await redisClient.expire(key, ttlSeconds);
+    if (ttlSeconds) {
+      // Lua 原子操作：INCR + EXPIRE 在一次 EVAL 中完成
+      const luaScript = `
+        local c = redis.call('incr', KEYS[1])
+        if c == 1 then redis.call('expire', KEYS[1], ARGV[1]) end
+        return c
+      `;
+      const count = await redisClient.eval(luaScript, {
+        keys: [key],
+        arguments: [String(ttlSeconds)],
+      });
+      return count as number;
     }
-    return count;
+    return await redisClient.incr(key);
   } catch (error) {
     logError(
       'redis',

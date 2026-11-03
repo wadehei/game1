@@ -33,6 +33,7 @@ import {
   grantDailyRelief,
   CHIPS_JOIN_MIN,
 } from '../services/battleChips';
+import { REMATCH_AUTO_SECONDS } from '../config/constants';
 
 /** 牌类（blackjack/zjh）每手自行实时结算积分，game_over 时不再发排名分 */
 const CHIP_TABLE_GAMES = new Set(['blackjack', 'zjh']);
@@ -137,7 +138,8 @@ const startGame = (room: Room): void => {
 };
 
 /** 再来一局表决超时自动重开（未表态视为同意，市面标配防一人卡全场）；0=关闭 */
-const REMATCH_AUTO_MS = Math.max(0, Number(process.env.REMATCH_AUTO_SECONDS ?? 30)) * 1000;
+const REMATCH_AUTO_MS =
+  Math.max(0, Number(process.env.REMATCH_AUTO_SECONDS ?? REMATCH_AUTO_SECONDS)) * 1000;
 
 const endGame = (room: Room, winnerSeat: number, reason: string): void => {
   room.phase = 'ended';
@@ -276,12 +278,26 @@ export const initWsServer = (server: Server): void => {
     }
 
     ws.on('message', (raw: Buffer) => {
-      let msg: any;
+      let msg: Record<string, unknown>;
       try {
-        msg = JSON.parse(raw.toString());
+        const parsed = JSON.parse(raw.toString());
+        // 基础类型校验：消息必须是对象
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+          send(ws, { t: 'error', message: '消息格式错误：需为 JSON 对象' });
+          return;
+        }
+        msg = parsed;
       } catch {
+        send(ws, { t: 'error', message: '消息解析失败：非有效 JSON' });
         return;
       }
+      // 消息类型校验：t 字段必须是非空字符串
+      if (typeof msg.t !== 'string' || msg.t.length === 0) {
+        send(ws, { t: 'error', message: '消息类型 (t) 缺失或无效' });
+        return;
+      }
+      // 已知房间级消息类型白名单（游戏动作由各 handler 自行校验）
+      const KNOWN_ROOM_ACTIONS = new Set(['ping', 'ready', 'rematch', 'chat', 'leave', 'disband']);
       const ctx = clients.get(ws);
       if (!ctx) return;
       const room = ctx.roomId ? getRoom(ctx.roomId) : undefined;
@@ -291,6 +307,14 @@ export const initWsServer = (server: Server): void => {
       }
       const me = room.members.get(ctx.userId);
       if (!me) return;
+      // 非房间级消息需确认为该游戏已知动作，防止恶意注入
+      if (!KNOWN_ROOM_ACTIONS.has(msg.t)) {
+        const handler = getHandler(room.gameType);
+        if (handler.validActions && !handler.validActions.has(msg.t)) {
+          send(ws, { t: 'error', message: `未知的游戏动作: ${msg.t}` });
+          return;
+        }
+      }
       room.lastActiveAt = Date.now();
 
       switch (msg.t) {
@@ -339,7 +363,9 @@ export const initWsServer = (server: Server): void => {
         }
 
         case 'chat': {
-          const kind = ['text', 'emoji', 'quick'].includes(msg.kind) ? msg.kind : 'text';
+          const msgKind = msg.kind;
+          const kind: 'text' | 'emoji' | 'quick' =
+            msgKind === 'text' || msgKind === 'emoji' || msgKind === 'quick' ? msgKind : 'text';
           const content = String(msg.content || '')
             .trim()
             .slice(0, 200);

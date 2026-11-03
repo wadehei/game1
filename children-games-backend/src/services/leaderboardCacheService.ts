@@ -1,5 +1,7 @@
 import { cacheGet, cacheSet, cacheDel, isRedisAvailable } from '../utils/redis';
 import { logInfo } from '../utils/logger';
+import { GAME_RULES } from './achievementService';
+import { LEADERBOARD_CACHE_TTL } from '../config/constants';
 
 /**
  * 排行榜缓存服务
@@ -7,7 +9,6 @@ import { logInfo } from '../utils/logger';
  */
 
 const LEADERBOARD_CACHE_PREFIX = 'leaderboard:';
-const LEADERBOARD_CACHE_TTL = 300; // 5 分钟缓存
 
 interface LeaderboardEntry {
   rank: number;
@@ -71,26 +72,15 @@ export const invalidateLeaderboardCache = async (gameId: string): Promise<void> 
 
 /**
  * 批量清除所有排行榜缓存
+ * 从 GAME_RULES 动态读取所有游戏 ID，新增游戏无需修改此处
  */
 export const invalidateAllLeaderboards = async (): Promise<void> => {
   if (!isRedisAvailable()) return;
 
-  // 由于 Redis 没有直接的模式删除（在生产环境中 SCAN 更安全），
-  // 这里我们只清除已知的游戏排行榜
-  const knownGames = [
-    'memory',
-    'puzzle',
-    'fruit',
-    'balloon',
-    'tank',
-    'mole',
-    'simon',
-    'math',
-    'match',
-    'match3',
-    'brick',
-  ];
+  // 从 achievementService 的 GAME_RULES 动态获取所有游戏 ID
+  const knownGames = Object.keys(GAME_RULES);
   for (const gameId of knownGames) {
     await invalidateLeaderboardCache(gameId);
   }
+  logInfo('leaderboard-cache', `🗑️  已清除 ${knownGames.length} 个游戏的排行榜缓存`);
 };

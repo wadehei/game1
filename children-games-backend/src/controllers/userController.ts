@@ -20,6 +20,8 @@ import {
   RECENT_DAYS,
   NICKNAME_MAX_LENGTH,
   AVATAR_MAX_LENGTH,
+  RATE_LIMIT_MAX_SIZE,
+  RATE_LIMIT_CLEANUP_THRESHOLD,
 } from '../config/constants';
 
 // ─── 角色口令（PIN） ────────────────────────────────
@@ -33,6 +35,16 @@ const isValidPin = (pin: unknown): pin is string => typeof pin === 'string' && /
 
 // 防爆破：同一角色 1 分钟内错 5 次锁定 60 秒，递增惩罚
 const pinAttempts = new Map<number, { count: number; lockedUntil: number }>();
+
+const evictOldestPinAttempts = (targetSize: number): void => {
+  if (pinAttempts.size <= targetSize) return;
+  // 按 lockedUntil 排序，删除最旧的条目
+  const entries = [...pinAttempts.entries()].sort((a, b) => a[1].lockedUntil - b[1].lockedUntil);
+  const toDelete = pinAttempts.size - targetSize;
+  for (let i = 0; i < toDelete && i < entries.length; i++) {
+    pinAttempts.delete(entries[i][0]);
+  }
+};
 
 // 定期清理过期条目，防止内存泄漏（每 2 分钟扫描一次）
 setInterval(() => {
@@ -59,6 +71,10 @@ const recordFail = (userId: number): void => {
     const lockDuration = rec.count >= 15 ? 30 * 60_000 : rec.count >= 10 ? 5 * 60_000 : 60_000;
     rec.lockedUntil = Date.now() + lockDuration;
     rec.count = 0;
+  }
+  // 新增条目前检查容量
+  if (!pinAttempts.has(userId) && pinAttempts.size >= RATE_LIMIT_MAX_SIZE) {
+    evictOldestPinAttempts(RATE_LIMIT_CLEANUP_THRESHOLD);
   }
   pinAttempts.set(userId, rec);
 };
@@ -253,7 +269,7 @@ function buildLast7DaysChart(timeRows: { date: string; seconds: number }[]) {
 
 /** 生涯汇总数据 */
 function computeCareerTotals(
-  progresses: any[],
+  progresses: GameProgress[],
   timeRows: { seconds: number }[],
   rewardRows: { taskReward: number | null }[],
   achievements: string[]

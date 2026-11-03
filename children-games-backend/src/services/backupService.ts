@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { sequelize } from '../config/database';
 import { formatDateCompact } from '../utils/date';
+import { logInfo, logError } from '../utils/logger';
 
 const BACKUP_DIR = path.resolve(process.cwd(), 'backups');
 const KEEP_COUNT = 7; // 磁盘保留的自动备份数量
@@ -103,8 +104,8 @@ export const runAutoBackup = async (): Promise<{ ok: boolean; file?: string; err
 export const initBackupScheduler = (): void => {
   const fire = async () => {
     const r = await runAutoBackup();
-    if (r.ok) console.log('[backup] 每日自动备份完成:', r.file);
-    else console.error('[backup] 每日自动备份失败:', r.error);
+    if (r.ok) logInfo('backup', '每日自动备份完成', r.file);
+    else logError('backup', '每日自动备份失败', r.error);
   };
   const schedule = () => {
     const now = new Date();

@@ -19,6 +19,7 @@ export interface GameHandler<S = unknown, C = unknown, A = unknown> {
   maxPlayers: number; // 座位上限，超出自动转观战
   allowSpectators: boolean;
   rematchSwapSeats: boolean; // 重开时是否交换座位
+  validActions?: Set<string>; // 可选：该游戏支持的动作白名单，用于消息校验
   create(): S; // 初始游戏状态
   normalizeConfig?(config: C): C; // 建房配置白名单校验+默认值（非法值静默纠正，游戏期间不可改）
   start?(room: Room): ActionResult | void; // ready→playing 时调用（抽题/发牌/发词）

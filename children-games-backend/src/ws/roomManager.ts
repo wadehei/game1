@@ -2,6 +2,7 @@
 import { getHandler } from './games/registry';
 import type { GameType } from './games/types';
 import type WebSocket from 'ws';
+import { ROOM_IDLE_MS, VOICE_TTL_MS } from '../config/constants';
 
 export type Phase = 'waiting' | 'playing' | 'ended';
 export type Seat = 0 | 1 | -1; // -1=观战
@@ -53,8 +54,6 @@ export interface Room<G = unknown, C = unknown> {
   lastActiveAt: number;
 }
 
-export const ROOM_IDLE_MS = 2 * 60 * 60 * 1000; // 2小时无活动自动解散
-export const VOICE_TTL_MS = 60 * 60 * 1000; // 语音最多留存1小时（房间不散也会过期）
 export const MAX_MEMBERS = 8;
 
 const rooms = new Map<string, Room>();

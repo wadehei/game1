@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import fs from 'fs';
+import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
 import { Op } from 'sequelize';
@@ -51,10 +51,14 @@ export const adminLogin = asyncHandler(async (req: Request, res: Response) => {
   if (!expected) {
     throw new InternalError('未配置 ADMIN_PASSWORD，请在后端 .env 中设置');
   }
-  // 使用 timingSafeEqual 防止计时攻击
-  const actual = Buffer.from(String(password || ''), 'utf-8');
-  const expectedBuf = Buffer.from(expected, 'utf-8');
-  if (actual.length !== expectedBuf.length || !crypto.timingSafeEqual(actual, expectedBuf)) {
+  // 使用 SHA-256 哈希后比较，防止计时攻击泄漏密码长度
+  // 无论输入长度如何，哈希输出固定为 32 字节，比较时间恒定
+  const hashActual = crypto
+    .createHash('sha256')
+    .update(String(password || ''), 'utf-8')
+    .digest();
+  const hashExpected = crypto.createHash('sha256').update(expected, 'utf-8').digest();
+  if (!crypto.timingSafeEqual(hashActual, hashExpected)) {
     throw new UnauthorizedError('密码不正确');
   }
 
@@ -68,26 +72,46 @@ export const adminLogin = asyncHandler(async (req: Request, res: Response) => {
 export const getOverview = asyncHandler(async (req: AdminRequest, res: Response) => {
   const today = localDateString();
 
-  // 三条独立查询并行执行，减少总耗时
-  const [users, todayPlaytime, recent] = await Promise.all([
-    User.findAll({ attributes: ['id', 'openid', 'nickname', 'avatar', 'level', 'totalStars'] }),
+  // 使用聚合查询代替全量加载，避免内存溢出
+  const [familyUsers, todayPlaytime, recent, totalUserCount, totalStarsResult] = await Promise.all([
+    // 只查询家庭成员（用于详细列表展示）
+    User.findAll({
+      where: { openid: { [Op.like]: 'family_%' } },
+      attributes: ['id', 'nickname', 'avatar', 'level', 'totalStars'],
+    }),
+    // 今日游玩时长（按日期过滤，数据量有限）
     UserPlaytime.findAll({ where: { date: today }, attributes: ['userId', 'seconds'] }),
+    // 最近游玩动态（已限制 20 条）
     GameProgress.findAll({ order: [['updatedAt', 'DESC']], limit: 20 }),
+    // 用户总数（聚合查询）
+    User.count(),
+    // 总星星数（聚合查询）
+    User.sum('totalStars') as Promise<number>,
   ]);
 
-  const familyMembers = users.filter((u) => u.openid.startsWith('family_'));
-  const totalStars = users.reduce((sum, u) => sum + u.totalStars, 0);
+  const totalStars = totalStarsResult || 0;
 
   // 积分入账失败告警（applyChipDelta 重试仍失败的记录，见错误日志 source=chips）
   const chipFailures = readRecentErrors(500).filter((e) => e.source === 'chips').length;
 
   const playtimeByUser = new Map(todayPlaytime.map((p) => [p.userId, p.seconds]));
   const todayPlaySeconds = todayPlaytime.reduce((sum, p) => sum + p.seconds, 0);
-  const userMap = new Map(users.map((u) => [u.id, u]));
+  const userMap = new Map(familyUsers.map((u) => [u.id, u]));
+
+  // 构建最近游玩动态（需要查询用户信息）
+  const activityUserIds = [...new Set(recent.map((p) => p.userId))];
+  const activityUsers =
+    activityUserIds.length > 0
+      ? await User.findAll({
+          where: { id: activityUserIds },
+          attributes: ['id', 'nickname', 'avatar'],
+        })
+      : [];
+  const activityUserMap = new Map(activityUsers.map((u) => [u.id, u]));
   const activity = recent.map((p) => ({
     userId: p.userId,
-    nickname: userMap.get(p.userId)?.nickname || '游客',
-    avatar: userMap.get(p.userId)?.avatar || '',
+    nickname: activityUserMap.get(p.userId)?.nickname || '游客',
+    avatar: activityUserMap.get(p.userId)?.avatar || '',
     gameId: p.gameId,
     currentLevel: p.currentLevel,
     highScore: p.highScore,
@@ -96,13 +120,13 @@ export const getOverview = asyncHandler(async (req: AdminRequest, res: Response)
   }));
 
   success(res, {
-    familyMembers: familyMembers.length,
-    guestUsers: users.length - familyMembers.length,
+    familyMembers: familyUsers.length,
+    guestUsers: totalUserCount - familyUsers.length,
     totalStars,
     todayActiveUsers: todayPlaytime.length,
     todayPlaySeconds,
     chipFailures,
-    members: familyMembers.map((u) => ({
+    members: familyUsers.map((u) => ({
       id: u.id,
       nickname: u.nickname,
       avatar: u.avatar,
@@ -253,7 +277,7 @@ export const deleteUser = asyncHandler(async (req: AdminRequest, res: Response) 
   if (avMatch) {
     const p = path.resolve(process.cwd(), 'uploads', 'avatars', avMatch[1]);
     try {
-      if (fs.existsSync(p)) fs.unlinkSync(p);
+      await fs.unlink(p);
     } catch {
       // 文件删除失败不阻断主流程
     }
