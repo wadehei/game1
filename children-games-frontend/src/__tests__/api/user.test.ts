@@ -35,7 +35,9 @@ describe('api/user', () => {
   describe('testLogin', () => {
     it('should call api.post with correct params and update store', async () => {
       const mockResult = {
-        token: 'test-token',
+        accessToken: 'test-token',
+        refreshToken: 'refresh-token',
+        expiresIn: 900,
         userInfo: {
           id: 1,
           nickname: 'Test User',
@@ -53,12 +55,15 @@ describe('api/user', () => {
       });
       expect(result).toEqual(mockResult);
       expect(localStorage.getItem('token')).toBe('test-token');
+      expect(localStorage.getItem('refresh_token')).toBe('refresh-token');
       expect(localStorage.getItem('userInfo')).toBeTruthy();
     });
 
     it('should work without nickname parameter', async () => {
       const mockResult = {
-        token: 'test-token',
+        accessToken: 'test-token',
+        refreshToken: 'refresh-token',
+        expiresIn: 900,
         userInfo: {
           id: 1,
           nickname: 'Guest',
@@ -80,7 +85,9 @@ describe('api/user', () => {
   describe('familyLogin', () => {
     it('should call api.post and save last_profile_id', async () => {
       const mockResult = {
-        token: 'family-token',
+        accessToken: 'family-token',
+        refreshToken: 'family-refresh',
+        expiresIn: 900,
         userInfo: {
           id: 42,
           nickname: 'Child',
@@ -100,11 +107,14 @@ describe('api/user', () => {
       expect(result).toEqual(mockResult);
       expect(localStorage.getItem('last_profile_id')).toBe('42');
       expect(localStorage.getItem('token')).toBe('family-token');
+      expect(localStorage.getItem('refresh_token')).toBe('family-refresh');
     });
 
     it('should create new member with nickname and avatar', async () => {
       const mockResult = {
-        token: 'new-token',
+        accessToken: 'new-token',
+        refreshToken: 'new-refresh',
+        expiresIn: 900,
         userInfo: {
           id: 43,
           nickname: 'New Child',

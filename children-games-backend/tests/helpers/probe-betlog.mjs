@@ -7,7 +7,8 @@ const login = await fetch('http://localhost:3002/api/user/login/family', {
   body: JSON.stringify({ uid }),
 }).then((r) => r.json());
 const WebSocket = (await import('ws')).default;
-const ws = new WebSocket(`ws://localhost:3002/ws?token=${login.data.token}&roomId=${roomId}`);
+const token = login.data.accessToken || login.data.token; // 兼容双 token（新）/单 token（旧）
+const ws = new WebSocket(`ws://localhost:3002/ws?token=${token}&roomId=${roomId}`);
 ws.on('message', (d) => {
   const m = JSON.parse(d.toString());
   if (m.t === 'joined') {

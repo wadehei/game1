@@ -19,7 +19,7 @@ const login = async (uid) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ uid }),
   }).then((r) => r.json());
-  return res.data.token;
+  return res.data.accessToken || res.data.token; // 兼容双 token（新）/单 token（旧）
 };
 
 const fs = await import('fs');

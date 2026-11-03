@@ -12,7 +12,7 @@ import {
   ForbiddenError,
   TooManyRequestsError,
 } from '../errors/AppError';
-import { generateUserToken, toUserInfo } from '../utils/auth';
+import { toUserInfo } from '../utils/auth';
 import { NICKNAME_MAX_LENGTH } from '../config/constants';
 import {
   isValidPin,
@@ -21,6 +21,7 @@ import {
   recordFail,
   clearFails,
 } from '../services/pinService';
+import { generateTokenPair } from '../services/tokenService';
 
 // 微信登录（后续实现）
 export const wxLogin = asyncHandler(async (req: Request, res: Response) => {
@@ -43,8 +44,9 @@ export const wxLogin = asyncHandler(async (req: Request, res: Response) => {
     },
   });
 
-  const token = generateUserToken(user);
-  success(res, { token, userInfo: toUserInfo(user) });
+  // 签发 access + refresh token 对
+  const tokens = await generateTokenPair(user);
+  success(res, { ...tokens, userInfo: toUserInfo(user) });
 });
 
 // 测试登录（仅开发环境）
@@ -65,11 +67,13 @@ export const testLogin = asyncHandler(async (req: Request, res: Response) => {
     },
   });
 
-  const token = generateUserToken(user);
-  success(res, { token, userInfo: toUserInfo(user) });
+  // 签发 access + refresh token 对
+  const tokens = await generateTokenPair(user);
+  success(res, { ...tokens, userInfo: toUserInfo(user) });
 });
 
 // 家庭角色登录：传 uid 直接登录已有成员，传 nickname+avatar 创建新成员
+// 现在使用 access + refresh token 对，替代原来的 365 天长期令牌
 export const familyLogin = asyncHandler(async (req: Request, res: Response) => {
   const { uid, nickname, avatar } = req.body;
 
@@ -109,8 +113,9 @@ export const familyLogin = asyncHandler(async (req: Request, res: Response) => {
     user = created;
   }
 
-  const token = generateUserToken(user, '365d');
-  success(res, { token, userInfo: toUserInfo(user) });
+  // 签发 access + refresh token 对（替代原来的 365 天令牌）
+  const tokens = await generateTokenPair(user);
+  success(res, { ...tokens, userInfo: toUserInfo(user) });
 });
 
 // 家庭成员列表（选角色页）

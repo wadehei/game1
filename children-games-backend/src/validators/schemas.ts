@@ -9,6 +9,16 @@ export const testLoginSchema = z.object({
   nickname: z.string().min(1, '昵称不能为空').max(50, '昵称最多50个字符'),
 });
 
+// Token 刷新
+export const refreshTokenSchema = z.object({
+  refreshToken: z.string().min(1, 'refreshToken 不能为空'),
+});
+
+// 登出
+export const logoutSchema = z.object({
+  refreshToken: z.string().min(1, 'refreshToken 不能为空'),
+});
+
 export const familyLoginSchema = z.object({
   // 兼容数字与字符串 uid（测试/sim 机器人发数字，前端发字符串），统一转 string；
   // 可选——不带 uid + 带 nickname 即"昵称建新角色"（后台测试/选角色页新成员入口）
@@ -115,6 +125,8 @@ export const quizSchema = z.object({
 // 导出类型
 export type WxLoginInput = z.infer<typeof wxLoginSchema>;
 export type TestLoginInput = z.infer<typeof testLoginSchema>;
+export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;
+export type LogoutInput = z.infer<typeof logoutSchema>;
 export type FamilyLoginInput = z.infer<typeof familyLoginSchema>;
 export type UpdateUserInfoInput = z.infer<typeof updateUserInfoSchema>;
 export type UpdatePinInput = z.infer<typeof updatePinSchema>;

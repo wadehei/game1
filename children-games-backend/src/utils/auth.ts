@@ -1,15 +1,73 @@
 // 用户认证工具函数：JWT 签发 + 用户信息序列化
 
+import { randomUUID } from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import { config } from '../config';
 import type { User } from '../models';
 
-/** 签发用户 JWT（默认 7 天，家庭登录可传 '365d'） */
-export function generateUserToken(
-  user: User,
-  expiresIn: jwt.SignOptions['expiresIn'] = '7d'
-): string {
-  return jwt.sign({ userId: user.id, openid: user.openid }, config.jwt.secret, { expiresIn });
+/** Access Token 有效期（15 分钟） */
+export const ACCESS_TOKEN_EXPIRES_IN = '15m';
+/** Access Token 有效期（秒），用于 Redis 黑名单 TTL */
+export const ACCESS_TOKEN_EXPIRES_SECONDS = 15 * 60;
+/** Refresh Token 有效期（30 天） */
+export const REFRESH_TOKEN_EXPIRES_IN = '30d';
+/** Refresh Token 有效期（秒） */
+export const REFRESH_TOKEN_EXPIRES_SECONDS = 30 * 24 * 60 * 60;
+
+/** Token payload 接口 */
+export interface AccessTokenPayload {
+  jti: string;
+  userId: number;
+  openid: string;
+  type: 'access';
+}
+
+export interface RefreshTokenPayload {
+  jti: string;
+  userId: number;
+  type: 'refresh';
+}
+
+/**
+ * 签发短期 Access Token（带 jti 唯一标识，支持黑名单撤销）
+ * @returns { token, jti } - jti 用于黑名单追踪
+ */
+export function generateAccessToken(user: User): { token: string; jti: string } {
+  const jti = randomUUID();
+  const token = jwt.sign(
+    { jti, userId: user.id, openid: user.openid, type: 'access' },
+    config.jwt.secret,
+    { expiresIn: ACCESS_TOKEN_EXPIRES_IN }
+  );
+  return { token, jti };
+}
+
+/**
+ * 签发 Refresh Token（长期有效，用于静默刷新）
+ * @returns { token, jti } - jti 用于服务端追踪和撤销
+ */
+export function generateRefreshToken(user: User): { token: string; jti: string } {
+  const jti = randomUUID();
+  const token = jwt.sign({ jti, userId: user.id, type: 'refresh' }, config.jwt.secret, {
+    expiresIn: REFRESH_TOKEN_EXPIRES_IN,
+  });
+  return { token, jti };
+}
+
+/**
+ * 验证并解析 Refresh Token
+ * @returns payload 或 null（无效/过期）
+ */
+export function verifyRefreshToken(token: string): RefreshTokenPayload | null {
+  try {
+    const decoded = jwt.verify(token, config.jwt.secret) as RefreshTokenPayload;
+    if (decoded.type !== 'refresh' || !decoded.jti || !decoded.userId) {
+      return null;
+    }
+    return decoded;
+  } catch {
+    return null;
+  }
 }
 
 /** 序列化用户基本信息（供登录/注册接口返回） */

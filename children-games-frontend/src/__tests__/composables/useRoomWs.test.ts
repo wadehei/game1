@@ -88,14 +88,24 @@ describe('composables/useRoomWs', () => {
   });
 
   describe('connect', () => {
-    it('should create WebSocket with correct URL', () => {
+    it('should create WebSocket with roomId and token in URL', () => {
       localStorage.setItem('token', 'test-token');
       const { connect } = useRoomWs();
 
       connect('room-123');
 
       expect(instances).toHaveLength(1);
-      expect(instances[0].url).toBe('wss://example.com/ws?roomId=room-123');
+      // 鉴权走握手 URL 的 token 参数（后端连接时校验 access token）
+      expect(instances[0].url).toBe('wss://example.com/ws?roomId=room-123&token=test-token');
+    });
+
+    it('should URL-encode the token in the URL', () => {
+      localStorage.setItem('token', 'a/b+c d');
+      const { connect } = useRoomWs();
+
+      connect('room-enc');
+
+      expect(instances[0].url).toBe('wss://example.com/ws?roomId=room-enc&token=a%2Fb%2Bc%20d');
     });
 
     it('should use ws protocol for http', () => {
@@ -104,7 +114,7 @@ describe('composables/useRoomWs', () => {
 
       connect('room-456');
 
-      expect(instances[0].url).toBe('ws://localhost:3000/ws?roomId=room-456');
+      expect(instances[0].url).toBe('ws://localhost:3000/ws?roomId=room-456&token=');
     });
 
     it('should set status to connecting', () => {
@@ -120,15 +130,13 @@ describe('composables/useRoomWs', () => {
       expect(status.value).toBe('open');
     });
 
-    it('should send auth message on open', () => {
+    it('should not send any auth message on open (token is in URL)', () => {
       localStorage.setItem('token', 'my-jwt');
       const { connect } = useRoomWs();
       connect('room-auth');
       instances[0].simulateOpen();
 
-      expect(instances[0].sentMessages).toHaveLength(1);
-      const msg = JSON.parse(instances[0].sentMessages[0]);
-      expect(msg).toEqual({ t: 'auth', token: 'my-jwt' });
+      expect(instances[0].sentMessages).toHaveLength(0);
     });
   });
 
@@ -141,8 +149,8 @@ describe('composables/useRoomWs', () => {
       const result = send({ t: 'move', x: 1, y: 2 });
 
       expect(result).toBe(true);
-      expect(instances[0].sentMessages).toHaveLength(2); // auth + move
-      const last = JSON.parse(instances[0].sentMessages[1]);
+      expect(instances[0].sentMessages).toHaveLength(1);
+      const last = JSON.parse(instances[0].sentMessages[0]);
       expect(last).toEqual({ t: 'move', x: 1, y: 2 });
     });
 
@@ -317,12 +325,11 @@ describe('composables/useRoomWs', () => {
       connect('room-ping');
       instances[0].simulateOpen();
 
-      // auth message sent on open
-      expect(instances[0].sentMessages).toHaveLength(1);
+      expect(instances[0].sentMessages).toHaveLength(0);
 
       vi.advanceTimersByTime(25000);
-      expect(instances[0].sentMessages).toHaveLength(2);
-      const pingMsg = JSON.parse(instances[0].sentMessages[1]);
+      expect(instances[0].sentMessages).toHaveLength(1);
+      const pingMsg = JSON.parse(instances[0].sentMessages[0]);
       expect(pingMsg).toEqual({ t: 'ping' });
     });
   });

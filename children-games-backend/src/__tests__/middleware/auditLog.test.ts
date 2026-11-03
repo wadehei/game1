@@ -26,11 +26,10 @@ describe('auditLog middleware', () => {
     vi.clearAllMocks();
 
     mockReq = {
-      get: vi.fn((header: string) => {
+      get: vi.fn((header: string): string | undefined => {
         if (header === 'user-agent') return 'Test Agent';
-        if (header === 'x-forwarded-for') return null;
-        return null;
-      }),
+        return undefined;
+      }) as unknown as Request['get'],
       ip: '127.0.0.1',
       body: { test: 'data' },
       params: { id: '123' },
@@ -148,10 +147,10 @@ describe('auditLogin middleware', () => {
     vi.clearAllMocks();
 
     mockReq = {
-      get: vi.fn((header: string) => {
+      get: vi.fn((header: string): string | undefined => {
         if (header === 'user-agent') return 'Test Agent';
-        return null;
-      }),
+        return undefined;
+      }) as unknown as Request['get'],
       ip: '127.0.0.1',
       body: { username: 'admin' },
     };

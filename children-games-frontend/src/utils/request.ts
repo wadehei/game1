@@ -19,7 +19,33 @@ instance.interceptors.request.use((config) => {
   return config;
 });
 
-// 响应拦截器：统一解包 { code, message, data }，401 时清除失效凭证
+// ─── 401 静默刷新（single-flight：并发 401 共享同一次刷新） ────────────────────
+let refreshing: Promise<string> | null = null;
+
+const tryRefresh = (): Promise<string> => {
+  if (!refreshing) {
+    refreshing = (async () => {
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (!refreshToken) throw new Error('无 refreshToken');
+      // 独立 axios 调用，避免再次进入本实例的 401 拦截逻辑
+      const resp = await axios.post(
+        `${BASE_URL}/user/refresh`,
+        { refreshToken },
+        { timeout: 10000 }
+      );
+      const envelope = resp.data as { code?: number; data?: { accessToken?: string } };
+      const newToken = envelope?.data?.accessToken;
+      if (envelope?.code !== 200 || !newToken) throw new Error('刷新失败');
+      localStorage.setItem('token', newToken);
+      return newToken;
+    })().finally(() => {
+      refreshing = null;
+    });
+  }
+  return refreshing;
+};
+
+// 响应拦截器：统一解包 { code, message, data }；401 时先静默刷新重试一次，失败才清除凭证
 instance.interceptors.response.use(
   (response) => {
     const data = response.data;
@@ -28,9 +54,26 @@ instance.interceptors.response.use(
     }
     throw new Error(data.message || '请求失败');
   },
-  (error) => {
-    if (error?.response?.status === 401) {
+  async (error) => {
+    const status = error?.response?.status;
+    const original = error?.config ?? {};
+    const isRefreshCall = String(original?.url || '').includes('/user/refresh');
+
+    if (status === 401 && !original._retried && !isRefreshCall) {
+      try {
+        const newToken = await tryRefresh();
+        original._retried = true;
+        original.headers = original.headers ?? {};
+        original.headers.Authorization = `Bearer ${newToken}`;
+        return instance.request(original);
+      } catch {
+        // 刷新失败 → 走下方清理逻辑
+      }
+    }
+
+    if (status === 401) {
       localStorage.removeItem('token');
+      localStorage.removeItem('refresh_token');
       localStorage.removeItem('userInfo');
     }
     throw error;
@@ -39,8 +82,10 @@ instance.interceptors.response.use(
 
 export const api = {
   // 响应拦截器已解包为 res.data.data，这里将类型对齐为直接返回业务数据
-  get: <T = any>(url: string, params?: any) => instance.get(url, { params }) as Promise<T>,
-  post: <T = any>(url: string, data?: any) => instance.post(url, data) as Promise<T>,
-  put: <T = any>(url: string, data?: any) => instance.put(url, data) as Promise<T>,
-  delete: <T = any>(url: string, data?: any) => instance.delete(url, { data }) as Promise<T>,
+  get: <T = unknown>(url: string, params?: Record<string, unknown>) =>
+    instance.get(url, { params }) as Promise<T>,
+  post: <T = unknown>(url: string, data?: unknown) => instance.post(url, data) as Promise<T>,
+  put: <T = unknown>(url: string, data?: unknown) => instance.put(url, data) as Promise<T>,
+  delete: <T = unknown>(url: string, data?: unknown) =>
+    instance.delete(url, { data }) as Promise<T>,
 };

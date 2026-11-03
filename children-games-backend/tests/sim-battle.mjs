@@ -25,7 +25,7 @@ const login = async (uid) =>
 class Bot {
   constructor(data, name) {
     this.uid = data.userInfo.id;
-    this.token = data.token;
+    this.token = data.accessToken || data.token; // 兼容双 token（新）/单 token（旧）
     this.name = name;
     this.mySeat = -1;
     this.events = [];
@@ -89,7 +89,7 @@ async function simZjh() {
   nPlayers = Math.min(nPlayers, datas.length);
   const created = await fetch(`${BASE}/api/room`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${datas[0].token}` },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${datas[0].accessToken || datas[0].token}` },
     body: JSON.stringify({ gameType: 'zjh', config: { roundLimit: handLimit, career: false, special235: true, timeoutFold: false } }),
   }).then((r) => r.json());
   const roomId = created.data.roomId;
@@ -202,7 +202,7 @@ async function simBlackjack() {
   }
   const created = await fetch(`${BASE}/api/room`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${datas[0].token}` },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${datas[0].accessToken || datas[0].token}` },
     body: JSON.stringify({ gameType: 'blackjack', config: { bankerMode: 'rotate', roundLimit: handLimit, career: false } }),
   }).then((r) => r.json());
   const roomId = created.data.roomId;

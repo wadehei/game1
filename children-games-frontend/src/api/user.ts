@@ -1,8 +1,13 @@
 import { api } from '../utils/request';
-import { useUserStore } from '../store/user';
+import { useUserStore, type UserInfo } from '../store/user';
 
 interface LoginResult {
-  token: string;
+  /** 短期访问凭证（15 分钟），所有请求的 Bearer token */
+  accessToken: string;
+  /** 长期刷新凭证（30 天），仅用于换取新 accessToken */
+  refreshToken: string;
+  /** accessToken 有效期（秒） */
+  expiresIn: number;
   userInfo: {
     id: number;
     nickname: string;
@@ -17,7 +22,7 @@ interface LoginResult {
 export const testLogin = async (nickname?: string): Promise<LoginResult> => {
   const result = await api.post<LoginResult>('/user/login/test', { nickname });
   const userStore = useUserStore();
-  userStore.setToken(result.token);
+  userStore.setTokens(result.accessToken, result.refreshToken);
   userStore.setUserInfo(result.userInfo);
   return result;
 };
@@ -31,7 +36,7 @@ export const familyLogin = async (data: {
 }): Promise<LoginResult> => {
   const result = await api.post<LoginResult>('/user/login/family', data);
   const userStore = useUserStore();
-  userStore.setToken(result.token);
+  userStore.setTokens(result.accessToken, result.refreshToken);
   userStore.setUserInfo(result.userInfo);
   // 记住"上次是谁"：token 失效后选角色页能标记/自动重登
   try {
@@ -40,6 +45,20 @@ export const familyLogin = async (data: {
     // ignore
   }
   return result;
+};
+
+/**
+ * 通知后端登出（撤销 refresh token + 黑名单当前 access token）
+ * 失败静默：本地凭证清理不受影响
+ */
+export const logoutNotify = async (): Promise<void> => {
+  try {
+    const refreshToken = localStorage.getItem('refresh_token');
+    if (!refreshToken) return;
+    await api.post('/user/logout', { refreshToken });
+  } catch {
+    // ignore：后端不可达/凭证已失效时无需处理
+  }
 };
 
 /** 上次使用的角色 id（登录时记录，登出不删除——重新打开应用可无感恢复） */
@@ -114,7 +133,7 @@ export const getProfiles = async (): Promise<FamilyProfile[]> => {
 // 获取用户信息
 export const getUserInfo = async () => {
   const userStore = useUserStore();
-  const result = await api.get('/user/info');
+  const result = await api.get<UserInfo>('/user/info');
   userStore.setUserInfo(result);
   return result;
 };

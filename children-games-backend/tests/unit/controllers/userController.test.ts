@@ -50,7 +50,12 @@ vi.mock('../../../src/utils/safeJson', async () => {
 });
 
 vi.mock('../../../src/utils/auth', () => ({
-  generateUserToken: vi.fn().mockReturnValue('mock-jwt-token'),
+  generateAccessToken: vi
+    .fn()
+    .mockReturnValue({ token: 'mock-access-token', jti: 'mock-access-jti' }),
+  generateRefreshToken: vi
+    .fn()
+    .mockReturnValue({ token: 'mock-refresh-token', jti: 'mock-refresh-jti' }),
   toUserInfo: vi.fn((u) => ({
     id: u.id,
     nickname: u.nickname,
@@ -58,6 +63,22 @@ vi.mock('../../../src/utils/auth', () => ({
     level: u.level,
     totalStars: u.totalStars,
   })),
+}));
+
+vi.mock('../../../src/services/tokenService', () => ({
+  generateTokenPair: vi.fn().mockResolvedValue({
+    accessToken: 'mock-access-token',
+    refreshToken: 'mock-refresh-token',
+    expiresIn: 900,
+  }),
+  issueAccessToken: vi.fn().mockReturnValue({ accessToken: 'mock-access-token', expiresIn: 900 }),
+  isTokenBlacklisted: vi.fn().mockResolvedValue(false),
+  blacklistToken: vi.fn().mockResolvedValue(true),
+  storeRefreshToken: vi.fn().mockResolvedValue(true),
+  validateRefreshToken: vi.fn().mockResolvedValue(null),
+  revokeRefreshToken: vi.fn().mockResolvedValue(true),
+  revokeAllRefreshTokens: vi.fn().mockResolvedValue(0),
+  logout: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../../../src/config', () => ({
@@ -176,7 +197,10 @@ describe('userController', () => {
       expect(User.findOrCreate).toHaveBeenCalled();
       expect(res.jsonBody).toMatchObject({
         code: 200,
-        data: { token: 'mock-jwt-token' },
+        data: {
+          accessToken: 'mock-access-token',
+          refreshToken: 'mock-refresh-token',
+        },
       });
     });
   });
@@ -203,7 +227,8 @@ describe('userController', () => {
       await testLogin(req, res, mockNext);
       await flushPromises();
       expect(res.jsonBody?.code).toBe(200);
-      expect(res.jsonBody?.data.token).toBe('mock-jwt-token');
+      expect(res.jsonBody?.data.accessToken).toBe('mock-access-token');
+      expect(res.jsonBody?.data.refreshToken).toBe('mock-refresh-token');
     });
   });
 
@@ -217,7 +242,8 @@ describe('userController', () => {
       await familyLogin(req, res, mockNext);
       await flushPromises();
       expect(User.findByPk).toHaveBeenCalledWith(5);
-      expect(res.jsonBody.data.token).toBe('mock-jwt-token');
+      expect(res.jsonBody.data.accessToken).toBe('mock-access-token');
+      expect(res.jsonBody.data.refreshToken).toBe('mock-refresh-token');
     });
 
     it('should return NotFoundError when uid does not exist', async () => {
@@ -270,7 +296,7 @@ describe('userController', () => {
       const res = mockRes();
       await familyLogin(req, res, mockNext);
       await flushPromises();
-      expect(res.jsonBody.data.token).toBe('mock-jwt-token');
+      expect(res.jsonBody.data.accessToken).toBe('mock-access-token');
     });
 
     it('should reject invalid PIN format (non 4-digit)', async () => {

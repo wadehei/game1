@@ -1,6 +1,11 @@
 import { Router } from 'express';
 import { getUserInfo, updateUserInfo } from '../controllers/userController';
 import { wxLogin, testLogin, familyLogin, getProfiles } from '../controllers/loginController';
+import {
+  refreshAccessToken,
+  logoutCurrentDevice,
+  logoutAllDevices,
+} from '../controllers/authController';
 import { updateMyPin } from '../controllers/pinController';
 import { getMyCareer, getBattleCareer, reportPlaytime } from '../controllers/careerController';
 import { authMiddleware } from '../middleware/auth';
@@ -11,6 +16,8 @@ import {
   wxLoginSchema,
   testLoginSchema,
   familyLoginSchema,
+  refreshTokenSchema,
+  logoutSchema,
   updateUserInfoSchema,
   updatePinSchema,
   reportPlaytimeSchema,
@@ -101,6 +108,90 @@ router.post('/login/test', loginLimiter, validateBody(testLoginSchema), testLogi
  *         description: 请求过于频繁
  */
 router.post('/login/family', loginLimiter, validateBody(familyLoginSchema), familyLogin);
+
+/**
+ * @swagger
+ * /api/user/refresh:
+ *   post:
+ *     summary: 刷新 Access Token
+ *     description: 使用 refresh token 获取新的 access token
+ *     tags: [User]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [refreshToken]
+ *             properties:
+ *               refreshToken: { type: string, description: 登录时返回的 refresh token }
+ *     responses:
+ *       200:
+ *         description: 刷新成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Success'
+ *       401:
+ *         description: Refresh token 无效或已撤销
+ */
+router.post('/refresh', loginLimiter, validateBody(refreshTokenSchema), refreshAccessToken);
+
+/**
+ * @swagger
+ * /api/user/logout:
+ *   post:
+ *     summary: 登出当前设备
+ *     description: 撤销当前会话的 token
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [refreshToken]
+ *             properties:
+ *               refreshToken: { type: string, description: 登录时返回的 refresh token }
+ *     responses:
+ *       200:
+ *         description: 登出成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Success'
+ */
+router.post('/logout', authMiddleware, validateBody(logoutSchema), logoutCurrentDevice);
+
+/**
+ * @swagger
+ * /api/user/logout-all:
+ *   post:
+ *     summary: 登出所有设备
+ *     description: 撤销该用户的所有会话（安全事件响应）
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [refreshToken]
+ *             properties:
+ *               refreshToken: { type: string, description: 当前设备的 refresh token }
+ *     responses:
+ *       200:
+ *         description: 登出成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Success'
+ */
+router.post('/logout-all', authMiddleware, validateBody(logoutSchema), logoutAllDevices);
 
 /**
  * @swagger

@@ -101,24 +101,26 @@ describe('request (api)', () => {
       expect(() => resOkFn(response)).toThrow('请求失败');
     });
 
-    it('should clear token on 401 status', () => {
+    it('should clear token on 401 status (no refresh token available)', async () => {
       localStorage.setItem('token', 'expired-token');
       localStorage.setItem('userInfo', '{"name":"test"}');
       const resErrFn = capturedInstance.__testGetResErrInterceptor();
 
       const error = { response: { status: 401 } };
-      expect(() => resErrFn(error)).toThrow();
+      // 拦截器为 async：无 refreshToken 时静默刷新直接失败，落入清理分支后 rethrow
+      await expect(resErrFn(error)).rejects.toThrow();
 
       expect(localStorage.getItem('token')).toBeNull();
       expect(localStorage.getItem('userInfo')).toBeNull();
+      expect(localStorage.getItem('refresh_token')).toBeNull();
     });
 
-    it('should not clear token on non-401 error', () => {
+    it('should not clear token on non-401 error', async () => {
       localStorage.setItem('token', 'valid-token');
       const resErrFn = capturedInstance.__testGetResErrInterceptor();
 
       const error = { response: { status: 500 } };
-      expect(() => resErrFn(error)).toThrow();
+      await expect(resErrFn(error)).rejects.toThrow();
 
       expect(localStorage.getItem('token')).toBe('valid-token');
     });
