@@ -22,7 +22,7 @@ instance.interceptors.request.use((config) => {
 // ─── 401 静默刷新（single-flight：并发 401 共享同一次刷新） ────────────────────
 let refreshing: Promise<string> | null = null;
 
-const tryRefresh = (): Promise<string> => {
+const tryRefresh = async (): Promise<string> => {
   if (!refreshing) {
     refreshing = (async () => {
       const refreshToken = localStorage.getItem('refresh_token');
@@ -39,11 +39,12 @@ const tryRefresh = (): Promise<string> => {
       };
       const newToken = envelope?.data?.accessToken;
       if (envelope?.code !== 200 || !newToken) throw new Error('刷新失败');
-      localStorage.setItem('token', newToken);
-      // rotation：每次刷新返回全新 refresh token，同步落库
-      if (envelope.data?.refreshToken) {
-        localStorage.setItem('refresh_token', envelope.data.refreshToken);
-      }
+
+      // 通过 store 更新 token，保持响应式状态同步
+      const { useUserStore } = await import('@/store/user');
+      const userStore = useUserStore();
+      userStore.setTokens(newToken, envelope.data?.refreshToken || refreshToken);
+
       return newToken;
     })().finally(() => {
       refreshing = null;
@@ -79,9 +80,10 @@ instance.interceptors.response.use(
     }
 
     if (status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('refresh_token');
-      localStorage.removeItem('userInfo');
+      // 通过 store 清除凭证，保持响应式状态同步
+      const { useUserStore } = await import('@/store/user');
+      const userStore = useUserStore();
+      userStore.logout();
     }
     throw error;
   }

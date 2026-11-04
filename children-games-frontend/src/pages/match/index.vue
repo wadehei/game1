@@ -98,7 +98,7 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { useGameSounds } from '@/composables/useGameSounds';
 import { useGameProgress } from '@/composables/useGameProgress';
-import { GAME_PAUSE_EVENT, GAME_RESUME_EVENT } from '@/utils/gameEvents';
+import { useGameLifecycle } from '@/composables/useGameLifecycle';
 import { getLevelOverride } from '@/api/game';
 import { speak } from '@/utils/voice';
 import { defaultLevelConfig } from '@/utils/levelDefaults';
@@ -350,12 +350,15 @@ const applyLevelConfig = async (level: number) => {
 const pauseGame = () => (paused.value = true);
 const resumeGame = () => (paused.value = false);
 
-const handleRestPause = () => {
+const handlePause = () => {
   paused.value = true;
 };
-const handleRestResume = () => {
+
+const handleResume = () => {
   paused.value = false;
 };
+
+useGameLifecycle({ onPause: handlePause, onResume: handleResume });
 
 const openLevelSelect = () => {
   if (!gameEnded) paused.value = true;
@@ -376,8 +379,6 @@ const quitGame = () => {
 
 onMounted(async () => {
   sounds.init();
-  document.addEventListener(GAME_PAUSE_EVENT, handleRestPause);
-  document.addEventListener(GAME_RESUME_EVENT, handleRestResume);
 
   currentLevel.value = await loadStartLevel();
   await applyLevelConfig(currentLevel.value);
@@ -386,8 +387,6 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (tickTimer) clearInterval(tickTimer);
-  document.removeEventListener(GAME_PAUSE_EVENT, handleRestPause);
-  document.removeEventListener(GAME_RESUME_EVENT, handleRestResume);
 });
 </script>
 

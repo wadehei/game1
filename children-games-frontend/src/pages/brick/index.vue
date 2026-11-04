@@ -58,7 +58,7 @@ import { useRouter } from 'vue-router';
 import { useGameSounds } from '@/composables/useGameSounds';
 import { useGameCanvas } from '@/composables/useGameCanvas';
 import { useGameProgress } from '@/composables/useGameProgress';
-import { GAME_PAUSE_EVENT, GAME_RESUME_EVENT } from '@/utils/gameEvents';
+import { useGameLifecycle } from '@/composables/useGameLifecycle';
 import { getLevelOverride } from '@/api/game';
 import { speak, playVoice } from '@/utils/voice';
 import { useAdaptiveAssist } from '@/composables/useAdaptiveAssist';
@@ -218,24 +218,15 @@ const resumeLoop = () => {
 
 const startGame = () => resumeLoop();
 
-// 切后台自动暂停，回到游戏继续
-const handleVisibilityChange = () => {
-  if (document.hidden) {
-    pauseLoop();
-  } else {
-    resumeLoop();
-  }
+const handlePause = () => {
+  pauseLoop();
 };
 
-// 护眼休息等全局层叫停/恢复
-const handleRestPause = () => {
-  if (!gameEnded) pauseLoop();
-};
-
-const handleRestResume = () => {
-  // 用户主动暂停期间不因休息结束而恢复
+const handleResume = () => {
   if (!paused.value) resumeLoop();
 };
+
+useGameLifecycle({ onPause: handlePause, onResume: handleResume });
 
 // ─── 手动暂停 ────────────────────────────────
 const pauseGame = () => {
@@ -533,9 +524,6 @@ onMounted(async () => {
     buildBricks();
     resetBall();
   });
-  document.addEventListener('visibilitychange', handleVisibilityChange);
-  document.addEventListener(GAME_PAUSE_EVENT, handleRestPause);
-  document.addEventListener(GAME_RESUME_EVENT, handleRestResume);
 
   // 续关：从上次通关的关卡继续
   currentLevel.value = await loadStartLevel();
@@ -545,9 +533,6 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  document.removeEventListener('visibilitychange', handleVisibilityChange);
-  document.removeEventListener(GAME_PAUSE_EVENT, handleRestPause);
-  document.removeEventListener(GAME_RESUME_EVENT, handleRestResume);
   pauseLoop();
 });
 </script>

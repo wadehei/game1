@@ -1,6 +1,5 @@
 // 对战房间 HTTP 接口
-import axios from 'axios';
-import { api, API_ORIGIN } from '../utils/request';
+import { api } from '../utils/request';
 
 // 可用游戏列表（大厅建房卡片）
 export const getGameList = async (): Promise<
@@ -41,31 +40,6 @@ export interface BattleCareer {
   }>;
 }
 
-// 上传房间语音（raw body），返回 voiceId；广播由服务端完成
-export const uploadRoomVoice = async (
-  roomId: string,
-  blob: Blob,
-  duration: number
-): Promise<{ voiceId: string }> => {
-  const res = await axios.post(
-    `${API_ORIGIN}/api/room/${roomId}/voice?duration=${duration}`,
-    blob,
-    {
-      headers: {
-        'Content-Type': blob.type || 'audio/webm',
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
-      },
-      timeout: 10000,
-    }
-  );
-  return (res.data as { data: { voiceId: string } }).data;
-};
-
-// 拉取房间语音（blob 响应不走统一拦截器，单独用 axios）
-export const fetchRoomVoice = async (roomId: string, voiceId: string): Promise<Blob> => {
-  const res = await axios.get(`${API_ORIGIN}/api/room/${roomId}/voice/${voiceId}`, {
-    responseType: 'blob',
-    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-  });
-  return res.data as Blob;
-};
+// 房间语音相关接口（统一从 voice.ts 导出）
+export { uploadRoomVoice, fetchRoomVoice } from './voice';
+export type { RoomVoiceUploadResult } from './voice';

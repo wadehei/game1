@@ -58,7 +58,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useGameSounds } from '@/composables/useGameSounds';
 import { useGameProgress } from '@/composables/useGameProgress';
-import { GAME_PAUSE_EVENT, GAME_RESUME_EVENT } from '@/utils/gameEvents';
+import { useGameLifecycle } from '@/composables/useGameLifecycle';
 import { getLevelOverride } from '@/api/game';
 import { speak, playVoice } from '@/utils/voice';
 import { useAdaptiveAssist } from '@/composables/useAdaptiveAssist';
@@ -105,8 +105,6 @@ const levelConfig = ref<Record<string, any>>({
 });
 
 let gameEnded = false;
-let autoPausedByHidden = false;
-let autoPausedByRest = false;
 let countdownTimer: ReturnType<typeof setInterval> | null = null;
 let spawnTimer: ReturnType<typeof setInterval> | null = null;
 const hideTimeouts = new Map<number, ReturnType<typeof setTimeout>>();
@@ -281,33 +279,24 @@ const chooseLevel = async (level: number) => {
   initGame();
 };
 
-// 切后台自动暂停，回到游戏继续
-const handleVisibilityChange = () => {
-  if (document.hidden) {
-    if (!paused.value) {
-      autoPausedByHidden = true;
-      pauseGame();
-    }
-  } else if (autoPausedByHidden) {
-    autoPausedByHidden = false;
-    resumeGame();
-  }
-};
+// 系统自动暂停（切后台 / 护眼休息）与用户主动暂停的区分
+let autoPausedByRest = false;
 
-// 护眼休息等全局层叫停/恢复
-const handleRestPause = () => {
-  if (!gameEnded && !paused.value) {
+const handlePause = () => {
+  if (!paused.value) {
     autoPausedByRest = true;
     pauseGame();
   }
 };
 
-const handleRestResume = () => {
+const handleResume = () => {
   if (autoPausedByRest) {
     autoPausedByRest = false;
     resumeGame();
   }
 };
+
+useGameLifecycle({ onPause: handlePause, onResume: handleResume });
 
 const initGame = () => {
   hits.value = 0;
@@ -369,17 +358,11 @@ onMounted(async () => {
   // 续关：从上次通关的关卡继续
   currentLevel.value = await loadStartLevel();
   await applyLevelConfig(currentLevel.value);
-  document.addEventListener('visibilitychange', handleVisibilityChange);
-  document.addEventListener(GAME_PAUSE_EVENT, handleRestPause);
-  document.addEventListener(GAME_RESUME_EVENT, handleRestResume);
   initGame();
   playVoice('mole_intro', '打地鼠咯！小兔子是好朋友，不能打哦');
 });
 
 onUnmounted(() => {
-  document.removeEventListener('visibilitychange', handleVisibilityChange);
-  document.removeEventListener(GAME_PAUSE_EVENT, handleRestPause);
-  document.removeEventListener(GAME_RESUME_EVENT, handleRestResume);
   stopLoops();
 });
 </script>

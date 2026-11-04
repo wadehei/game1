@@ -50,12 +50,23 @@ export const useRoomWs = () => {
     url = `${proto}://${location.host}/ws?roomId=${encodeURIComponent(roomId)}&token=${encodeURIComponent(token)}`;
     closedByUser = false;
     status.value = 'connecting';
+
+    // 清理旧的重连定时器（防止重复创建）
+    if (retryTimer) {
+      clearTimeout(retryTimer);
+      retryTimer = null;
+    }
+
     const sock = new WebSocket(url);
     ws = sock;
 
     sock.onopen = () => {
       status.value = 'open';
       retry = 0;
+
+      // 保活：连接成功后启动 ping 定时器（每 25 秒，防代理空闲断链）
+      if (pingTimer) clearInterval(pingTimer);
+      pingTimer = setInterval(() => send({ t: 'ping' }), 25000);
     };
     sock.onmessage = (e) => {
       try {
@@ -66,6 +77,13 @@ export const useRoomWs = () => {
     };
     sock.onclose = (e) => {
       status.value = 'closed';
+
+      // 连接关闭时清理 ping 定时器
+      if (pingTimer) {
+        clearInterval(pingTimer);
+        pingTimer = null;
+      }
+
       disconnectHandlers.forEach((fn) => fn(e));
       // 服务端明确关门（房间解散/未登录）不重连
       if (closedByUser || e.code === 4001 || e.code === 4002) return;
@@ -92,9 +110,6 @@ export const useRoomWs = () => {
     ws = null;
     status.value = 'closed';
   };
-
-  // 保活：每 25 秒 ping，防代理空闲断链
-  pingTimer = setInterval(() => send({ t: 'ping' }), 25000);
 
   return { status, connect, send, close, on, off };
 };

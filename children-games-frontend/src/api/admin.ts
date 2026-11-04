@@ -1,8 +1,21 @@
 import axios from 'axios';
+import type { AxiosResponse } from 'axios';
 import { API_ORIGIN } from '../utils/request';
 
 const BASE_URL = `${API_ORIGIN}/api/admin`;
 const TOKEN_KEY = 'admin_token';
+
+// ─── 响应类型定义 ──────────────────────────────────────────
+
+/** 后端标准响应结构 */
+interface ApiResponse<T> {
+  code: number;
+  data: T;
+  message?: string;
+}
+
+/** 响应拦截器解包后的数据类型 */
+type UnwrapResponse<T> = T;
 
 const client = axios.create({ baseURL: BASE_URL, timeout: 15000 });
 
@@ -14,9 +27,21 @@ client.interceptors.request.use((config) => {
   return config;
 });
 
+/**
+ * 解包 API 响应数据
+ * @throws 当响应格式不正确时抛出错误
+ */
+function unwrapResponse<T>(response: AxiosResponse<ApiResponse<T>>): UnwrapResponse<T> {
+  const { data } = response;
+  if (data.code === 200) {
+    return data.data;
+  }
+  throw new Error(data.message || `API error: code ${data.code}`);
+}
+
 // 401 时清除本地凭证并回到后台登录页（凭证过期后页面停留在旧数据上，所有操作会静默失败）
 client.interceptors.response.use(
-  (response) => response.data.data,
+  (response) => unwrapResponse(response),
   (error) => {
     if (error?.response?.status === 401) {
       localStorage.removeItem(TOKEN_KEY);
@@ -27,6 +52,32 @@ client.interceptors.response.use(
     throw error;
   }
 );
+
+// ─── 类型安全的请求方法 ────────────────────────────────────
+
+/** 类型安全的 GET 请求 */
+async function apiGet<T>(url: string): Promise<T> {
+  const result = await client.get<ApiResponse<T>>(url);
+  return result as unknown as T;
+}
+
+/** 类型安全的 POST 请求 */
+async function apiPost<T>(url: string, data?: unknown): Promise<T> {
+  const result = await client.post<ApiResponse<T>>(url, data);
+  return result as unknown as T;
+}
+
+/** 类型安全的 PUT 请求 */
+async function apiPut<T>(url: string, data?: unknown): Promise<T> {
+  const result = await client.put<ApiResponse<T>>(url, data);
+  return result as unknown as T;
+}
+
+/** 类型安全的 DELETE 请求 */
+async function apiDelete<T = void>(url: string): Promise<T> {
+  const result = await client.delete<ApiResponse<T>>(url);
+  return result as unknown as T;
+}
 
 export const isAdminLoggedIn = (): boolean => !!localStorage.getItem(TOKEN_KEY);
 
@@ -44,8 +95,7 @@ export interface AdminLoginResult {
 }
 
 export const adminLogin = async (password: string): Promise<AdminLoginResult> => {
-  // 响应拦截器已解包出业务数据，这里对齐类型
-  const data = (await client.post('/login', { password })) as unknown as AdminLoginResult;
+  const data = await apiPost<AdminLoginResult>('/login', { password });
   if (data.token) {
     localStorage.setItem(TOKEN_KEY, data.token);
   }
@@ -54,9 +104,7 @@ export const adminLogin = async (password: string): Promise<AdminLoginResult> =>
 
 /** 登录第二步：2FA 临时令牌 + 验证码 → 完整管理员 JWT（后端 /2fa/verify） */
 export const verify2faLogin = async (tempToken: string, code: string): Promise<void> => {
-  const data = (await client.post('/2fa/verify', { token: tempToken, code })) as unknown as {
-    token: string;
-  };
+  const data = await apiPost<{ token: string }>('/2fa/verify', { token: tempToken, code });
   localStorage.setItem(TOKEN_KEY, data.token);
 };
 
@@ -94,7 +142,7 @@ export interface Overview {
   activity: ActivityItem[];
 }
 
-export const getOverview = (): Promise<Overview> => client.get('/overview');
+export const getOverview = (): Promise<Overview> => apiGet<Overview>('/overview');
 
 // ─── 角色管理 ────────────────────────────────
 
@@ -113,23 +161,23 @@ export interface AdminUser {
   createdAt: string;
 }
 
-export const getUsers = (): Promise<AdminUser[]> => client.get('/users');
+export const getUsers = (): Promise<AdminUser[]> => apiGet<AdminUser[]>('/users');
 
 export const adjustUserChips = (
   id: number,
   data: { delta?: number; set?: number }
-): Promise<{ battleChips: number }> => client.put(`/users/${id}/chips`, data);
+): Promise<{ battleChips: number }> => apiPut<{ battleChips: number }>(`/users/${id}/chips`, data);
 
 export const updateUser = (
   id: number,
   data: { nickname?: string; avatar?: string }
-): Promise<void> => client.put(`/users/${id}`, data);
+): Promise<void> => apiPut(`/users/${id}`, data);
 
-export const clearUserPin = (id: number): Promise<void> => client.post(`/users/${id}/clear-pin`);
+export const clearUserPin = (id: number): Promise<void> => apiPost(`/users/${id}/clear-pin`);
 
-export const resetUserProgress = (id: number): Promise<void> => client.post(`/users/${id}/reset`);
+export const resetUserProgress = (id: number): Promise<void> => apiPost(`/users/${id}/reset`);
 
-export const deleteUser = (id: number): Promise<void> => client.delete(`/users/${id}`);
+export const deleteUser = (id: number): Promise<void> => apiDelete(`/users/${id}`);
 
 // ─── 设置 ────────────────────────────────
 
@@ -137,10 +185,10 @@ export interface AdminSettings {
   restIntervalMinutes: number;
 }
 
-export const getSettings = (): Promise<AdminSettings> => client.get('/settings');
+export const getSettings = (): Promise<AdminSettings> => apiGet<AdminSettings>('/settings');
 
 export const updateSettings = (data: AdminSettings): Promise<AdminSettings> =>
-  client.put('/settings', data);
+  apiPut<AdminSettings>('/settings', data);
 
 // ─── 关卡难度覆盖 ────────────────────────────────
 
@@ -151,43 +199,28 @@ export interface LevelOverrideRow {
 }
 
 export const getLevelOverrides = (gameId: string): Promise<LevelOverrideRow[]> =>
-  client.get(`/levels/${gameId}`);
+  apiGet<LevelOverrideRow[]>(`/levels/${gameId}`);
 
 export const saveLevelOverride = (
   gameId: string,
   level: number,
   config: Record<string, number | boolean>
-): Promise<void> => client.put(`/levels/${gameId}/${level}`, { config });
+): Promise<void> => apiPut(`/levels/${gameId}/${level}`, { config });
 
 export const deleteLevelOverride = (gameId: string, level: number): Promise<void> =>
-  client.delete(`/levels/${gameId}/${level}`);
+  apiDelete(`/levels/${gameId}/${level}`);
 
-// ─── 家长原声配音 ────────────────────────────────
+// ─── 家长原声配音（统一从 voice.ts 导出） ────────────────────
 
-export interface VoiceLineStatus {
+export { listVoiceLines, uploadVoice, deleteVoice } from './voice';
+export type { VoiceLine } from './voice';
+
+/** @deprecated 使用 VoiceLine 代替 */
+export type VoiceLineStatus = {
   key: string;
   size: number;
   updatedAt: number;
-}
-
-export const listVoiceLines = (): Promise<VoiceLineStatus[]> =>
-  fetch(`${API_ORIGIN}/api/voice`)
-    .then((r) => r.json())
-    .then((d) => d.data || []);
-
-// 配音接口在 /api/voice（不在 /api/admin 下），用独立请求携带管理员凭证
-export const uploadVoice = (key: string, blob: Blob): Promise<void> =>
-  axios.post(`${API_ORIGIN}/api/voice/${key}`, blob, {
-    headers: {
-      'Content-Type': blob.type || 'audio/webm',
-      Authorization: `Bearer ${localStorage.getItem(TOKEN_KEY)}`,
-    },
-  }) as unknown as Promise<void>;
-
-export const deleteVoice = (key: string): Promise<void> =>
-  axios.delete(`${API_ORIGIN}/api/voice/${key}`, {
-    headers: { Authorization: `Bearer ${localStorage.getItem(TOKEN_KEY)}` },
-  }) as unknown as Promise<void>;
+};
 
 // ─── 错误日志 ────────────────────────────────
 
@@ -199,9 +232,9 @@ export interface AdminErrorLog {
 }
 
 export const getErrorLogs = (limit = 200): Promise<AdminErrorLog[]> =>
-  client.get(`/logs?limit=${limit}`);
+  apiGet<AdminErrorLog[]>(`/logs?limit=${limit}`);
 
-export const clearErrorLogs = (): Promise<void> => client.delete('/logs');
+export const clearErrorLogs = (): Promise<void> => apiDelete('/logs');
 
 // ─── 备份（下载 .sql） ────────────────────────────────
 
@@ -226,29 +259,24 @@ export interface AutoBackup {
 }
 
 /** 磁盘自动备份列表（每日 03:05 生成，保留 7 份） */
-export const listAutoBackups = (): Promise<AutoBackup[]> => client.get('/backups');
+export const listAutoBackups = (): Promise<AutoBackup[]> => apiGet<AutoBackup[]>('/backups');
 
 // ─── 意见反馈 ────────────────────────────────
 
 import { type FeedbackItem, type FeedbackStatus } from './feedback';
 
 // 反馈列表（管理员额外返回内部备注）
-export const adminGetFeedbacks = async (): Promise<FeedbackItem[]> => {
-  return client.get('/feedback') as unknown as Promise<FeedbackItem[]>;
-};
+export const adminGetFeedbacks = (): Promise<FeedbackItem[]> => apiGet<FeedbackItem[]>('/feedback');
 
 // 更新反馈状态 / 备注
-export const adminUpdateFeedback = async (
+export const adminUpdateFeedback = (
   id: number,
   data: { status?: FeedbackStatus; adminNote?: string }
-): Promise<FeedbackItem> => {
-  return client.put(`/feedback/${id}`, data) as unknown as Promise<FeedbackItem>;
-};
+): Promise<FeedbackItem> => apiPut<FeedbackItem>(`/feedback/${id}`, data);
 
 // 官方回复（所有用户可见）
-export const adminAddReply = async (id: number, content: string): Promise<void> => {
-  await client.post(`/feedback/${id}/reply`, { content });
-};
+export const adminAddReply = (id: number, content: string): Promise<void> =>
+  apiPost(`/feedback/${id}/reply`, { content });
 
 // ─── 题库管理（答题对战） ────────────────────────────────
 
@@ -269,34 +297,26 @@ export interface QuizQuestionPayload {
   difficulty?: number;
 }
 
-export const adminQuizList = async (
+export const adminQuizList = (
   page = 1,
   category = ''
 ): Promise<{ list: AdminQuizQuestion[]; total: number }> => {
   const params: Record<string, unknown> = { page };
   if (category) params.category = category;
-  return client.get('/quiz', { params }) as unknown as Promise<{
-    list: AdminQuizQuestion[];
-    total: number;
-  }>;
+  return apiGet<{ list: AdminQuizQuestion[]; total: number }>('/quiz');
 };
 
-export const adminQuizCreate = async (data: QuizQuestionPayload): Promise<AdminQuizQuestion> =>
-  client.post('/quiz', data) as unknown as Promise<AdminQuizQuestion>;
+export const adminQuizCreate = (data: QuizQuestionPayload): Promise<AdminQuizQuestion> =>
+  apiPost<AdminQuizQuestion>('/quiz', data);
 
-export const adminQuizUpdate = async (
+export const adminQuizUpdate = (
   id: number,
   data: QuizQuestionPayload
-): Promise<AdminQuizQuestion> =>
-  client.put(`/quiz/${id}`, data) as unknown as Promise<AdminQuizQuestion>;
+): Promise<AdminQuizQuestion> => apiPut<AdminQuizQuestion>(`/quiz/${id}`, data);
 
-export const adminQuizDelete = async (id: number): Promise<void> =>
-  client.delete(`/quiz/${id}`) as unknown as Promise<void>;
+export const adminQuizDelete = (id: number): Promise<void> => apiDelete(`/quiz/${id}`);
 
-export const adminQuizImport = async (
+export const adminQuizImport = (
   questions: QuizQuestionPayload[]
 ): Promise<{ created: number; skipped: number }> =>
-  client.post('/quiz/import', { questions }) as unknown as Promise<{
-    created: number;
-    skipped: number;
-  }>;
+  apiPost<{ created: number; skipped: number }>('/quiz/import', { questions });

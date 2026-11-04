@@ -88,7 +88,7 @@ import { useGameProgress } from '@/composables/useGameProgress';
 import { getLevelOverride } from '@/api/game';
 import { speak } from '@/utils/voice';
 import { defaultLevelConfig } from '@/utils/levelDefaults';
-import { GAME_PAUSE_EVENT, GAME_RESUME_EVENT } from '@/utils/gameEvents';
+import { useGameLifecycle } from '@/composables/useGameLifecycle';
 import GameHeader from '@/components/GameHeader.vue';
 import ResultModal from '@/components/ResultModal.vue';
 import LevelSelectModal from '@/components/LevelSelectModal.vue';
@@ -452,47 +452,31 @@ const chooseLevel = async (lv: number) => {
 const pauseGame = () => (paused.value = true);
 const resumeGame = () => (paused.value = false);
 const quitGame = () => router.back();
-// 区分"系统自动暂停"与"用户主动暂停"：自动来源结束后只恢复自己发起的暂停
-let autoPausedByHidden = false;
+// 系统自动暂停（切后台 / 护眼休息）与用户主动暂停的区分
 let autoPausedByRest = false;
-// 切后台自动暂停，回到游戏继续（此前是 11 款游戏里唯一缺这个的）
-const handleVisibilityChange = () => {
-  if (document.hidden) {
-    if (!gameEnded && !paused.value) {
-      autoPausedByHidden = true;
-      pauseGame();
-    }
-  } else if (autoPausedByHidden) {
-    autoPausedByHidden = false;
-    resumeGame();
-  }
-};
-const onGuardPause = () => {
-  if (!gameEnded && !paused.value) {
+
+const handlePause = () => {
+  if (!paused.value) {
     autoPausedByRest = true;
     pauseGame();
   }
 };
-const onGuardResume = () => {
+
+const handleResume = () => {
   if (autoPausedByRest) {
     autoPausedByRest = false;
     resumeGame();
   }
 };
 
+useGameLifecycle({ onPause: handlePause, onResume: handleResume });
+
 onMounted(async () => {
   const start = await loadStartLevel();
   currentLevel.value = start;
   await applyLevelConfig(start);
-  document.addEventListener('visibilitychange', handleVisibilityChange);
-  document.addEventListener(GAME_PAUSE_EVENT, onGuardPause);
-  document.addEventListener(GAME_RESUME_EVENT, onGuardResume);
 });
-onUnmounted(() => {
-  document.removeEventListener('visibilitychange', handleVisibilityChange);
-  document.removeEventListener(GAME_PAUSE_EVENT, onGuardPause);
-  document.removeEventListener(GAME_RESUME_EVENT, onGuardResume);
-});
+onUnmounted(() => {});
 </script>
 
 <style scoped>

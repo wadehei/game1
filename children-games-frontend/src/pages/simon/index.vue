@@ -62,8 +62,8 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useGameSounds } from '@/composables/useGameSounds';
 import { useGameProgress } from '@/composables/useGameProgress';
+import { useGameLifecycle } from '@/composables/useGameLifecycle';
 import { soundManager } from '@/utils/sound';
-import { GAME_PAUSE_EVENT, GAME_RESUME_EVENT } from '@/utils/gameEvents';
 import { getLevelOverride } from '@/api/game';
 import { speak, playVoice } from '@/utils/voice';
 import { defaultLevelConfig } from '@/utils/levelDefaults';
@@ -290,32 +290,21 @@ const nextLevel = async () => {
   initGame();
 };
 
-// 切走时取消播放/输入，回来重新播一遍当前序列
-const handleVisibilityChange = () => {
-  if (document.hidden) {
-    clearPlayback();
-    if (!gameEnded) {
-      phase.value = 'ready';
-    }
-  } else if (!gameEnded && showResult.value === false) {
-    playSequence();
-  }
-};
-
-// 护眼休息等全局层叫停/恢复
-const handleRestPause = () => {
+// 切后台 / 护眼休息：取消播放，回来后重播当前序列
+const handlePause = () => {
+  clearPlayback();
   if (!gameEnded) {
-    clearPlayback();
     phase.value = 'ready';
   }
 };
 
-const handleRestResume = () => {
-  // 用户主动暂停期间不因休息结束而恢复
+const handleResume = () => {
   if (!gameEnded && !showResult.value && !paused.value) {
     playSequence();
   }
 };
+
+useGameLifecycle({ onPause: handlePause, onResume: handleResume });
 
 // ─── 手动暂停：停播序列，恢复后从头重播 ──────────────
 const pauseGame = () => {
@@ -343,17 +332,11 @@ onMounted(async () => {
   // 续关：从上次通关的关卡继续
   currentLevel.value = await loadStartLevel();
   await applyLevelConfig(currentLevel.value);
-  document.addEventListener('visibilitychange', handleVisibilityChange);
-  document.addEventListener(GAME_PAUSE_EVENT, handleRestPause);
-  document.addEventListener(GAME_RESUME_EVENT, handleRestResume);
   initGame();
   playVoice('simon_intro', '记住闪光的顺序，然后跟着点');
 });
 
 onUnmounted(() => {
-  document.removeEventListener('visibilitychange', handleVisibilityChange);
-  document.removeEventListener(GAME_PAUSE_EVENT, handleRestPause);
-  document.removeEventListener(GAME_RESUME_EVENT, handleRestResume);
   clearPlayback();
 });
 </script>

@@ -34,6 +34,27 @@ vi.spyOn(axios, 'create').mockImplementation((...args) => {
   return capturedInstance;
 });
 
+// Mock the user store module
+vi.mock('@/store/user', () => {
+  const logoutFn = vi.fn(() => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('userInfo');
+  });
+  const setTokensFn = vi.fn((accessToken: string, refreshToken: string) => {
+    localStorage.setItem('token', accessToken);
+    if (refreshToken) {
+      localStorage.setItem('refresh_token', refreshToken);
+    }
+  });
+  return {
+    useUserStore: () => ({
+      logout: logoutFn,
+      setTokens: setTokensFn,
+    }),
+  };
+});
+
 // Import after spy is set up — but since request.ts uses top-level axios.create,
 // we need to use dynamic import
 describe('request (api)', () => {
@@ -110,9 +131,12 @@ describe('request (api)', () => {
       // 拦截器为 async：无 refreshToken 时静默刷新直接失败，落入清理分支后 rethrow
       await expect(resErrFn(error)).rejects.toThrow();
 
-      expect(localStorage.getItem('token')).toBeNull();
-      expect(localStorage.getItem('userInfo')).toBeNull();
-      expect(localStorage.getItem('refresh_token')).toBeNull();
+      // 等待动态 import 和 store 调用完成
+      await vi.waitFor(() => {
+        expect(localStorage.getItem('token')).toBeNull();
+        expect(localStorage.getItem('userInfo')).toBeNull();
+        expect(localStorage.getItem('refresh_token')).toBeNull();
+      });
     });
 
     it('should not clear token on non-401 error', async () => {

@@ -10,6 +10,8 @@
  */
 
 import { API_ORIGIN } from './apiOrigin';
+import { listVoiceLines } from '../api/voice';
+import type { VoiceLine } from '../types/voice';
 
 /** 音色优先级：从上到下第一个命中的即使用 */
 const VOICE_PREFERENCES: RegExp[] = [
@@ -69,12 +71,9 @@ export const initVoice = (): void => {
 let customVoices = new Map<string, number>();
 
 const fetchCustomVoices = (): void => {
-  fetch(`${API_ORIGIN}/api/voice`)
-    .then((r) => r.json())
-    .then((d) => {
-      customVoices = new Map(
-        (d?.data || []).map((v: { key: string; updatedAt: number }) => [v.key, v.updatedAt])
-      );
+  listVoiceLines()
+    .then((lines: VoiceLine[]) => {
+      customVoices = new Map(lines.map((v) => [v.key, v.updatedAt]));
     })
     .catch(() => {
       // 离线时无录音可用，全部走 TTS
