@@ -100,7 +100,7 @@ import { useGameSounds } from '@/composables/useGameSounds';
 import { useGameProgress } from '@/composables/useGameProgress';
 import { useGameLifecycle } from '@/composables/useGameLifecycle';
 import { getLevelOverride } from '@/api/game';
-import { speak } from '@/utils/voice';
+import { speak, playVoice } from '@/utils/voice';
 import { defaultLevelConfig } from '@/utils/levelDefaults';
 import GameHeader from '@/components/GameHeader.vue';
 import ResultModal from '@/components/ResultModal.vue';
@@ -302,7 +302,7 @@ const initGame = () => {
   timeLeft.value = levelConfig.value.timeLimit;
   buildRound(currentLevel.value, levelConfig.value.pairs);
   sounds.play('click');
-  speak('把左边和右边一对好朋友连起来吧！');
+  playVoice('match_intro', '把左边和右边一对好朋友连起来吧！');
   if (tickTimer) clearInterval(tickTimer);
   tickTimer = setInterval(tick, 1000);
   nextTick(() => renderFonts());

@@ -86,7 +86,7 @@ import { useRouter } from 'vue-router';
 import { useGameSounds } from '@/composables/useGameSounds';
 import { useGameProgress } from '@/composables/useGameProgress';
 import { getLevelOverride } from '@/api/game';
-import { speak } from '@/utils/voice';
+import { speak, playVoice } from '@/utils/voice';
 import { defaultLevelConfig } from '@/utils/levelDefaults';
 import { useGameLifecycle } from '@/composables/useGameLifecycle';
 import GameHeader from '@/components/GameHeader.vue';
@@ -432,7 +432,9 @@ const applyLevelConfig = async (level: number) => {
   movesLeft.value = Number(levelConfig.value.moves) || 20;
   targetScore.value = Number(levelConfig.value.targetScore) || 200;
   buildBoard();
-  speak(
+  // 有家长录音播固定 intro（自动打断 TTS），无录音回退 TTS 播带关卡信息的动态文案
+  playVoice(
+    'match3_intro',
     `第 ${level} 关，凑够 ${targetScore.value} 分就赢啦！交换相邻的两个小图，三个连成一排就能消除`
   );
 };

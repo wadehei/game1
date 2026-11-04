@@ -87,6 +87,13 @@ const LINES = [
   { key: 'tank_intro', scene: '坦克大战 · 入场', text: '左右移动坦克，打败坏坦克' },
   { key: 'mole_intro', scene: '打地鼠 · 入场', text: '打地鼠咯！小兔子是好朋友，不能打哦' },
   { key: 'simon_intro', scene: '音乐记忆 · 入场', text: '记住闪光的顺序，然后跟着点' },
+  { key: 'brick_intro', scene: '打砖块 · 入场', text: '移动球拍接住小球，把砖块全部打掉吧' },
+  { key: 'match_intro', scene: '快乐连线 · 入场', text: '把左边和右边一对好朋友连起来吧！' },
+  {
+    key: 'match3_intro',
+    scene: '消消乐 · 入场',
+    text: '凑够分数就赢啦！交换相邻的两个小图，三个连成一排就能消除',
+  },
   { key: 'math_correct', scene: '数学 · 答对', text: '答对啦！' },
   { key: 'math_wrong', scene: '数学 · 答错', text: '再想一想哦' },
   { key: 'result_win', scene: '通用 · 通关', text: '恭喜你，通关啦！你真棒！' },
