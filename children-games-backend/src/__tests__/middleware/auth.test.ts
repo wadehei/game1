@@ -105,18 +105,22 @@ describe('authMiddleware', () => {
       expect(mockNext).toHaveBeenCalled();
     });
 
-    it('should handle legacy token without type field', async () => {
+    it('should reject legacy long-lived user token without type field', async () => {
       mockReq.headers.authorization = 'Bearer legacy-token';
       mockedVerify.mockReturnValue({
         userId: 456,
         openid: 'legacy-openid',
-        // No type field - legacy token
+        // No type field - 旧版长期用户令牌已关闭迁移窗口（2026-11-05）
       } as Record<string, unknown>);
 
       await authMiddleware(mockReq, mockRes, mockNext);
 
-      expect(mockReq.userId).toBe(456);
-      expect(mockNext).toHaveBeenCalled();
+      expect(mockRes.status).toHaveBeenCalledWith(401);
+      expect(mockRes.json).toHaveBeenCalledWith({
+        code: 401,
+        message: '认证令牌无效或已过期',
+      });
+      expect(mockNext).not.toHaveBeenCalled();
     });
   });
 
@@ -244,6 +248,19 @@ describe('userOrAdminAuth', () => {
 
       expect(mockReq.admin).toBe(true);
       expect(mockReq.userId).toBeUndefined();
+      expect(mockNext).toHaveBeenCalled();
+    });
+
+    it('should accept env-mode admin JWT without type field (12h short-lived)', async () => {
+      mockReq.headers.authorization = 'Bearer env-admin-token';
+      mockedVerify.mockReturnValue({
+        role: 'admin',
+        // 环境变量模式签发 {role:'admin'} 无 type，仍需兼容
+      } as Record<string, unknown>);
+
+      await userOrAdminAuth(mockReq, mockRes, mockNext);
+
+      expect(mockReq.admin).toBe(true);
       expect(mockNext).toHaveBeenCalled();
     });
   });

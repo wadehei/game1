@@ -13,8 +13,18 @@ export interface AuthRequest extends Request {
 }
 
 /**
+ * 校验 token 可作为访问凭证：
+ * - 新式 access token（type==='access'，带 jti 可撤销）
+ * - 环境变量模式的管理员 JWT（{role:'admin'} 无 type，12h 短期）
+ * 旧版无 type 的长期用户令牌已于 2026-11-05 关闭迁移窗口，一律拒绝（SP-05 收尾）
+ */
+export function isAcceptableAccessToken(decoded: Record<string, unknown>): boolean {
+  if (decoded.type === 'access') return true;
+  return decoded.type === undefined && decoded.role === 'admin';
+}
+
+/**
  * 从 JWT payload 中提取信息到 request
- * 支持新版 access token（带 jti/type）和旧版 token（兼容）
  */
 function extractPayload(decoded: Record<string, unknown>): {
   userId: number | null;
@@ -47,9 +57,8 @@ export const authMiddleware = async (
     }
 
     const decoded = jwt.verify(token, config.jwt.secret) as Record<string, unknown>;
-    // 新版 token 必须为 access 类型：refresh token 不得作为访问凭证（SP-05 类型混淆）
-    // 旧版长期令牌无 type 字段，走兼容路径
-    if (decoded.type !== undefined && decoded.type !== 'access') {
+    // 访问凭证类型校验：refresh token 与已废弃的旧版长期用户令牌不得作为访问凭证（SP-05）
+    if (!isAcceptableAccessToken(decoded)) {
       res.status(401).json({ code: 401, message: '认证令牌无效或已过期' });
       return;
     }
@@ -95,8 +104,8 @@ export const userOrAdminAuth = async (
   }
   try {
     const decoded = jwt.verify(token, config.jwt.secret) as Record<string, unknown>;
-    // 新版 token 必须为 access 类型（refresh token 不得作为访问凭证）；旧版无 type 兼容
-    if (decoded.type !== undefined && decoded.type !== 'access') {
+    // 访问凭证类型校验（refresh/旧版长期用户令牌拒绝；env 管理员 JWT 无 type 仍兼容）
+    if (!isAcceptableAccessToken(decoded)) {
       res.status(401).json({ code: 401, message: '认证令牌无效或已过期' });
       return;
     }

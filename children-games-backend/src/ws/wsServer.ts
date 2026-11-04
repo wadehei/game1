@@ -94,10 +94,11 @@ export const initWsServer = (server: Server): void => {
       const decoded = jwt.verify(token, config.jwt.secret) as {
         userId: number;
         type?: string;
+        role?: string;
         jti?: string;
       };
-      // 新版 token 必须为 access 类型（refresh token 不得作为连接凭证）；旧版无 type 兼容
-      if (decoded.type !== undefined && decoded.type !== 'access') {
+      // 访问凭证类型校验：refresh/旧版长期用户令牌不得连接（env 管理员 JWT 无 type 仍兼容，SP-05 收尾）
+      if (decoded.type !== 'access' && !(decoded.type === undefined && decoded.role === 'admin')) {
         throw new Error('token type denied');
       }
       // 已撤销（登出/黑名单）的 access token 不得再建立连接

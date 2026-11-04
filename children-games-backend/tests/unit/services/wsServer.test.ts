@@ -127,7 +127,7 @@ const defaultHandler = {
 
 // Default auth success
 const setupAuth = (chips = 500) => {
-  vi.mocked(jwt.verify).mockReturnValue({ userId: 1 } as any);
+  vi.mocked(jwt.verify).mockReturnValue({ userId: 1, type: 'access' } as any);
   mockUser.findByPk.mockResolvedValue({
     id: 1,
     nickname: 'Test',
@@ -181,7 +181,7 @@ describe('wsServer', () => {
     it('should reject connection when user not found', async () => {
       initWsServer({} as any);
       const ws = createMockWs();
-      vi.mocked(jwt.verify).mockReturnValue({ userId: 999 } as any);
+      vi.mocked(jwt.verify).mockReturnValue({ userId: 999, type: 'access' } as any);
       mockUser.findByPk.mockResolvedValue(null);
       await connectionHandler!(ws, { url: '/ws?token=valid' });
       expect(ws.close).toHaveBeenCalledWith(4002, '角色不存在');

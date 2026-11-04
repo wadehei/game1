@@ -66,7 +66,7 @@
 | SP-02 | 微信 OAuth 回调伪造 | 伪造微信回调请求，注入虚假 openid | state 参数校验 | 🟢 低 | 确保 state 随机且一次性；验证 signature |
 | SP-03 | 管理员身份冒用 | 通过弱密码或泄露凭证登录后台 | 密码哈希 + 限流 | 🟡 中 | 强制强密码策略；启用 2FA |
 | SP-04 | WebSocket 连接冒充 | 未认证用户发送 WS 消息 | 连接时 JWT 验证 | 🟢 低 | 定期 re-auth；消息签名 |
-| SP-05 | JWT 长期令牌无撤销 | 365天家庭令牌被盗后无法作废 | ✅ 15min access token（黑名单可撤销）+ 30天 refresh token（rotation 每次刷新轮换 + 重用检测触发全量撤销；logout/logout-all 可撤销）；⚠️ 迁移期：存量无 type 字段的旧令牌兼容但不可撤销，待自然过期 | 🟢 低（迁移期残留） | 存量令牌到期后彻底闭环 |
+| SP-05 | JWT 长期令牌无撤销 | 365天家庭令牌被盗后无法作废 | ✅ 15min access token（黑名单可撤销）+ 30天 refresh token（rotation 每次刷新轮换 + 重用检测触发全量撤销；logout/logout-all 可撤销）；✅ 2026-11-05 迁移窗口已关闭：无 type 的旧版长期用户令牌在 HTTP/WS 鉴权中一律拒绝（env 管理员 JWT 除外） | 🟢 低 | 已闭环 |
 | SP-06 | 可预测 OpenID | `Date.now()` 生成的 openid 可被猜测碰撞 | 无 | 🟠 高 | 使用 `crypto.randomUUID()` |
 
 ### 3.2 Tampering（篡改）
@@ -158,7 +158,7 @@
 | TM-07 | 生产环境移除 `BLACKJACK_RIGGED` 调试钩子 | 1h | 后端 | ✅ 已完成 |
 | ID-08 | 聊天敏感词过滤 + 内容安全审查 | 4h | 后端 | ✅ 已完成 |
 | SP-06 | OpenID 改用 `crypto.randomUUID()` | 1h | 后端 | ✅ 已完成 |
-| SP-05 | JWT Token 黑名单 + Refresh Token 机制 | 8h | 后端 | ✅ 已完成（迁移期存量长期令牌不可撤销，见风险表注记） |
+| SP-05 | JWT Token 黑名单 + Refresh Token 机制 | 8h | 后端 | ✅ 已完成（2026-11-05 迁移窗口关闭，旧版长期用户令牌已拒绝） |
 | DS-07 | 头像上传磁盘配额监控 + 认证要求 | 2h | 后端 | 🔲 待实施 |
 
 > 注：RP-03（管理审计日志）已实现，19处覆盖
