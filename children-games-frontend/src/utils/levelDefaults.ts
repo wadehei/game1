@@ -79,6 +79,11 @@ export interface BrickLevelConfig {
   paddleWidth: number;
   lives: number;
 }
+export interface SudokuLevelConfig {
+  gridSize: number;
+  prefilled: number;
+  timeLimit: number;
+}
 
 /** gameId 为字面量时返回该游戏的精确配置形状；动态 string（后台面板）退化为通用表 */
 export interface LevelConfigByGame {
@@ -93,6 +98,7 @@ export interface LevelConfigByGame {
   math: MathLevelConfig;
   match3: Match3LevelConfig;
   brick: BrickLevelConfig;
+  sudoku: SudokuLevelConfig;
 }
 
 // 难度设计原则：每一关都要有孩子能感知的变化（步长足够大），避免"连着几关一模一样"
@@ -172,6 +178,16 @@ const FORMULAS: Record<string, Formula> = {
     ballSpeed: 170 + (level - 1) * 12,
     paddleWidth: Math.max(110 - (level - 1) * 4, 70),
     lives: 3,
+  }),
+  // 动物数独：13 关起升 6×6；预填格每 2 关 -1（越少越难），限时同步收紧
+  sudoku: (level) => ({
+    gridSize: level <= 12 ? 4 : 6,
+    prefilled:
+      level <= 12
+        ? Math.max(11 - Math.floor((level - 1) / 2), 7)
+        : Math.max(20 - Math.floor((level - 13) / 2), 14),
+    timeLimit:
+      level <= 12 ? Math.max(150 - (level - 1) * 8, 60) : Math.max(480 - (level - 13) * 20, 240),
   }),
 };
 
@@ -256,6 +272,11 @@ export const LEVEL_FIELD_DEFS: Record<string, FieldDef[]> = {
     { key: 'ballSpeed', label: '球速' },
     { key: 'paddleWidth', label: '球拍宽度' },
     { key: 'lives', label: '生命值（可掉球次数）' },
+  ],
+  sudoku: [
+    { key: 'gridSize', label: '盘面边长（4 或 6）' },
+    { key: 'prefilled', label: '预填格数（越多越简单）' },
+    { key: 'timeLimit', label: '时限（秒）' },
   ],
 };
 

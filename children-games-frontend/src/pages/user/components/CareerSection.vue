@@ -99,6 +99,10 @@ const games = [
   { id: 'mole', name: '打地鼠', totalLevels: 20, icon: '🐹' },
   { id: 'simon', name: '音乐记忆', totalLevels: 15, icon: '🎵' },
   { id: 'math', name: '数学小怪兽', totalLevels: 20, icon: '👾' },
+  { id: 'match', name: '快乐连线', totalLevels: 20, icon: '🔗' },
+  { id: 'match3', name: '消消乐', totalLevels: 20, icon: '🍬' },
+  { id: 'brick', name: '打砖块', totalLevels: 20, icon: '🧱' },
+  { id: 'sudoku', name: '动物数独', totalLevels: 20, icon: '🦁' },
 ];
 
 const joinedDays = computed(() => {

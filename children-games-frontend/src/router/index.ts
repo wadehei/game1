@@ -101,6 +101,11 @@ const routes = [
     name: 'Brick',
     component: () => import('@/pages/brick/index.vue'),
   },
+  {
+    path: '/sudoku',
+    name: 'Sudoku',
+    component: () => import('@/pages/sudoku/index.vue'),
+  },
 ];
 
 const router = createRouter({

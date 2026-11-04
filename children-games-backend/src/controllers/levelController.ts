@@ -26,6 +26,7 @@ export const LEVEL_FIELDS: Record<string, string[]> = {
   match: ['pairs', 'timeLimit'],
   match3: ['targetScore', 'moves', 'kinds'],
   brick: ['rows', 'ballSpeed', 'paddleWidth', 'lives'],
+  sudoku: ['gridSize', 'prefilled', 'timeLimit'],
 };
 
 /** 读取某关卡的云端覆盖配置：没有则 override 为 null（默认难度以前端内置公式为准） */

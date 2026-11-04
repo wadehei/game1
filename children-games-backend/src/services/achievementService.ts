@@ -32,6 +32,10 @@ export const GAME_RULES: Record<string, { lowerScoreIsBetter: boolean }> = {
   match3: { lowerScoreIsBetter: true },
   // 打砖块的成绩是砖块得分，越高越好
   brick: { lowerScoreIsBetter: false },
+  // 快乐连线的成绩是剩余秒数，越多越好（曾遗漏导致进度上报 400，勿再删）
+  match: { lowerScoreIsBetter: false },
+  // 动物数独的成绩是通关用时（秒），越快越好
+  sudoku: { lowerScoreIsBetter: true },
 };
 
 export const ACHIEVEMENTS: AchievementDef[] = [
@@ -88,7 +92,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     id: 'all_rounder',
     name: '全能玩家',
     icon: '🏅',
-    desc: '玩过全部 11 个游戏',
+    desc: '玩过全部 12 个游戏',
     check: (c) => c.distinctGames >= Object.keys(GAME_RULES).length,
   },
   {

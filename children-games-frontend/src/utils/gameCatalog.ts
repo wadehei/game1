@@ -9,6 +9,7 @@ import iconMathSvg from '@/static/images/games/lobby/icon-math.svg';
 import iconMatchSvg from '@/static/images/games/lobby/icon-match.svg';
 import iconMatch3Svg from '@/static/images/games/lobby/icon-match3.svg';
 import iconBrickSvg from '@/static/images/games/lobby/icon-brick.svg';
+import iconSudokuSvg from '@/static/images/games/lobby/icon-sudoku.svg';
 
 export interface GameCatalogItem {
   id: string;
@@ -95,5 +96,12 @@ export const games: readonly GameCatalogItem[] = [
     totalLevels: 20,
     icon: iconBrickSvg,
     bgColor: 'linear-gradient(135deg, #4D96FF 0%, #6BCB77 100%)',
+  },
+  {
+    id: 'sudoku',
+    name: '动物数独',
+    totalLevels: 20,
+    icon: iconSudokuSvg,
+    bgColor: 'linear-gradient(135deg, #f6b862 0%, #e8874d 100%)',
   },
 ];
