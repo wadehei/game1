@@ -51,8 +51,8 @@ export const verify2fa = asyncHandler(async (req: AdminRequest, res: Response) =
       throw new UnauthorizedError('验证码不正确，请重试');
     }
 
-    const jwt = generateAdminToken(admin.id, admin.username);
-    success(res, { token: jwt });
+    const { token, jti } = generateAdminToken(admin.id, admin.username);
+    success(res, { token, jti });
     return;
   }
 

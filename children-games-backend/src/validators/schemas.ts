@@ -1,4 +1,19 @@
 import { z } from 'zod';
+import { AVATAR_MAX_LENGTH, NICKNAME_MAX_LENGTH, QUIZ_IMPORT_MAX_LIMIT } from '../config/constants';
+
+// 头像 URL 协议校验：允许 http/https/相对路径/emoji，禁止 javascript:/data: 等危险协议
+const safeAvatarRefine = (val: string) => {
+  // 空值/短 emoji 直接通过
+  if (!val || val.length <= 10) return true;
+  // 如果是 URL（含 ://），必须是 http 或 https
+  if (val.includes('://')) {
+    return /^https?:\/\//i.test(val);
+  }
+  // 相对路径 /api/avatars/... 允许
+  if (val.startsWith('/')) return true;
+  // 其余（emoji、纯文字等）允许
+  return true;
+};
 
 // 登录相关
 export const wxLoginSchema = z.object({
@@ -31,14 +46,49 @@ export const familyLoginSchema = z.object({
     .regex(/^\d{4}$/, 'PIN 码必须是4位数字')
     .optional(),
   nickname: z.string().min(1).max(50).optional(),
-  // 头像既支持站内/外 URL 也支持 emoji（默认 😊），不做 url() 强校验
-  avatar: z.string().max(500).optional(),
+  // 头像既支持站内/外 URL 也支持 emoji（默认 😊），需校验 URL 协议安全
+  avatar: z.string().max(500).refine(safeAvatarRefine, '头像 URL 协议不安全').optional(),
 });
 
 // 用户信息更新
 export const updateUserInfoSchema = z.object({
   nickname: z.string().min(1, '昵称不能为空').max(50, '昵称最多50个字符').optional(),
-  avatar: z.string().max(500, '头像字符串过长').optional(),
+  avatar: z
+    .string()
+    .max(500, '头像字符串过长')
+    .refine(safeAvatarRefine, '头像 URL 协议不安全')
+    .optional(),
+});
+
+// 管理员更新用户信息
+export const adminUpdateUserSchema = z.object({
+  nickname: z
+    .string()
+    .min(1, '昵称不能为空')
+    .max(NICKNAME_MAX_LENGTH, `昵称最多${NICKNAME_MAX_LENGTH}个字符`)
+    .optional(),
+  avatar: z
+    .string()
+    .max(AVATAR_MAX_LENGTH, `头像字符串过长`)
+    .refine(safeAvatarRefine, '头像 URL 协议不安全')
+    .optional(),
+  familyGroup: z.string().max(50).optional(),
+});
+
+// 批量导入题目
+export const quizImportSchema = z.object({
+  questions: z
+    .array(
+      z.object({
+        text: z.string().min(1, '题目不能为空').max(500, '题目最多500个字符'),
+        options: z.array(z.string().min(1).max(200)).min(2).max(6),
+        answer: z.number().int().min(0).max(3),
+        difficulty: z.number().int().min(1).max(3).optional(),
+        category: z.string().max(50).optional(),
+      })
+    )
+    .min(1, '至少导入1道题目')
+    .max(QUIZ_IMPORT_MAX_LIMIT, `单次最多导入${QUIZ_IMPORT_MAX_LIMIT}道题目`),
 });
 
 // 角色 PIN 码
@@ -129,6 +179,8 @@ export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;
 export type LogoutInput = z.infer<typeof logoutSchema>;
 export type FamilyLoginInput = z.infer<typeof familyLoginSchema>;
 export type UpdateUserInfoInput = z.infer<typeof updateUserInfoSchema>;
+export type AdminUpdateUserInput = z.infer<typeof adminUpdateUserSchema>;
+export type QuizImportInput = z.infer<typeof quizImportSchema>;
 export type UpdatePinInput = z.infer<typeof updatePinSchema>;
 export type ReportPlaytimeInput = z.infer<typeof reportPlaytimeSchema>;
 export type RecordPlayInput = z.infer<typeof recordPlaySchema>;

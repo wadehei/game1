@@ -41,9 +41,9 @@ export const auditLog = (
       };
 
       // 判断是否为管理员操作（通过 AdminRequest 的 admin 属性）
-      // 当前系统没有管理员表，admin.login 时 admin 属性尚未设置，使用默认值 0
+      // adminId 由 adminMiddleware 从 JWT 中解析并设置
       const adminReq = req as AdminRequest;
-      const adminId = adminReq.admin ? 1 : 0; // TODO: 后续实现管理员表后，从 JWT 中解析 adminId
+      const adminId = adminReq.adminId ?? (adminReq.admin ? 1 : 0);
 
       // 记录审计日志（异步执行，不阻塞响应）
       // 注意：这里使用 Promise 但不 await，让日志写入在后台进行

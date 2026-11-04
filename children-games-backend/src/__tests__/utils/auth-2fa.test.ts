@@ -47,21 +47,31 @@ describe('auth utils - 2FA', () => {
   });
 
   describe('generateAdminToken', () => {
-    it('应生成包含 role=admin 的 JWT', () => {
-      const token = generateAdminToken(5, 'admin');
+    it('应生成包含 role=admin 的 JWT 和 jti', () => {
+      const { token, jti } = generateAdminToken(5, 'admin');
       const decoded = jwt.verify(token, testSecret) as any;
 
       expect(decoded.role).toBe('admin');
       expect(decoded.adminId).toBe(5);
       expect(decoded.username).toBe('admin');
+      expect(decoded.jti).toBe(jti);
+      expect(typeof jti).toBe('string');
+      expect(jti.length).toBeGreaterThan(0);
     });
 
     it('应在 12 小时后过期', () => {
-      const token = generateAdminToken(1, 'test');
+      const { token } = generateAdminToken(1, 'test');
       const decoded = jwt.verify(token, testSecret) as any;
       const diff = decoded.exp - decoded.iat;
 
       expect(diff).toBe(12 * 3600); // 12 hours
+    });
+
+    it('每次调用应生成不同的 jti', () => {
+      const result1 = generateAdminToken(1, 'test');
+      const result2 = generateAdminToken(1, 'test');
+
+      expect(result1.jti).not.toBe(result2.jti);
     });
   });
 

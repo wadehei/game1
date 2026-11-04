@@ -30,7 +30,7 @@ vi.mock('../../../src/services/twoFactorService', () => ({
 
 vi.mock('../../../src/utils/auth', () => ({
   verify2faTempToken: vi.fn().mockReturnValue(1),
-  generateAdminToken: vi.fn().mockReturnValue('mock-jwt-token'),
+  generateAdminToken: vi.fn().mockReturnValue({ token: 'mock-jwt-token', jti: 'mock-jti' }),
 }));
 
 // bcrypt 是 CJS 模块，factory 返回的就是 module.exports
@@ -192,7 +192,7 @@ describe('twoFactorController', () => {
         expect(res.jsonBody).toEqual({
           code: 200,
           message: 'success',
-          data: { token: 'mock-jwt-token' },
+          data: { token: 'mock-jwt-token', jti: 'mock-jti' },
         });
       });
 

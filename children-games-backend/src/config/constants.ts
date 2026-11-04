@@ -16,6 +16,7 @@ export const MAX_LEVEL_NUMBER = 999; // 最大关卡号
 
 // ─── 题库 ────────────────────────────────
 export const QUIZ_PAGE_LIMIT = 20; // 题库分页每页条数
+export const QUIZ_IMPORT_MAX_LIMIT = 200; // 单次批量导入上限
 
 // ─── 用户 ────────────────────────────────
 export const MAX_PLAYTIME_SECONDS = 180; // 单次上报秒数上限

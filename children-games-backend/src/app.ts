@@ -172,7 +172,8 @@ const startServer = async () => {
     await seedDefaultAdmin();
 
     // WebSocket（对战房间），挂在同一个 HTTP server 的 /ws 路径
-    server = app.listen(config.port, () => {
+    // 明确绑定到 IPv4 地址，避免 Vite 代理连接问题
+    server = app.listen(config.port, '127.0.0.1', () => {
       logInfo(
         'server',
         `

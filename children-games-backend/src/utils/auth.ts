@@ -86,9 +86,30 @@ export function generate2faTempToken(adminId: number): string {
   return jwt.sign({ adminId, purpose: '2fa_pending' }, config.jwt.secret, { expiresIn: '5m' });
 }
 
-/** 签发管理员完整 JWT（12 小时） */
-export function generateAdminToken(adminId: number, username: string): string {
-  return jwt.sign({ role: 'admin', adminId, username }, config.jwt.secret, { expiresIn: '12h' });
+/** 管理员 Token Payload */
+export interface AdminTokenPayload {
+  jti: string;
+  role: 'admin';
+  adminId: number;
+  username: string;
+  type: 'access';
+}
+
+/**
+ * 签发管理员完整 JWT（12 小时）
+ * @returns { token, jti } - jti 用于黑名单追踪
+ */
+export function generateAdminToken(
+  adminId: number,
+  username: string
+): { token: string; jti: string } {
+  const jti = randomUUID();
+  const token = jwt.sign(
+    { jti, role: 'admin', adminId, username, type: 'access' },
+    config.jwt.secret,
+    { expiresIn: '12h' }
+  );
+  return { token, jti };
 }
 
 /** 验证 2FA 临时令牌，返回 adminId（失败返回 null） */

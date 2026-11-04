@@ -7,6 +7,7 @@ import { getRoomBus } from '../bus';
 import { applyChipDelta, writeCareerRecords } from '../../services/battleChips';
 import { cardLabel, type Card } from './blackjack/engine';
 import { buildZjhDeck, compareZjh, handRank, typeName } from './zjh/engine';
+import { getSeatedPlayers, clearGameTimer, buildRanking } from './helpers';
 
 const BET_SECONDS = Math.max(5, Number(process.env.ZJH_BET_SECONDS) || 25);
 const ANTE = 10;
@@ -72,8 +73,6 @@ interface ZjhState {
   config: ZjhConfig;
 }
 
-const seatPlayers = (room: Room): Member[] =>
-  [...room.members.values()].filter((m) => m.seat >= 0).sort((a, b) => a.seat - b.seat);
 const aliveSeats = (room: Room, st: ZjhState): number[] =>
   [...st.players]
     .filter(([uid, p]) => !p.folded && room.members.has(uid))
@@ -82,16 +81,11 @@ const aliveSeats = (room: Room, st: ZjhState): number[] =>
 /** 还能行动（未弃/未 allIn/有筹码）的座位 */
 const activeSeats = (room: Room, st: ZjhState): number[] =>
   aliveSeats(room, st).filter((seat) => {
-    const m = seatPlayers(room).find((x) => x.seat === seat);
+    const m = getSeatedPlayers(room).find((x) => x.seat === seat);
     if (!m) return false;
     const p = st.players.get(m.userId)!;
     return !p.allIn && (st.chips.get(m.userId) || 0) > 0;
   });
-
-const clearTimer = (st: ZjhState): void => {
-  if (st.timer) clearTimeout(st.timer);
-  st.timer = null;
-};
 
 /** 本手流水条目（无则 null） */
 const handLogEntry = (st: ZjhState, uid: number) =>
@@ -142,7 +136,7 @@ const dealTo = (st: ZjhState, uid: number): Card[] => {
 };
 
 const armTurnTimer = (room: Room, st: ZjhState): void => {
-  clearTimer(st);
+  clearGameTimer(st);
   st.deadline = Date.now() + BET_SECONDS * 1000;
   const seat = st.turnSeat;
   const timer = setTimeout(() => {
@@ -150,7 +144,7 @@ const armTurnTimer = (room: Room, st: ZjhState): void => {
     if (!r) return;
     const s = r.game as ZjhState;
     if (s.handPhase !== 'betting' || s.turnSeat !== seat) return;
-    const m = seatPlayers(r).find((x) => x.seat === seat);
+    const m = getSeatedPlayers(r).find((x) => x.seat === seat);
     if (!m) return;
     if (s.config.timeoutFold) {
       doFold(r, m, true);
@@ -170,7 +164,7 @@ const armTurnTimer = (room: Room, st: ZjhState): void => {
 
 const startHand = (room: Room): void => {
   const st = room.game as ZjhState;
-  clearTimer(st);
+  clearGameTimer(st);
   st.handPhase = 'betting';
   st.deck = buildZjhDeck();
   st.pot = 0;
@@ -179,7 +173,7 @@ const startHand = (room: Room): void => {
   st.players = new Map();
   st.handStartChips = new Map();
 
-  const players = seatPlayers(room);
+  const players = getSeatedPlayers(room);
   for (const m of players) {
     st.handStartChips.set(m.userId, st.chips.get(m.userId) || 0);
     const chips = st.chips.get(m.userId) || 0;
@@ -377,7 +371,7 @@ const doCompare = (room: Room, me: Member, target: Member): void => {
 
 const winByFold = (room: Room, seat: number | undefined): void => {
   const st = room.game as ZjhState;
-  clearTimer(st);
+  clearGameTimer(st);
   st.handPhase = 'settle';
   if (seat === undefined) {
     // 没有存活玩家（极端：全员弃/掉线）——池子按投入退回
@@ -387,7 +381,7 @@ const winByFold = (room: Room, seat: number | undefined): void => {
     }
     st.pot = 0;
   } else {
-    const m = seatPlayers(room).find((x) => x.seat === seat)!;
+    const m = getSeatedPlayers(room).find((x) => x.seat === seat)!;
     const winAmount = st.pot;
     st.chips.set(m.userId, (st.chips.get(m.userId) || 0) + winAmount);
     st.pot = 0;
@@ -424,11 +418,11 @@ const winByFold = (room: Room, seat: number | undefined): void => {
 
 const showdown = (room: Room): void => {
   const st = room.game as ZjhState;
-  clearTimer(st);
+  clearGameTimer(st);
   st.handPhase = 'showdown';
   const alive = aliveSeats(room, st);
   const reveals = alive.map((seat) => {
-    const m = seatPlayers(room).find((x) => x.seat === seat)!;
+    const m = getSeatedPlayers(room).find((x) => x.seat === seat)!;
     const cards = dealTo(st, m.userId);
     return {
       userId: m.userId,
@@ -439,12 +433,12 @@ const showdown = (room: Room): void => {
   });
   let winnerSeat = alive[0];
   for (let i = 1; i < alive.length; i += 1) {
-    const a = st.players.get(seatPlayers(room).find((x) => x.seat === winnerSeat)!.userId)!;
-    const b = st.players.get(seatPlayers(room).find((x) => x.seat === alive[i])!.userId)!;
+    const a = st.players.get(getSeatedPlayers(room).find((x) => x.seat === winnerSeat)!.userId)!;
+    const b = st.players.get(getSeatedPlayers(room).find((x) => x.seat === alive[i])!.userId)!;
     if (compareZjh(b.cards, a.cards, st.config.special235) > 0) winnerSeat = alive[i];
   }
   getRoomBus().broadcast(room, { t: 'zjh_showdown', reveals });
-  const wm = seatPlayers(room).find((x) => x.seat === winnerSeat)!;
+  const wm = getSeatedPlayers(room).find((x) => x.seat === winnerSeat)!;
   settleHand(room, wm, 'showdown', reveals);
 };
 
@@ -498,8 +492,8 @@ const nextHand = (room: Room, expectRound: number): void => {
   if (!r || r.phase !== 'playing') return;
   const st = r.game as ZjhState;
   if (st.round !== expectRound) return;
-  clearTimer(st);
-  const funded = seatPlayers(r).filter((m) => (st.chips.get(m.userId) || 0) >= ANTE);
+  clearGameTimer(st);
+  const funded = getSeatedPlayers(r).filter((m) => (st.chips.get(m.userId) || 0) >= ANTE);
   if (st.round >= st.totalRounds || funded.length <= 1) {
     finish(r, funded.length <= 1 ? '其他玩家积分已耗尽' : '手数已打满');
     return;
@@ -521,18 +515,13 @@ const nextHand = (room: Room, expectRound: number): void => {
 
 const finish = (room: Room, reason: string): void => {
   const st = room.game as ZjhState;
-  clearTimer(st);
+  clearGameTimer(st);
   st.handPhase = 'settle';
   room.phase = 'ended';
-  const ranking = seatPlayers(room)
-    .map((m) => ({
-      userId: m.userId,
-      nickname: m.nickname,
-      chips: st.chips.get(m.userId) || 0,
-      delta: (st.chips.get(m.userId) || 0) - (st.initialChips.get(m.userId) || 0),
-      seat: m.seat,
-    }))
-    .sort((a, b) => b.chips - a.chips);
+  const ranking = buildRanking(getSeatedPlayers(room), (m) => ({
+    chips: st.chips.get(m.userId) || 0,
+    delta: (st.chips.get(m.userId) || 0) - (st.initialChips.get(m.userId) || 0),
+  })) as Array<{ userId: number; nickname: string; chips: number; delta: number; seat: number }>;
   st.ranking = ranking;
   const bus = getRoomBus();
   bus.broadcast(room, { t: 'zjh_final', ranking, reason });
@@ -611,7 +600,7 @@ export const zjhHandler: GameHandler<ZjhState> = {
     const st = room.game as ZjhState;
     st.config = zjhHandler.normalizeConfig!(room.config) as ZjhConfig;
     st.totalRounds = st.config.roundLimit;
-    const players = seatPlayers(room);
+    const players = getSeatedPlayers(room);
     st.chips = new Map();
     st.initialChips = new Map();
     for (const m of players) {
@@ -641,7 +630,7 @@ export const zjhHandler: GameHandler<ZjhState> = {
       quitEntry.ended = 'fold';
     }
     st.players.delete(member.userId);
-    const remaining = seatPlayers(room);
+    const remaining = getSeatedPlayers(room);
     if (remaining.length < 2 && room.phase === 'playing') {
       finish(room, '人数不足，提前结束');
       return { ended: { winnerSeat: st.ranking?.[0]?.seat ?? -1, reason: '人数不足，提前结束' } };
@@ -695,7 +684,7 @@ export const zjhHandler: GameHandler<ZjhState> = {
     if (action === 'zjh_compare') {
       if (st.roundNo < COMPARE_MIN_ROUND) return { error: `第 ${COMPARE_MIN_ROUND} 轮起才能比牌` };
       const targetSeat = Number(payload?.target);
-      const target = seatPlayers(room).find((x) => x.seat === targetSeat);
+      const target = getSeatedPlayers(room).find((x) => x.seat === targetSeat);
       if (!target || target.userId === member.userId) return { error: '无效的比牌对象' };
       const tp = st.players.get(target.userId);
       if (!tp || tp.folded) return { error: '对方已弃牌' };
