@@ -2,6 +2,7 @@ import { Op, Transaction } from 'sequelize';
 import { sequelize } from '../config/database';
 import { GameProgress, DailyTask } from '../models';
 import { formatDate } from '../utils/date';
+import { RewardTotalRow } from '../types/query';
 
 // 每 15 颗星升一级
 export const LEVEL_STAR_THRESHOLD = 15;
@@ -54,5 +55,5 @@ export const getTotalDailyReward = async (userId: number, t?: Transaction): Prom
     raw: true,
     transaction: t,
   });
-  return parseInt((rewardRows[0] as any)?.rewardTotal, 10) || 0;
+  return parseInt((rewardRows[0] as unknown as RewardTotalRow)?.rewardTotal as string, 10) || 0;
 };

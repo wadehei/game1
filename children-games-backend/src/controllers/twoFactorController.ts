@@ -101,7 +101,7 @@ export const get2faStatus = asyncHandler(async (req: AdminRequest, res: Response
 /** 从请求中提取管理员记录（要求完整认证 JWT） */
 const requireAdmin = async (req: AdminRequest): Promise<Admin> => {
   // adminAuth 中间件已验证 JWT，从 token payload 获取 adminId
-  const adminId = (req as any).adminId;
+  const adminId = req.adminId;
   if (!adminId) {
     throw new UnauthorizedError('无法识别管理员身份');
   }

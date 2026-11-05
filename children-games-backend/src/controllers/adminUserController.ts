@@ -17,6 +17,7 @@ import { BadRequestError, NotFoundError } from '../errors/AppError';
 import { withTransaction } from '../utils/transaction';
 import { formatDate } from '../utils/date';
 import { NICKNAME_MAX_LENGTH, AVATAR_MAX_LENGTH } from '../config/constants';
+import { invalidateAllLeaderboards } from '../services/leaderboardCacheService';
 
 // ─── 角色管理 ────────────────────────────────
 
@@ -64,7 +65,7 @@ export const getUsers = asyncHandler(async (req: AdminRequest, res: Response) =>
       totalStars: u.totalStars,
       battleChips: u.battleChips ?? 1000,
       isFamily: u.openid.startsWith('family_'),
-      hasPin: !!(u as any).pinHash,
+      hasPin: !!u.pinHash,
       gamesPlayed: progressCountByUser.get(u.id) || 0,
       todaySeconds: playtimeByUser.get(u.id) || 0,
       lastActiveAt: lastActiveByUser.get(u.id) || null,
@@ -134,6 +135,9 @@ export const resetUserProgress = asyncHandler(async (req: AdminRequest, res: Res
     return user;
   }, 'resetUserProgress');
 
+  // 进度重置后清除所有排行榜缓存
+  await invalidateAllLeaderboards();
+
   success(res, { id: userId, nickname: user.nickname });
 });
 
@@ -174,6 +178,9 @@ export const deleteUser = asyncHandler(async (req: AdminRequest, res: Response) 
     await UserPlaytime.destroy({ where: { userId }, transaction: t });
     await user.destroy({ transaction: t });
   }, 'deleteUser');
+
+  // 用户删除后清除所有排行榜缓存
+  await invalidateAllLeaderboards();
 
   success(res, { id: userId });
 });

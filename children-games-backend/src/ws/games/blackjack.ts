@@ -434,10 +434,19 @@ export const blackjackHandler: GameHandler<BJState> = {
   maxPlayers: 5,
   allowSpectators: true,
   rematchSwapSeats: false,
+  validActions: new Set([
+    'blackjack_bet',
+    'blackjack_pass_bank',
+    'blackjack_hit',
+    'blackjack_stand',
+    'blackjack_double',
+  ]),
 
-  normalizeConfig(config: any): any {
+  normalizeConfig(config: Record<string, unknown>): Record<string, unknown> {
     const modes = ['rotate', 'winner', 'keep'];
-    const mode = modes.includes(config?.bankerMode) ? config.bankerMode : 'rotate';
+    const mode = modes.includes(config?.bankerMode as string)
+      ? (config.bankerMode as string)
+      : 'rotate';
     const limit = Number(config?.roundLimit);
     return {
       bankerMode: mode,
@@ -538,7 +547,12 @@ export const blackjackHandler: GameHandler<BJState> = {
     return undefined;
   },
 
-  onAction(room: Room, member: Member, action: string, payload: any): ActionResult {
+  onAction(
+    room: Room,
+    member: Member,
+    action: string,
+    payload: Record<string, unknown>
+  ): ActionResult {
     const st = room.game as BJState;
     const bus = getRoomBus();
     const isBanker = member.seat === st.bankerSeat;

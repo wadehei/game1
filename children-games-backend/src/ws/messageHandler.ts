@@ -164,6 +164,13 @@ export const dispatchMessage = (
 
     default: {
       const handler = getHandler(room.gameType);
+
+      // 安全校验: 验证消息类型是否在游戏的合法动作白名单中
+      if (handler.validActions && !handler.validActions.has(msg.t as string)) {
+        send(ws, { t: 'error', message: '不支持的操作类型' });
+        return;
+      }
+
       let result;
       try {
         result = handler.onAction(room, me, msg.t as string, msg);

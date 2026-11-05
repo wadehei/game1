@@ -155,6 +155,12 @@ export interface CareerSummary {
 
 /** 个人中心生涯：当前积分 + 分游戏统计 + 最近 20 条流水 */
 export const getCareer = async (userId: number): Promise<CareerSummary> => {
+  interface GroupedGame {
+    gameType: string;
+    total: number | string;
+    wins: number | string | null;
+  }
+
   // 三条独立查询并行执行
   const [user, grouped, recent] = await Promise.all([
     User.findByPk(userId, { attributes: ['battleChips'] }),
@@ -176,7 +182,7 @@ export const getCareer = async (userId: number): Promise<CareerSummary> => {
   ]);
   return {
     chips: user?.battleChips ?? 0,
-    games: (grouped as any[]).map((g) => ({
+    games: (grouped as unknown as GroupedGame[]).map((g) => ({
       gameType: g.gameType,
       total: Number(g.total),
       wins: Number(g.wins || 0),

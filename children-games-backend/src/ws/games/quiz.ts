@@ -53,6 +53,7 @@ export const quizHandler: GameHandler<QuizState> = {
   maxPlayers: 8,
   allowSpectators: true,
   rematchSwapSeats: false,
+  validActions: new Set(['quiz_answer']),
 
   create(): QuizState {
     return {
@@ -125,7 +126,12 @@ export const quizHandler: GameHandler<QuizState> = {
     return undefined;
   },
 
-  onAction(room: Room, member: Member, action: string, payload: any): ActionResult {
+  onAction(
+    room: Room,
+    member: Member,
+    action: string,
+    payload: Record<string, unknown>
+  ): ActionResult {
     if (action !== 'quiz_answer') return { error: '未知的游戏操作' };
     if (room.phase !== 'playing' || member.seat < 0) return { error: '当前不能作答' };
 

@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { Op, Transaction } from 'sequelize';
 import { z } from 'zod';
 import { GameProgress, User } from '../models';
+import { GameProgressCreationAttributes } from '../models/GameProgress';
+import { GameProgressWithUser } from '../types/game';
 import { AuthRequest } from '../middleware/auth';
 import { success, asyncHandler } from '../utils/response';
 import { BadRequestError } from '../errors/AppError';
@@ -421,7 +423,7 @@ export const recordPlay = asyncHandler(async (req: AuthRequest, res: Response) =
   const userId = req.userId!;
   const [progress] = await GameProgress.findOrCreate({
     where: { userId, gameId },
-    defaults: { userId, gameId, playCount: 0, winCount: 0 } as any,
+    defaults: { userId, gameId, playCount: 0, winCount: 0 } as GameProgressCreationAttributes,
   });
   if (progress) {
     progress.playCount += 1;
@@ -538,14 +540,17 @@ export const getLeaderboard = asyncHandler(async (req: Request, res: Response) =
     limit: LEADERBOARD_CACHE_LIMIT, // 缓存全量 top100，按 limit 截取返回
   });
 
-  const leaderboard = progressList.map((p, index) => ({
-    rank: index + 1,
-    userId: p.userId,
-    nickname: (p as any).user?.nickname || '匿名',
-    avatar: (p as any).user?.avatar || '',
-    highScore: p.highScore,
-    level: p.currentLevel,
-  }));
+  const leaderboard = progressList.map((p, index) => {
+    const pw = p as GameProgressWithUser;
+    return {
+      rank: index + 1,
+      userId: p.userId,
+      nickname: pw.user?.nickname || '匿名',
+      avatar: pw.user?.avatar || '',
+      highScore: p.highScore,
+      level: p.currentLevel,
+    };
+  });
 
   // 3) 回填缓存
   await cacheLeaderboard(gameId, leaderboard);

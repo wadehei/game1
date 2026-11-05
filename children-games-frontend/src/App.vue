@@ -60,7 +60,12 @@ document.addEventListener('visibilitychange', handleVisibilityForWakeLock);
 requestWakeLock();
 </script>
 
+<!--
+  以下为全局 intentional 样式：CSS reset、:root 变量、通用工具类（.container/.card/.btn-*）
+  这些样式需要作用于整个应用，不能 scoped，因此保留在全局 <style> 中。
+-->
 <style>
+/* ========== Global Reset & Variables ========== */
 * {
   margin: 0;
   padding: 0;

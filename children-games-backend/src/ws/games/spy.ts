@@ -208,6 +208,7 @@ export const spyHandler: GameHandler<SpyState> = {
   maxPlayers: 12,
   allowSpectators: false,
   rematchSwapSeats: false,
+  validActions: new Set(['spy_vote']),
 
   create(): SpyState {
     return {
@@ -293,7 +294,12 @@ export const spyHandler: GameHandler<SpyState> = {
     return undefined;
   },
 
-  onAction(room: Room, member: Member, action: string, payload: any): ActionResult {
+  onAction(
+    room: Room,
+    member: Member,
+    action: string,
+    payload: Record<string, unknown>
+  ): ActionResult {
     if (action !== 'spy_vote') return { error: '未知的游戏操作' };
     const st = room.game as SpyState;
     if (room.phase !== 'playing' || st.phase !== 'vote') return { error: '当前不是投票阶段' };

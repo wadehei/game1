@@ -3,7 +3,10 @@ import vue from '@vitejs/plugin-vue';
 import viteCompression from 'vite-plugin-compression';
 import path from 'path';
 
-export default defineConfig({
+// 构建分析模式：ANALYZE=true npm run build 生成 dist/stats.html
+const isAnalyze = process.env.ANALYZE === 'true';
+
+export default defineConfig(async ({ mode }) => ({
   // CDN 部署：通过 VITE_CDN_URL 环境变量指定静态资源前缀
   base: process.env.VITE_CDN_URL || '/',
   plugins: [
@@ -12,6 +15,17 @@ export default defineConfig({
     viteCompression({ algorithm: 'gzip', ext: '.gz', threshold: 1024 }),
     // brotli 预压缩（>1KB 的文件生成 .br）
     viteCompression({ algorithm: 'brotliCompress', ext: '.br', threshold: 1024 }),
+    // 构建产物分析（仅 ANALYZE=true 时生成 stats.html）
+    ...(isAnalyze
+      ? [
+          (await import('rollup-plugin-visualizer')).default({
+            open: false,
+            filename: 'dist/stats.html',
+            gzipSize: true,
+            brotliSize: true,
+          }),
+        ]
+      : []),
   ],
   resolve: {
     alias: {
@@ -55,4 +69,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));

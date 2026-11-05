@@ -1,7 +1,7 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import { sequelize } from '../config/database';
 
-interface AuditLogAttributes {
+export interface AuditLogAttributes {
   id: number;
   adminId: number;
   action: string;

@@ -84,7 +84,7 @@ router.post(
   '/',
   authMiddleware,
   asyncHandler(async (req: Request & { userId?: number }, res: Response) => {
-    const { gameType, config } = req.body as { gameType?: GameType; config?: any };
+    const { gameType, config } = req.body as { gameType?: GameType; config?: unknown };
     const type: GameType = isGameType(gameType) ? gameType : 'gomoku';
     const user = { userId: req.userId!, nickname: '', avatar: '' };
     // 建房响应里不含昵称也无妨，进房时 WS 会重新取；这里补全以便房间页立即显示房主

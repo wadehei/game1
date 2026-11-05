@@ -121,6 +121,7 @@ export const unoHandler: GameHandler<UnoState> = {
   maxPlayers: 6,
   allowSpectators: true,
   rematchSwapSeats: false,
+  validActions: new Set(['uno_play', 'uno_draw', 'uno_pass']),
 
   create(): UnoState {
     return {
@@ -241,7 +242,12 @@ export const unoHandler: GameHandler<UnoState> = {
     return undefined;
   },
 
-  onAction(room: Room, member: Member, action: string, payload: any): ActionResult {
+  onAction(
+    room: Room,
+    member: Member,
+    action: string,
+    payload: Record<string, unknown>
+  ): ActionResult {
     const st = room.game as UnoState;
     const seat = member.seat;
     const isMyTurn = seat === st.turnSeat && room.phase === 'playing';

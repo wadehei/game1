@@ -18,6 +18,13 @@ interface WordItem {
   difficulty: number;
 }
 
+interface Stroke {
+  seq: number;
+  points: unknown[];
+  color: string;
+  width: number;
+}
+
 const WORDS = wordsJson as unknown as WordItem[];
 
 const shuffle = <T>(arr: T[]): T[] => secureShuffle(arr);
@@ -42,7 +49,7 @@ interface DrawState {
   candidates: string[];
   word: string | null;
   category: string;
-  strokes: any[];
+  strokes: Stroke[];
   guessed: Set<number>; // 已猜对的 userId
   scores: Map<number, number>;
   deadline: number;
@@ -198,6 +205,14 @@ export const drawHandler: GameHandler<DrawState> = {
   maxPlayers: 8,
   allowSpectators: true,
   rematchSwapSeats: false,
+  validActions: new Set([
+    'draw_pick',
+    'draw_stroke',
+    'draw_undo',
+    'draw_clear',
+    'draw_skip',
+    'guess',
+  ]),
 
   create(): DrawState {
     return {
@@ -305,7 +320,12 @@ export const drawHandler: GameHandler<DrawState> = {
     }
   },
 
-  onAction(room: Room, member: Member, action: string, payload: any): ActionResult {
+  onAction(
+    room: Room,
+    member: Member,
+    action: string,
+    payload: Record<string, unknown>
+  ): ActionResult {
     const st = room.game as DrawState;
     const isDrawer = member.seat === st.drawerSeat;
     const bus = getRoomBus();
@@ -322,9 +342,9 @@ export const drawHandler: GameHandler<DrawState> = {
       if (room.phase !== 'playing' || st.phase !== 'drawing' || !isDrawer)
         return { error: '只有画家能画画' };
       // 不做服务端节流：客户端已按 10Hz 批量发送，静默丢包会造成其他端笔迹断层
-      const stroke = {
+      const stroke: Stroke = {
         seq: ++st.drawSeq,
-        points: payload?.points || [],
+        points: (payload?.points as unknown[]) || [],
         color: String(payload?.color || '#333'),
         width: Number(payload?.width) || 4,
       };

@@ -11,7 +11,7 @@ export { BattleRecord } from './BattleRecord';
 export { AuditLog } from './AuditLog';
 export { Admin } from './Admin';
 
-import { ModelStatic } from 'sequelize';
+import { ModelStatic, Model } from 'sequelize';
 import { sequelize } from '../config/database';
 import { User } from './User';
 import { GameProgress } from './GameProgress';
@@ -80,7 +80,18 @@ export const initModels = async (): Promise<void> => {
 /** 对比模型定义与数据库实际索引，自动补齐缺失索引 */
 const syncMissingIndexes = async (): Promise<void> => {
   const queryInterface = sequelize.getQueryInterface();
-  const models: Array<{ model: ModelStatic<any> & { _indexes?: any[] }; tableName: string }> = [
+
+  interface IndexDefinition {
+    fields: string[];
+    name?: string;
+    unique?: boolean;
+  }
+
+  interface ModelWithIndexes<M extends Model> extends ModelStatic<M> {
+    _indexes?: IndexDefinition[];
+  }
+
+  const models: Array<{ model: ModelWithIndexes<Model>; tableName: string }> = [
     { model: GameProgress, tableName: 'game_progress' },
     { model: UserPlaytime, tableName: 'user_playtime' },
     { model: FeedbackReply, tableName: 'feedback_replies' },
@@ -107,7 +118,7 @@ const syncMissingIndexes = async (): Promise<void> => {
 };
 
 /** 对比模型定义与数据库实际列，自动补齐缺失列 */
-const syncMissingColumns = async (model: ModelStatic<any>): Promise<void> => {
+const syncMissingColumns = async <M extends Model>(model: ModelStatic<M>): Promise<void> => {
   const queryInterface = sequelize.getQueryInterface();
   const tableName = model.getTableName() as string;
   const described = await queryInterface.describeTable(tableName);

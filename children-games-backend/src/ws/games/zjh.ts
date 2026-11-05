@@ -548,8 +548,9 @@ export const zjhHandler: GameHandler<ZjhState> = {
   maxPlayers: 6,
   allowSpectators: true,
   rematchSwapSeats: false,
+  validActions: new Set(['zjh_look', 'zjh_call', 'zjh_fold', 'zjh_raise', 'zjh_compare']),
 
-  normalizeConfig(config: any): any {
+  normalizeConfig(config: Record<string, unknown>): Record<string, unknown> {
     return {
       special235: config?.special235 !== false,
       timeoutFold: config?.timeoutFold !== false,
@@ -642,7 +643,12 @@ export const zjhHandler: GameHandler<ZjhState> = {
     return undefined;
   },
 
-  onAction(room: Room, member: Member, action: string, payload: any): ActionResult {
+  onAction(
+    room: Room,
+    member: Member,
+    action: string,
+    payload: Record<string, unknown>
+  ): ActionResult {
     const st = room.game as ZjhState;
     if (room.phase !== 'playing' || st.handPhase !== 'betting')
       return { error: '当前不是下注阶段' };

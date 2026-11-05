@@ -41,7 +41,10 @@ export const buildBackupSql = async (): Promise<string> => {
   ];
 
   for (const table of BACKUP_TABLES) {
-    const [rows] = (await sequelize.query(`SELECT * FROM \`${table}\``)) as [any[], unknown];
+    const [rows] = (await sequelize.query(`SELECT * FROM \`${table}\``)) as [
+      Record<string, unknown>[],
+      unknown,
+    ];
     lines.push(`-- ${table}（${rows.length} 行）`);
     lines.push(`DELETE FROM \`${table}\`;`);
     for (const row of rows) {

@@ -14,10 +14,16 @@ export const gomokuHandler: GameHandler<GomokuState> = {
   maxPlayers: 2,
   allowSpectators: true,
   rematchSwapSeats: true,
+  validActions: new Set(['move', 'resign']),
 
   create: () => createGomoku(),
 
-  onAction(room: Room, member: Member, action: string, payload: any): ActionResult {
+  onAction(
+    room: Room,
+    member: Member,
+    action: string,
+    payload: Record<string, unknown>
+  ): ActionResult {
     const seat = member.seat;
 
     if (action === 'move') {

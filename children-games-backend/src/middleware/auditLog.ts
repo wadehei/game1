@@ -87,7 +87,7 @@ export const auditLogin = () => {
 
     // 重写 res.json 以拦截登录成功的响应
     const originalJson = res.json.bind(res);
-    res.json = function (body: any) {
+    res.json = function (body: Record<string, unknown>) {
       // 登录成功（code: 200）时记录审计日志
       if (body && body.code === 200) {
         recordAuditLog({

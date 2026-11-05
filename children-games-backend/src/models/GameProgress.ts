@@ -16,7 +16,7 @@ interface GameProgressAttributes {
   updatedAt?: Date;
 }
 
-interface GameProgressCreationAttributes extends Optional<
+export interface GameProgressCreationAttributes extends Optional<
   GameProgressAttributes,
   | 'id'
   | 'currentLevel'

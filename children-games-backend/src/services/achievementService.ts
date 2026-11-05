@@ -1,6 +1,7 @@
 import { Op, Transaction } from 'sequelize';
 import { sequelize } from '../config/database';
 import { GameProgress, User, DailyTask } from '../models';
+import { RewardTotalRow } from '../types/query';
 
 // ─── 成就系统 ────────────────────────────────────────
 // 判定只依赖用户当前进度数据，随时可幂等重算
@@ -125,7 +126,8 @@ export const evaluateAchievements = async (
     levels[p.gameId] = Math.max(levels[p.gameId] || 0, p.currentLevel);
   });
 
-  const dailyRewardClaimed = (parseInt((rewardRows[0] as any)?.rewardTotal, 10) || 0) > 0;
+  const dailyRewardClaimed =
+    (parseInt((rewardRows[0] as unknown as RewardTotalRow)?.rewardTotal as string, 10) || 0) > 0;
   const totalStars = user?.totalStars || 0;
   const ctx = { totalStars, levels, distinctGames: allProgress.length, dailyRewardClaimed };
 

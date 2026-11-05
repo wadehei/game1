@@ -1,4 +1,5 @@
 import { Request } from 'express';
+import { WhereOptions } from 'sequelize';
 import { AuditLog } from '../models';
 import { logError } from '../utils/logger';
 
@@ -87,7 +88,7 @@ export const queryAuditLogs = async (params: {
   endDate?: string;
 }): Promise<{ list: AuditLog[]; total: number; page: number; limit: number }> => {
   const { Op } = await import('sequelize');
-  const where: any = {};
+  const where: WhereOptions = {};
 
   // 按动作类型过滤
   if (params.action) {
