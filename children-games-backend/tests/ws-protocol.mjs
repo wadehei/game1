@@ -78,8 +78,8 @@ class Client {
 const loginA = await http('POST', '/api/user/login/family', { uid: 2 });
 const loginB = await http('POST', '/api/user/login/family', { uid: 4 });
 check('角色 A/B 登录', loginA.json?.code === 200 && loginB.json?.code === 200);
-const tokenA = loginA.json.data.token;
-const tokenB = loginB.json.data.token;
+const tokenA = loginA.json.data.accessToken;
+const tokenB = loginB.json.data.accessToken;
 
 const created = await http('POST', '/api/room', { gameType: 'gomoku' }, tokenA);
 check('A 创建房间', created.json?.code === 200 && /^\d{4}$/.test(created.json.data.roomId));
@@ -149,7 +149,7 @@ const downA = await http('GET', `/api/room/${roomId}/voice/${up.json.data.voiceI
 check('B 拉取语音字节一致', downA.buf.equals(fakeAudio));
 // 不在房间里的人不能拉取
 const outsider = await http('POST', '/api/user/login/family', { uid: 6 });
-const noAuth = await http('GET', `/api/room/${roomId}/voice/${up.json.data.voiceId}`, null, outsider.json.data.token);
+const noAuth = await http('GET', `/api/room/${roomId}/voice/${up.json.data.voiceId}`, null, outsider.json.data.accessToken);
 check('房间外人拉取语音被拒', noAuth.status === 403);
 
 // 再来一局：双方表决 → 重开并交换颜色
@@ -178,7 +178,7 @@ const closedA = await A.waitFor('closed');
 const closedB = await B.waitFor('closed');
 check('房主解散，全员收到通知', !!closedA.reason && !!closedB.reason);
 const gone = await http('POST', '/api/user/login/family', { uid: 3 });
-const rejoin = await http('POST', '/api/room', { gameType: 'gomoku' }, gone.json.data.token);
+const rejoin = await http('POST', '/api/room', { gameType: 'gomoku' }, gone.json.data.accessToken);
 check('解散后原房间码失效（新建房间码不同或旧码不存在）', rejoin.json.data.roomId !== roomId);
 
 A.close();

@@ -72,8 +72,8 @@ class Client {
 }
 
 // ── 开始（2 人局） ──
-const tokenA = (await http('POST', '/api/user/login/family', { uid: 2 })).json.data.token;
-const tokenB = (await http('POST', '/api/user/login/family', { uid: 4 })).json.data.token;
+const tokenA = (await http('POST', '/api/user/login/family', { uid: 2 })).json.data.accessToken;
+const tokenB = (await http('POST', '/api/user/login/family', { uid: 4 })).json.data.accessToken;
 check('角色登录', !!tokenA && !!tokenB);
 
 const created = await http('POST', '/api/room', { gameType: 'uno' }, tokenA);

@@ -144,7 +144,7 @@ export const getLevelOverrides = asyncHandler(async (req: AdminRequest, res: Res
 /** 保存某关卡的难度覆盖（只允许各游戏白名单内的字段） */
 export const saveLevelOverride = asyncHandler(async (req: AdminRequest, res: Response) => {
   const gameId = String(req.params.gameId || '');
-  const level = parseInt(String(req.params.level), 10);
+  const level = parseInt(String(req.params.levelNumber ?? req.params.level), 10);
   const allowed = LEVEL_FIELDS[gameId];
 
   if (!allowed) {
@@ -175,7 +175,7 @@ export const saveLevelOverride = asyncHandler(async (req: AdminRequest, res: Res
 /** 删除某关卡的覆盖（恢复内置默认难度） */
 export const deleteLevelOverride = asyncHandler(async (req: AdminRequest, res: Response) => {
   const gameId = String(req.params.gameId || '');
-  const level = parseInt(String(req.params.level), 10);
+  const level = parseInt(String(req.params.levelNumber ?? req.params.level), 10);
 
   if (!LEVEL_FIELDS[gameId]) {
     throw new BadRequestError('未知的 gameId');

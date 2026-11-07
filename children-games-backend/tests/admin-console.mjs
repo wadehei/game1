@@ -59,12 +59,12 @@ check('测试后积分还原', restore?.code === 200 && restore.data.battleChips
 // ── 删除在房成员：立即请出（不等 60s 掉线判定） ──
 const WebSocket = (await import('ws')).default;
 const tempLogin = await api('POST', '/api/user/login/family', { nickname: '删除测试临时', avatar: '🤖' });
-check('临时测试成员创建', tempLogin?.code === 200 && !!tempLogin.data?.token);
+check('临时测试成员创建', tempLogin?.code === 200 && !!tempLogin.data?.accessToken);
 const tempUid = tempLogin.data.userInfo.id;
-const tempRoom = await api('POST', '/api/room', { gameType: 'zjh', config: { career: false } }, tempLogin.data.token);
+const tempRoom = await api('POST', '/api/room', { gameType: 'zjh', config: { career: false } }, tempLogin.data.accessToken);
 check('临时成员建房', tempRoom?.code === 200 && !!tempRoom.data.roomId);
 
-const tempWs = new WebSocket(`ws://localhost:3002/ws?token=${tempLogin.data.token}&roomId=${tempRoom.data.roomId}`);
+const tempWs = new WebSocket(`ws://localhost:3002/ws?token=${tempLogin.data.accessToken}&roomId=${tempRoom.data.roomId}`);
 const tempEvents = [];
 await new Promise((resolve, reject) => {
   const t = setTimeout(() => reject(new Error('连接超时')), 6000);

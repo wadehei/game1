@@ -7,7 +7,20 @@ import { getRoomBus } from '../bus';
 import { applyChipDelta, writeCareerRecords } from '../../services/battleChips';
 import { cardLabel, type Card } from './blackjack/engine';
 import { buildZjhDeck, compareZjh, handRank, typeName } from './zjh/engine';
-import { getSeatedPlayers, clearGameTimer, buildRanking } from './helpers';
+import {
+  getSeatedPlayers,
+  clearGameTimer,
+  appendRoundLog,
+  armStateTimer,
+  betLedgerView,
+  chipsView,
+  dropRoundLog,
+  findRoundLog,
+  finishChipGame,
+  initChipSnapshots,
+  nextHandGate,
+  seatedAt,
+} from './helpers';
 
 const BET_SECONDS = Math.max(5, Number(process.env.ZJH_BET_SECONDS) || 25);
 const ANTE = 10;
@@ -81,15 +94,14 @@ const aliveSeats = (room: Room, st: ZjhState): number[] =>
 /** 还能行动（未弃/未 allIn/有筹码）的座位 */
 const activeSeats = (room: Room, st: ZjhState): number[] =>
   aliveSeats(room, st).filter((seat) => {
-    const m = getSeatedPlayers(room).find((x) => x.seat === seat);
+    const m = seatedAt(room, seat);
     if (!m) return false;
     const p = st.players.get(m.userId)!;
     return !p.allIn && (st.chips.get(m.userId) || 0) > 0;
   });
 
 /** 本手流水条目（无则 null） */
-const handLogEntry = (st: ZjhState, uid: number) =>
-  (st.betLog.get(uid) || []).find((e) => e.round === st.round) || null;
+const handLogEntry = (st: ZjhState, uid: number) => findRoundLog(st.betLog, uid, st.round);
 
 /** 本手结算：按玩家回填每手净输赢与结束方式 */
 const markHandSettled = (st: ZjhState, winnerUid: number, winAmount: number): void => {
@@ -103,10 +115,7 @@ const markHandSettled = (st: ZjhState, winnerUid: number, winAmount: number): vo
 
 /** 移除本手流水条目（退款路径用） */
 const dropHandLog = (st: ZjhState, uid: number): void => {
-  const log = st.betLog.get(uid);
-  if (!log) return;
-  const idx = log.findIndex((e) => e.round === st.round);
-  if (idx >= 0) log.splice(idx, 1);
+  dropRoundLog(st.betLog, uid, st.round, false);
 };
 
 const phasePayload = (room: Room, st: ZjhState) => ({
@@ -136,30 +145,32 @@ const dealTo = (st: ZjhState, uid: number): Card[] => {
 };
 
 const armTurnTimer = (room: Room, st: ZjhState): void => {
-  clearGameTimer(st);
   st.deadline = Date.now() + BET_SECONDS * 1000;
   const seat = st.turnSeat;
-  const timer = setTimeout(() => {
-    const r = getRoom(room.id);
-    if (!r) return;
-    const s = r.game as ZjhState;
-    if (s.handPhase !== 'betting' || s.turnSeat !== seat) return;
-    const m = getSeatedPlayers(r).find((x) => x.seat === seat);
-    if (!m) return;
-    if (s.config.timeoutFold) {
-      doFold(r, m, true);
-    } else {
-      const p = s.players.get(m.userId);
-      if (p) p.timeoutCalls += 1;
-      if (p && p.timeoutCalls >= FORCE_FOLD_AFTER_TIMEOUTS) {
-        doFold(r, m, true); // 连续超时太多次：强制弃牌，防止掉线挂机一直自动跟注放血
+  armStateTimer(
+    room,
+    st,
+    () => {
+      const r = getRoom(room.id);
+      if (!r) return;
+      const s = r.game as ZjhState;
+      if (s.handPhase !== 'betting' || s.turnSeat !== seat) return;
+      const m = seatedAt(r, seat);
+      if (!m) return;
+      if (s.config.timeoutFold) {
+        doFold(r, m, true);
       } else {
-        doCall(r, m, true);
+        const p = s.players.get(m.userId);
+        if (p) p.timeoutCalls += 1;
+        if (p && p.timeoutCalls >= FORCE_FOLD_AFTER_TIMEOUTS) {
+          doFold(r, m, true); // 连续超时太多次：强制弃牌，防止掉线挂机一直自动跟注放血
+        } else {
+          doCall(r, m, true);
+        }
       }
-    }
-  }, BET_SECONDS * 1000);
-  st.timer = timer;
-  addTimer(room, timer);
+    },
+    BET_SECONDS * 1000
+  );
 };
 
 const startHand = (room: Room): void => {
@@ -199,9 +210,12 @@ const startHand = (room: Room): void => {
       betTotal: ANTE,
       timeoutCalls: 0,
     });
-    const log = st.betLog.get(m.userId) || [];
-    log.push({ round: st.round, betTotal: ANTE, delta: null, ended: null });
-    st.betLog.set(m.userId, log);
+    appendRoundLog(st.betLog, m.userId, {
+      round: st.round,
+      betTotal: ANTE,
+      delta: null,
+      ended: null,
+    });
   }
   getRoomBus().broadcast(room, phasePayload(room, st));
   advanceTurn(room, st, true);
@@ -369,6 +383,24 @@ const doCompare = (room: Room, me: Member, target: Member): void => {
   advanceTurn(room, st, false);
 };
 
+/** 本手结算通用块：按 handStartChips 算每人 delta、实时入账并同步成员携带积分 */
+const handDeltas = (room: Room, st: ZjhState) => {
+  const deltas = [...st.chips]
+    .filter(([uid]) => st.handStartChips.has(uid))
+    .map(([uid, chips]) => ({
+      userId: uid,
+      nickname: room.members.get(uid)?.nickname || `角色${uid}`,
+      delta: chips - (st.handStartChips.get(uid) || 0),
+      chips,
+    }));
+  for (const d of deltas) {
+    if (d.delta) void applyChipDelta(d.userId, d.delta); // 每手实时入账
+    const m = room.members.get(d.userId);
+    if (m) m.chips = d.chips;
+  }
+  return deltas;
+};
+
 const winByFold = (room: Room, seat: number | undefined): void => {
   const st = room.game as ZjhState;
   clearGameTimer(st);
@@ -381,25 +413,13 @@ const winByFold = (room: Room, seat: number | undefined): void => {
     }
     st.pot = 0;
   } else {
-    const m = getSeatedPlayers(room).find((x) => x.seat === seat)!;
+    const m = seatedAt(room, seat)!;
     const winAmount = st.pot;
     st.chips.set(m.userId, (st.chips.get(m.userId) || 0) + winAmount);
     st.pot = 0;
     st.lastWinnerSeat = seat;
     markHandSettled(st, m.userId, winAmount);
-    const deltas = [...st.chips]
-      .filter(([uid]) => st.handStartChips.has(uid))
-      .map(([uid, chips]) => ({
-        userId: uid,
-        nickname: room.members.get(uid)?.nickname || `角色${uid}`,
-        delta: chips - (st.handStartChips.get(uid) || 0),
-        chips,
-      }));
-    for (const d of deltas) {
-      if (d.delta) void applyChipDelta(d.userId, d.delta);
-      const mm = room.members.get(d.userId);
-      if (mm) mm.chips = d.chips;
-    }
+    const deltas = handDeltas(room, st);
     getRoomBus().broadcast(room, {
       t: 'zjh_settle',
       round: st.round,
@@ -422,7 +442,7 @@ const showdown = (room: Room): void => {
   st.handPhase = 'showdown';
   const alive = aliveSeats(room, st);
   const reveals = alive.map((seat) => {
-    const m = getSeatedPlayers(room).find((x) => x.seat === seat)!;
+    const m = seatedAt(room, seat)!;
     const cards = dealTo(st, m.userId);
     return {
       userId: m.userId,
@@ -433,12 +453,12 @@ const showdown = (room: Room): void => {
   });
   let winnerSeat = alive[0];
   for (let i = 1; i < alive.length; i += 1) {
-    const a = st.players.get(getSeatedPlayers(room).find((x) => x.seat === winnerSeat)!.userId)!;
-    const b = st.players.get(getSeatedPlayers(room).find((x) => x.seat === alive[i])!.userId)!;
+    const a = st.players.get(seatedAt(room, winnerSeat)!.userId)!;
+    const b = st.players.get(seatedAt(room, alive[i])!.userId)!;
     if (compareZjh(b.cards, a.cards, st.config.special235) > 0) winnerSeat = alive[i];
   }
   getRoomBus().broadcast(room, { t: 'zjh_showdown', reveals });
-  const wm = getSeatedPlayers(room).find((x) => x.seat === winnerSeat)!;
+  const wm = seatedAt(room, winnerSeat)!;
   settleHand(room, wm, 'showdown', reveals);
 };
 
@@ -458,19 +478,7 @@ const settleHand = (
   const wm = room.members.get(winner.userId);
   if (wm) wm.chips = st.chips.get(winner.userId) || 0;
 
-  const deltas = [...st.chips]
-    .filter(([uid]) => st.handStartChips.has(uid))
-    .map(([uid, chips]) => ({
-      userId: uid,
-      nickname: room.members.get(uid)?.nickname || `角色${uid}`,
-      delta: chips - (st.handStartChips.get(uid) || 0),
-      chips,
-    }));
-  for (const d of deltas) {
-    if (d.delta) void applyChipDelta(d.userId, d.delta); // 每手实时入账
-    const m = room.members.get(d.userId);
-    if (m) m.chips = d.chips;
-  }
+  const deltas = handDeltas(room, st);
   getRoomBus().broadcast(room, {
     t: 'zjh_settle',
     round: st.round,
@@ -493,13 +501,15 @@ const nextHand = (room: Room, expectRound: number): void => {
   const st = r.game as ZjhState;
   if (st.round !== expectRound) return;
   clearGameTimer(st);
-  const funded = getSeatedPlayers(r).filter((m) => (st.chips.get(m.userId) || 0) >= ANTE);
-  if (st.round >= st.totalRounds || funded.length <= 1) {
-    finish(r, funded.length <= 1 ? '其他玩家积分已耗尽' : '手数已打满');
+  const gate = nextHandGate(r, st, (m) => (st.chips.get(m.userId) || 0) >= ANTE);
+  if (gate.finish) {
+    finish(r, gate.reason);
     return;
   }
   st.round += 1;
-  const seats: number[] = funded.map((m) => m.seat);
+  const seats: number[] = getSeatedPlayers(r)
+    .filter((m) => (st.chips.get(m.userId) || 0) >= ANTE)
+    .map((m) => m.seat);
   if (
     st.config.bankerMode === 'winner' &&
     st.lastWinnerSeat !== null &&
@@ -515,28 +525,8 @@ const nextHand = (room: Room, expectRound: number): void => {
 
 const finish = (room: Room, reason: string): void => {
   const st = room.game as ZjhState;
-  clearGameTimer(st);
   st.handPhase = 'settle';
-  room.phase = 'ended';
-  const ranking = buildRanking(getSeatedPlayers(room), (m) => ({
-    chips: st.chips.get(m.userId) || 0,
-    delta: (st.chips.get(m.userId) || 0) - (st.initialChips.get(m.userId) || 0),
-  })) as Array<{ userId: number; nickname: string; chips: number; delta: number; seat: number }>;
-  st.ranking = ranking;
-  const bus = getRoomBus();
-  bus.broadcast(room, { t: 'zjh_final', ranking, reason });
-  bus.broadcast(room, { t: 'game_over', winnerSeat: ranking[0]?.seat ?? -1, reason });
-  if (st.config.career) {
-    void writeCareerRecords(
-      'zjh',
-      ranking.map((r2, i) => ({
-        userId: r2.userId,
-        result: `rank:${i + 1}`,
-        chipsDelta: r2.delta,
-        chipsAfter: r2.chips,
-      }))
-    );
-  }
+  finishChipGame(room, st, 'zjh', 'zjh_final', reason);
 };
 
 export const zjhHandler: GameHandler<ZjhState> = {
@@ -602,12 +592,7 @@ export const zjhHandler: GameHandler<ZjhState> = {
     st.config = zjhHandler.normalizeConfig!(room.config) as ZjhConfig;
     st.totalRounds = st.config.roundLimit;
     const players = getSeatedPlayers(room);
-    st.chips = new Map();
-    st.initialChips = new Map();
-    for (const m of players) {
-      st.chips.set(m.userId, m.chips);
-      st.initialChips.set(m.userId, m.chips);
-    }
+    initChipSnapshots(st, players);
     const funded = players.filter((m) => (st.chips.get(m.userId) || 0) >= ANTE);
     st.dealerSeat = funded[0]?.seat ?? 0; // 首手庄=第一个有积分的座位，之后轮庄
     st.round = 1;
@@ -750,9 +735,7 @@ export const zjhHandler: GameHandler<ZjhState> = {
       stakeCap: STAKE_CAP,
       special235: st.config.special235,
       // 投注明细全员可见：每手的投入（底注/跟注/加注/比牌）与输赢
-      betLedger: [...st.betLog].flatMap(([uid, entries]) =>
-        entries.map((e) => ({ ...e, userId: uid }))
-      ),
+      betLedger: betLedgerView(st.betLog),
       ended: st.ranking ? { ranking: st.ranking, reason: st.endReason } : null,
     };
   },

@@ -82,7 +82,7 @@ check('庄家 BJ 时普通玩家输原注', engine.payoutMultiplier([{ suit: '�
 // ── 主流程（3 人，rotate 模式，2 手，career 开） ──
 const tokens = [];
 for (const uid of [2, 4, 6]) {
-  tokens.push((await http('POST', '/api/user/login/family', { uid })).json.data.token);
+  tokens.push((await http('POST', '/api/user/login/family', { uid })).json.data.accessToken);
 }
 const created = await http('POST', '/api/room', { gameType: 'blackjack', config: { bankerMode: 'rotate', roundLimit: 2, career: true } }, tokens[0]);
 check('创建21点房间', created.json?.code === 200 && created.json.data.gameType === 'blackjack');
@@ -103,7 +103,7 @@ check('开局庄家=座位0（rotate 首庄）', start.bankerSeat === 0 && start
 check('开局积分表（phase 事件）', Array.isArray(start.chips) && start.chips.length === 3);
 
 // 对局中加入一律观战（市面标准：本局已开始不下场）
-const D = new Client((await http('POST', '/api/user/login/family', { uid: 1 })).json.data.token, 'D');
+const D = new Client((await http('POST', '/api/user/login/family', { uid: 1 })).json.data.accessToken, 'D');
 const jD = await D.connect(roomId);
 check('对局中加入自动转观战（seat=-1）', jD.yourSeat === -1);
 D.close();

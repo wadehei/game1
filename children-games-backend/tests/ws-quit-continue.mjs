@@ -72,7 +72,7 @@ class Client {
   }
 }
 
-const login = async (uid) => (await http('POST', '/api/user/login/family', { uid })).json.data.token;
+const login = async (uid) => (await http('POST', '/api/user/login/family', { uid })).json.data.accessToken;
 
 // ═══ 场景 1：21点 庄家中途退出 → 续局 + 全员退注 + 重发不叠牌 ═══
 {

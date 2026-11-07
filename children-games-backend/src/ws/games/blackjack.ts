@@ -16,7 +16,20 @@ import {
   cardLabel,
   type Card,
 } from './blackjack/engine';
-import { getSeatedPlayers, clearGameTimer, buildRanking } from './helpers';
+import {
+  getSeatedPlayers,
+  clearGameTimer,
+  appendRoundLog,
+  armStateTimer,
+  betLedgerView,
+  chipsView,
+  dropRoundLog,
+  findRoundLog,
+  finishChipGame,
+  initChipSnapshots,
+  nextHandGate,
+  seatedAt,
+} from './helpers';
 
 const BET_SECONDS = Math.max(3, Number(process.env.BLACKJACK_BET_SECONDS) || 15);
 const ACT_SECONDS = Math.max(3, Number(process.env.BLACKJACK_ACT_SECONDS) || 20);
@@ -108,22 +121,25 @@ const enterBetting = (room: Room, st: BJState, keepHand: boolean): void => {
   st.deadline = Date.now() + BET_SECONDS * 1000;
   getRoomBus().broadcast(room, phasePayload(room, st));
 
-  const timer = setTimeout(() => {
-    const r = getRoom(room.id);
-    if (!r) return;
-    const s = r.game as BJState;
-    if (s.handPhase !== 'betting' || s.round !== st.round) return;
-    // 超时：未下注的闲家默认下最小注（能给得起多少下多少）
-    for (const m of activePlayers(r, s)) {
-      if (!s.hands.has(m.userId)) {
-        const chips = s.chips.get(m.userId) || 0;
-        placeBet(r, m.userId, Math.min(DEFAULT_BET, chips));
+  armStateTimer(
+    room,
+    st,
+    () => {
+      const r = getRoom(room.id);
+      if (!r) return;
+      const s = r.game as BJState;
+      if (s.handPhase !== 'betting' || s.round !== st.round) return;
+      // 超时：未下注的闲家默认下最小注（能给得起多少下多少）
+      for (const m of activePlayers(r, s)) {
+        if (!s.hands.has(m.userId)) {
+          const chips = s.chips.get(m.userId) || 0;
+          placeBet(r, m.userId, Math.min(DEFAULT_BET, chips));
+        }
       }
-    }
-    if ((r.game as BJState).handPhase === 'betting') dealCards(r);
-  }, BET_SECONDS * 1000);
-  st.timer = timer;
-  addTimer(room, timer);
+      if ((r.game as BJState).handPhase === 'betting') dealCards(r);
+    },
+    BET_SECONDS * 1000
+  );
 };
 
 const placeBet = (room: Room, userId: number, amount: number): void => {
@@ -140,9 +156,13 @@ const placeBet = (room: Room, userId: number, amount: number): void => {
     busted: false,
     natural: false,
   });
-  const log = st.betLog.get(userId) || [];
-  log.push({ round: st.round, stake, doubled: false, delta: null, outcome: null });
-  st.betLog.set(userId, log);
+  appendRoundLog(st.betLog, userId, {
+    round: st.round,
+    stake,
+    doubled: false,
+    delta: null,
+    outcome: null,
+  });
   // 统一在下注处广播（含超时默认下注），前端据此累积流水
   getRoomBus().broadcast(room, { t: 'blackjack_action', userId, action: 'bet', stake });
 };
@@ -181,7 +201,7 @@ const dealCards = (room: Room): void => {
     bankerUpcard: cardLabel(st.banker.cards[0]),
   });
   // 庄家暗牌点对点私发（快照只在进房/开局时发，中途看不到）
-  const bankerMember = getSeatedPlayers(room).find((m) => m.seat === st.bankerSeat);
+  const bankerMember = seatedAt(room, st.bankerSeat);
   if (bankerMember) {
     bus.sendToUser(room, bankerMember.userId, {
       t: 'blackjack_your_banker',
@@ -208,18 +228,20 @@ const advanceTurn = (room: Room, st: BJState): void => {
   st.deadline = Date.now() + ACT_SECONDS * 1000;
   bus.broadcast(room, phasePayload(room, st));
 
-  const timer = setTimeout(() => {
-    const r = getRoom(room.id);
-    if (!r) return;
-    const s = r.game as BJState;
-    if (s.handPhase !== 'acting' || s.turnSeat !== next.seat || s.round !== st.round) return;
-    const m = r.members.get(next.userId);
-    if (!m) return;
-    doStand(r, m); // 超时=停牌（保守）
-  }, ACT_SECONDS * 1000);
-  clearGameTimer(st);
-  st.timer = timer;
-  addTimer(room, timer);
+  armStateTimer(
+    room,
+    st,
+    () => {
+      const r = getRoom(room.id);
+      if (!r) return;
+      const s = r.game as BJState;
+      if (s.handPhase !== 'acting' || s.turnSeat !== next.seat || s.round !== st.round) return;
+      const m = r.members.get(next.userId);
+      if (!m) return;
+      doStand(r, m); // 超时=停牌（保守）
+    },
+    ACT_SECONDS * 1000
+  );
 };
 
 const drawCard = (st: BJState): Card => st.deck.pop()!;
@@ -325,7 +347,7 @@ const settleHand = (room: Room): void => {
             ? 'blackjack'
             : 'win';
     results.push({ userId: uid, outcome, delta, chips });
-    const logEntry = (st.betLog.get(uid) || []).find((e) => e.round === st.round);
+    const logEntry = findRoundLog(st.betLog, uid, st.round);
     if (logEntry) {
       logEntry.delta = delta;
       logEntry.outcome = outcome;
@@ -385,9 +407,9 @@ const nextHand = (room: Room, expectRound: number): void => {
   clearGameTimer(st);
 
   // 终局判断：打满手数，或场上只剩庄家一人有积分
-  const chipHolders = getSeatedPlayers(r).filter((m) => (st.chips.get(m.userId) || 0) > 0);
-  if (st.round >= st.totalRounds || chipHolders.length <= 1) {
-    finish(r, chipHolders.length <= 1 ? '其他玩家积分已耗尽' : '手数已打满');
+  const gate = nextHandGate(r, st, (m) => (st.chips.get(m.userId) || 0) > 0);
+  if (gate.finish) {
+    finish(r, gate.reason);
     return;
   }
   st.round += 1;
@@ -399,30 +421,8 @@ const nextHand = (room: Room, expectRound: number): void => {
 
 const finish = (room: Room, reason: string): void => {
   const st = room.game as BJState;
-  clearGameTimer(st);
   st.handPhase = 'settle';
-  room.phase = 'ended';
-  const ranking = buildRanking(getSeatedPlayers(room), (m) => ({
-    chips: st.chips.get(m.userId) || 0,
-    delta: (st.chips.get(m.userId) || 0) - (st.initialChips.get(m.userId) || 0),
-  })) as Array<{ userId: number; nickname: string; chips: number; delta: number; seat: number }>;
-  st.ranking = ranking;
-  const bus = getRoomBus();
-  bus.broadcast(room, { t: 'blackjack_final', ranking, reason });
-  bus.broadcast(room, { t: 'game_over', winnerSeat: ranking[0]?.seat ?? -1, reason });
-
-  // 局终写生涯（每手已实时入账，这里只记局流水）
-  if (st.config.career) {
-    void writeCareerRecords(
-      'blackjack',
-      ranking.map((r2, i) => ({
-        userId: r2.userId,
-        result: `rank:${i + 1}`,
-        chipsDelta: r2.delta,
-        chipsAfter: r2.chips,
-      }))
-    );
-  }
+  finishChipGame(room, st, 'blackjack', 'blackjack_final', reason);
 };
 
 export const blackjackHandler: GameHandler<BJState> = {
@@ -486,12 +486,7 @@ export const blackjackHandler: GameHandler<BJState> = {
     st.totalRounds = st.config.roundLimit;
     const players = getSeatedPlayers(room);
     // 积分以进房时的账号快照起步（每手结算实时落库）
-    st.chips = new Map();
-    st.initialChips = new Map();
-    for (const m of players) {
-      st.chips.set(m.userId, m.chips);
-      st.initialChips.set(m.userId, m.chips);
-    }
+    initChipSnapshots(st, players);
     // 首庄：keep 模式随机，其余座位 0（若座位 0 无积分取第一个有积分的）
     const funded = players.filter((m) => (st.chips.get(m.userId) || 0) > 0);
     if (st.config.bankerMode === 'keep') {
@@ -536,9 +531,7 @@ export const blackjackHandler: GameHandler<BJState> = {
       // 庄家退出：本手作废，全员退注（与让庄同规则——已停牌的手也退，防止残留手牌叠加到重发的这手）
       for (const [uid, hh] of st.hands) {
         st.chips.set(uid, (st.chips.get(uid) || 0) + hh.stake);
-        const log = st.betLog.get(uid);
-        const idx = log ? log.findIndex((e) => e.round === st.round && e.delta === null) : -1;
-        if (idx >= 0) log!.splice(idx, 1);
+        dropRoundLog(st.betLog, uid, st.round, true);
       }
       st.hands = new Map();
       st.bankerSeat = nextBanker(room, st);
@@ -586,9 +579,7 @@ export const blackjackHandler: GameHandler<BJState> = {
       if (!next) return { error: '没有可以接庄的玩家' };
       for (const [uid, h] of st.hands) {
         st.chips.set(uid, (st.chips.get(uid) || 0) + h.stake);
-        const log = st.betLog.get(uid);
-        const idx = log ? log.findIndex((e) => e.round === st.round && e.delta === null) : -1;
-        if (idx >= 0) log!.splice(idx, 1);
+        dropRoundLog(st.betLog, uid, st.round, true);
       }
       st.hands = new Map();
       st.bankerSeat = next.seat;
@@ -626,10 +617,8 @@ export const blackjackHandler: GameHandler<BJState> = {
       st.chips.set(member.userId, chips - h.stake);
       h.stake *= 2;
       h.doubled = true;
-      const logEntry = (st.betLog.get(member.userId) || []).find(
-        (e) => e.round === st.round && e.delta === null
-      );
-      if (logEntry) {
+      const logEntry = findRoundLog(st.betLog, member.userId, st.round);
+      if (logEntry && logEntry.delta === null) {
         logEntry.stake = h.stake;
         logEntry.doubled = true;
       }
@@ -691,18 +680,12 @@ export const blackjackHandler: GameHandler<BJState> = {
             : [],
       bankerValue: st.banker.revealed || isBanker ? handValue(st.banker.cards).total : null,
       others,
-      chips: st.chips.size
-        ? [...st.chips].map(([userId, chips]) => ({ userId, chips }))
-        : [...room.members.values()]
-            .filter((m) => m.seat >= 0)
-            .map((m) => ({ userId: m.userId, chips: m.chips })),
+      chips: chipsView(st.chips, room),
       betOptions: BET_OPTIONS,
       canPassBank: st.config.bankerMode === 'keep' && st.handPhase === 'betting' && isBanker,
       lastResults: st.lastResults,
       // 投注明细全员可见：每手的押注（含加倍）与输赢
-      betLedger: [...st.betLog].flatMap(([uid, entries]) =>
-        entries.map((e) => ({ ...e, userId: uid }))
-      ),
+      betLedger: betLedgerView(st.betLog),
       ended: st.ranking ? { ranking: st.ranking, reason: st.endReason } : null,
     };
   },

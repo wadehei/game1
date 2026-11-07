@@ -134,7 +134,7 @@ async function driveCalls(clients) {
 // ── 主流程（3 人，roundLimit=1，特殊235 关，超时弃牌，career 开） ──
 const tokens = [];
 for (const uid of [2, 4, 6]) {
-  tokens.push((await http('POST', '/api/user/login/family', { uid })).json.data.token);
+  tokens.push((await http('POST', '/api/user/login/family', { uid })).json.data.accessToken);
 }
 const created = await http('POST', '/api/room', { gameType: 'zjh', config: { special235: false, timeoutFold: true, roundLimit: 1, career: true } }, tokens[0]);
 check('创建比大小房间', created.json?.code === 200 && created.json.data.gameType === 'zjh');

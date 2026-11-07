@@ -70,7 +70,7 @@ class Client {
 
 const tokens = [];
 for (const uid of [2, 4, 6]) {
-  tokens.push((await http('POST', '/api/user/login/family', { uid })).json.data.token);
+  tokens.push((await http('POST', '/api/user/login/family', { uid })).json.data.accessToken);
 }
 const created = await http('POST', '/api/room', { gameType: 'blackjack', config: { bankerMode: 'rotate', roundLimit: 1, career: false } }, tokens[0]);
 check('创建房间', created.json?.code === 200);
