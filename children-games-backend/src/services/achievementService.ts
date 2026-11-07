@@ -37,6 +37,8 @@ export const GAME_RULES: Record<string, { lowerScoreIsBetter: boolean }> = {
   match: { lowerScoreIsBetter: false },
   // 动物数独的成绩是通关用时（秒），越快越好
   sudoku: { lowerScoreIsBetter: true },
+  // 抓娃娃机的成绩是抓到只数，越多越好
+  claw: { lowerScoreIsBetter: false },
 };
 
 export const ACHIEVEMENTS: AchievementDef[] = [
@@ -93,7 +95,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     id: 'all_rounder',
     name: '全能玩家',
     icon: '🏅',
-    desc: '玩过全部 12 个游戏',
+    desc: '玩过全部 13 个游戏',
     check: (c) => c.distinctGames >= Object.keys(GAME_RULES).length,
   },
   {

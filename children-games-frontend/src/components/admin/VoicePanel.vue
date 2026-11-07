@@ -99,6 +99,11 @@ const LINES = [
     scene: '动物数独 · 入场',
     text: '把每行每列每宫填满，小动物不能重复哦',
   },
+  {
+    key: 'claw_intro',
+    scene: '抓娃娃机 · 入场',
+    text: '看准小礼物，按抓抓，把它们都抓出来吧',
+  },
   { key: 'math_correct', scene: '数学 · 答对', text: '答对啦！' },
   { key: 'math_wrong', scene: '数学 · 答错', text: '再想一想哦' },
   { key: 'result_win', scene: '通用 · 通关', text: '恭喜你，通关啦！你真棒！' },

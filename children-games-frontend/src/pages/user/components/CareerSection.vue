@@ -103,6 +103,7 @@ const games = [
   { id: 'match3', name: '消消乐', totalLevels: 20, icon: '🍬' },
   { id: 'brick', name: '打砖块', totalLevels: 20, icon: '🧱' },
   { id: 'sudoku', name: '动物数独', totalLevels: 20, icon: '🦁' },
+  { id: 'claw', name: '抓娃娃机', totalLevels: 20, icon: '🧸' },
 ];
 
 const joinedDays = computed(() => {

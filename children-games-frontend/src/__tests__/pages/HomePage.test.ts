@@ -54,6 +54,7 @@ vi.mock('@/static/images/games/lobby/icon-match.svg', () => ({ default: 'icon-ma
 vi.mock('@/static/images/games/lobby/icon-match3.svg', () => ({ default: 'icon-match3.svg' }));
 vi.mock('@/static/images/games/lobby/icon-brick.svg', () => ({ default: 'icon-brick.svg' }));
 vi.mock('@/static/images/games/lobby/icon-sudoku.svg', () => ({ default: 'icon-sudoku.svg' }));
+vi.mock('@/static/images/games/lobby/icon-claw.svg', () => ({ default: 'icon-claw.svg' }));
 
 describe('HomePage', () => {
   beforeEach(() => {
@@ -68,10 +69,10 @@ describe('HomePage', () => {
     expect(wrapper.find('.game-list').exists()).toBe(true);
   });
 
-  it('renders all 12 game cards', () => {
+  it('renders all 13 game cards', () => {
     const wrapper = mount(HomePage);
     const cards = wrapper.findAll('.game-card');
-    expect(cards.length).toBe(12);
+    expect(cards.length).toBe(13);
   });
 
   it('displays default nickname when no user info', () => {

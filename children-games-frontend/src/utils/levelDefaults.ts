@@ -84,6 +84,11 @@ export interface SudokuLevelConfig {
   prefilled: number;
   timeLimit: number;
 }
+export interface ClawLevelConfig {
+  clawSpeed: number;
+  targetGrabs: number;
+  timeLimit: number;
+}
 
 /** gameId 为字面量时返回该游戏的精确配置形状；动态 string（后台面板）退化为通用表 */
 export interface LevelConfigByGame {
@@ -99,6 +104,7 @@ export interface LevelConfigByGame {
   match3: Match3LevelConfig;
   brick: BrickLevelConfig;
   sudoku: SudokuLevelConfig;
+  claw: ClawLevelConfig;
 }
 
 // 难度设计原则：每一关都要有孩子能感知的变化（步长足够大），避免"连着几关一模一样"
@@ -189,6 +195,12 @@ const FORMULAS: Record<string, Formula> = {
     timeLimit:
       level <= 12 ? Math.max(150 - (level - 1) * 8, 60) : Math.max(480 - (level - 13) * 20, 240),
   }),
+  // 抓娃娃机：爪速每关 +22（120→320 封顶），目标每 2 关 +1，限时每关 -3s
+  claw: (level) => ({
+    clawSpeed: Math.min(120 + (level - 1) * 22, 320),
+    targetGrabs: 8 + Math.floor((level - 1) / 2),
+    timeLimit: Math.max(75 - (level - 1) * 3, 45),
+  }),
 };
 
 /** 某游戏某关的内置默认配置（调用方按需取用；字面量 gameId 获得精确类型） */
@@ -276,6 +288,11 @@ export const LEVEL_FIELD_DEFS: Record<string, FieldDef[]> = {
   sudoku: [
     { key: 'gridSize', label: '盘面边长（4 或 6）' },
     { key: 'prefilled', label: '预填格数（越多越简单）' },
+    { key: 'timeLimit', label: '时限（秒）' },
+  ],
+  claw: [
+    { key: 'clawSpeed', label: '爪速（像素/秒，越大越难）' },
+    { key: 'targetGrabs', label: '目标抓取数' },
     { key: 'timeLimit', label: '时限（秒）' },
   ],
 };

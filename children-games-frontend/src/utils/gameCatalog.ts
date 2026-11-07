@@ -10,6 +10,7 @@ import iconMatchSvg from '@/static/images/games/lobby/icon-match.svg';
 import iconMatch3Svg from '@/static/images/games/lobby/icon-match3.svg';
 import iconBrickSvg from '@/static/images/games/lobby/icon-brick.svg';
 import iconSudokuSvg from '@/static/images/games/lobby/icon-sudoku.svg';
+import iconClawSvg from '@/static/images/games/lobby/icon-claw.svg';
 
 export interface GameCatalogItem {
   id: string;
@@ -103,5 +104,12 @@ export const games: readonly GameCatalogItem[] = [
     totalLevels: 20,
     icon: iconSudokuSvg,
     bgColor: 'linear-gradient(135deg, #f6b862 0%, #e8874d 100%)',
+  },
+  {
+    id: 'claw',
+    name: '抓娃娃机',
+    totalLevels: 20,
+    icon: iconClawSvg,
+    bgColor: 'linear-gradient(135deg, #f66d9b 0%, #c2429c 100%)',
   },
 ];

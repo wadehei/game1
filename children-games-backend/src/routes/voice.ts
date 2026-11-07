@@ -24,6 +24,7 @@ const VOICE_KEYS = new Set([
   'match_intro',
   'match3_intro',
   'sudoku_intro',
+  'claw_intro',
   'math_correct',
   'math_wrong',
   'result_win',

@@ -107,6 +107,11 @@ const routes = [
     name: 'Sudoku',
     component: () => import('@/pages/sudoku/index.vue'),
   },
+  {
+    path: '/claw',
+    name: 'Claw',
+    component: () => import('@/pages/claw/index.vue'),
+  },
 ];
 
 const router = createRouter({
