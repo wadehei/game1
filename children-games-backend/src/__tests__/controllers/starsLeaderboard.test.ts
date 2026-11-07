@@ -24,10 +24,13 @@ vi.mock('../../services/leaderboardCacheService', () => ({
 }));
 
 describe('getStarsLeaderboard', () => {
-  const mkRes = (): Response => {
+  interface MockRes extends Response {
+    jsonBody: unknown;
+  }
+  const mkRes = (): MockRes => {
     const res = {
       statusCode: 200,
-      jsonBody: null,
+      jsonBody: null as unknown,
       status(c: number) {
         this.statusCode = c;
         return this;
@@ -37,7 +40,7 @@ describe('getStarsLeaderboard', () => {
         return this;
       },
     };
-    return res as unknown as Response;
+    return res as MockRes;
   };
 
   beforeEach(() => {
