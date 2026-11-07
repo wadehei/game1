@@ -27,6 +27,18 @@ const colorToKey: Record<string, string> = {
   '#F38181': 'pink',
 };
 
+// perf: pre-allocate particle pool to avoid GC pressure from frequent object creation
+const MAX_PARTICLES = 50;
+const MAX_FLOAT_TEXTS = 30;
+
+interface FloatText {
+  x: number;
+  y: number;
+  text: string;
+  life: number;
+  color: string;
+}
+
 export interface Balloon {
   x: number;
   y: number;
@@ -85,11 +97,19 @@ export function useBalloonEngine() {
   let animationId: number | null = null;
   let balloonList: Balloon[] = [];
   let bulletList: Bullet[] = [];
-  let popParticles: PopParticle[] = [];
+  const popParticles: PopParticle[] = [];
+  // perf: pre-fill particle pool so runtime spawns reuse slots instead of allocating
+  for (let i = 0; i < MAX_PARTICLES; i++) {
+    popParticles.push({ x: 0, y: 0, radius: 0, grow: 0, alpha: 0, color: '', speed: 0, angle: 0 });
+  }
   let spawnTimer: ReturnType<typeof setInterval> | null = null;
   let shakeOffset = { x: 0, y: 0 };
   let bgGradient: CanvasGradient | null = null;
-  let floatTexts: { x: number; y: number; text: string; life: number; color: string }[] = [];
+  let floatTexts: FloatText[] = [];
+  // perf: pre-fill float text pool
+  for (let i = 0; i < MAX_FLOAT_TEXTS; i++) {
+    floatTexts.push({ x: 0, y: 0, text: '', life: 0, color: '' });
+  }
   let gameEnded = false;
   let levelSelectPaused = false;
 
@@ -184,8 +204,9 @@ export function useBalloonEngine() {
     targetScore.value = levelConfig.value.targetScore;
     balloonList = [];
     bulletList = [];
-    popParticles = [];
-    floatTexts = [];
+    // perf: reset pools in-place to preserve pre-allocated capacity (GC optimization)
+    popParticles.length = 0;
+    floatTexts.length = 0;
     showResult.value = false;
     gameWon.value = false;
     stars.value = 0;
@@ -222,92 +243,162 @@ export function useBalloonEngine() {
     animationId = requestAnimationFrame(gameLoop);
   };
 
-  const update = () => {
-    // 更新气球位置
-    balloonList = balloonList.filter((balloon) => {
-      balloon.y -= balloon.speed;
-      return balloon.y > -balloon.radius * 2;
-    });
+  // perf: reuse a dead particle slot instead of allocating a new object
+  const spawnParticle = (
+    x: number,
+    y: number,
+    radius: number,
+    grow: number,
+    alpha: number,
+    color: string,
+    speed: number,
+    angle: number
+  ): void => {
+    // search from end — recently dead particles are likely at the back
+    for (let i = popParticles.length - 1; i >= 0; i--) {
+      if (popParticles[i].alpha <= 0) {
+        const p = popParticles[i];
+        p.x = x;
+        p.y = y;
+        p.radius = radius;
+        p.grow = grow;
+        p.alpha = alpha;
+        p.color = color;
+        p.speed = speed;
+        p.angle = angle;
+        return;
+      }
+    }
+    // pool full — cap prevents unbounded growth
+    if (popParticles.length >= MAX_PARTICLES) return;
+    popParticles.push({ x, y, radius, grow, alpha, color, speed, angle });
+  };
 
-    // 更新子弹位置
-    bulletList = bulletList.filter((bullet) => {
+  // perf: reuse a dead float-text slot
+  const spawnFloatText = (
+    x: number,
+    y: number,
+    text: string,
+    life: number,
+    color: string
+  ): void => {
+    for (let i = floatTexts.length - 1; i >= 0; i--) {
+      if (floatTexts[i].life <= 0) {
+        const t = floatTexts[i];
+        t.x = x;
+        t.y = y;
+        t.text = text;
+        t.life = life;
+        t.color = color;
+        return;
+      }
+    }
+    if (floatTexts.length >= MAX_FLOAT_TEXTS) return;
+    floatTexts.push({ x, y, text, life, color });
+  };
+
+  // perf: squared-distance collision avoids costly Math.sqrt per balloon per bullet
+  const checkCollision = (
+    bx: number,
+    by: number,
+    bRadius: number,
+    bulX: number,
+    bulY: number,
+    bulRadius: number
+  ): boolean => {
+    const dx = bulX - bx;
+    const dy = bulY - by;
+    const distSq = dx * dx + dy * dy;
+    const rSum = bRadius + bulRadius;
+    return distSq < rSum * rSum;
+  };
+
+  const BULLET_RADIUS = 5;
+
+  const update = () => {
+    // 1. Move balloons, then compact in-place — remove those above screen
+    // perf: in-place compaction avoids allocating a new array every frame
+    for (let i = 0; i < balloonList.length; i++) {
+      balloonList[i].y -= balloonList[i].speed;
+    }
+    let writeBal = 0;
+    for (let i = 0; i < balloonList.length; i++) {
+      if (balloonList[i].y > -balloonList[i].radius * 2) {
+        balloonList[writeBal++] = balloonList[i];
+      }
+    }
+    balloonList.length = writeBal;
+
+    // 2. Move bullets + collision detection, then compact in-place
+    let writeBul = 0;
+    for (let b = 0; b < bulletList.length; b++) {
+      const bullet = bulletList[b];
       bullet.y -= bullet.speed;
 
-      // 检查碰撞
+      if (bullet.y <= 0) continue; // off-screen — skip copy (removed)
+
+      let consumed = false;
       for (let i = balloonList.length - 1; i >= 0; i--) {
         const balloon = balloonList[i];
-        const dx = bullet.x - balloon.x;
-        const dy = bullet.y - balloon.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+        // perf: squared distance avoids Math.sqrt per balloon per bullet
+        if (
+          !checkCollision(balloon.x, balloon.y, balloon.radius, bullet.x, bullet.y, BULLET_RADIUS)
+        )
+          continue;
 
-        if (distance < balloon.radius) {
-          score.value += balloon.points;
+        consumed = true;
+        score.value += balloon.points;
 
-          // 爆裂效果：白色闪光 + 彩色纸屑飞散
-          popParticles.push({
-            x: balloon.x,
-            y: balloon.y,
-            radius: 8,
-            grow: 2.4,
-            alpha: 0.85,
-            color: '#FFFFFF',
-            speed: 0,
-            angle: 0,
-          });
-          for (let i = 0; i < 8; i++) {
-            if (popParticles.length < 26) {
-              popParticles.push({
-                x: balloon.x,
-                y: balloon.y,
-                radius: 2 + Math.random() * 1.5,
-                grow: 0,
-                alpha: 1,
-                color:
-                  balloon.type === 'rainbow'
-                    ? ['#FF6B6B', '#4ECDC4', '#FFE66D', '#F38181'][Math.floor(Math.random() * 4)]
-                    : balloon.color,
-                speed: 1.5 + Math.random() * 2,
-                angle: Math.random() * Math.PI * 2,
-              });
-            }
-          }
-          floatTexts.push({
-            x: balloon.x,
-            y: balloon.y - 10,
-            text: `+${balloon.points}`,
-            life: 1,
-            color: balloon.type === 'golden' ? '#FF8F00' : '#FFFFFF',
-          });
-
-          balloonList.splice(i, 1);
-
-          // 彩虹气球特效：消除所有气球并触发屏幕震动
-          if (balloon.type === 'rainbow') {
-            sounds.play('explosion');
-            const bonus = balloonList.length * 10;
-            score.value += bonus;
-            floatTexts.push({
-              x: balloon.x,
-              y: balloon.y - 34,
-              text: `+${bonus}!`,
-              life: 1.4,
-              color: '#E91E63',
-            });
-            balloonList = [];
-            shakeOffset = { x: (Math.random() - 0.5) * 10, y: (Math.random() - 0.5) * 10 };
-          } else {
-            sounds.play('pop');
-          }
-
-          if (score.value >= targetScore.value) {
-            endGame(true);
-          }
-          return false;
+        // 爆裂效果：白色闪光 + 彩色纸屑飞散
+        spawnParticle(balloon.x, balloon.y, 8, 2.4, 0.85, '#FFFFFF', 0, 0);
+        for (let j = 0; j < 8; j++) {
+          spawnParticle(
+            balloon.x,
+            balloon.y,
+            2 + Math.random() * 1.5,
+            0,
+            1,
+            balloon.type === 'rainbow'
+              ? ['#FF6B6B', '#4ECDC4', '#FFE66D', '#F38181'][Math.floor(Math.random() * 4)]
+              : balloon.color,
+            1.5 + Math.random() * 2,
+            Math.random() * Math.PI * 2
+          );
         }
+        spawnFloatText(
+          balloon.x,
+          balloon.y - 10,
+          `+${balloon.points}`,
+          1,
+          balloon.type === 'golden' ? '#FF8F00' : '#FFFFFF'
+        );
+
+        // Remove hit balloon via splice (single removal — cheap vs. filter)
+        balloonList.splice(i, 1);
+
+        if (balloon.type === 'rainbow') {
+          sounds.play('explosion');
+          const bonus = balloonList.length * 10;
+          score.value += bonus;
+          spawnFloatText(balloon.x, balloon.y - 34, `+${bonus}!`, 1.4, '#E91E63');
+          // perf: truncate array in-place instead of assigning new empty array
+          balloonList.length = 0;
+          shakeOffset = { x: (Math.random() - 0.5) * 10, y: (Math.random() - 0.5) * 10 };
+        } else {
+          sounds.play('pop');
+        }
+
+        if (score.value >= targetScore.value) {
+          endGame(true);
+        }
+        break; // bullet consumed
       }
 
-      return bullet.y > 0;
-    });
+      if (!consumed) {
+        bulletList[writeBul++] = bullet;
+      }
+    }
+    bulletList.length = writeBul;
 
     // 检查是否用完子弹
     if (bullets.value <= 0 && bulletList.length === 0) {
@@ -337,8 +428,14 @@ export function useBalloonEngine() {
     c.fillStyle = bgGradient;
     c.fillRect(0, 0, canvasWidth.value, canvasHeight.value);
 
-    // 绘制气球
+    // 绘制气球（带视口裁剪）
     balloonList.forEach((balloon) => {
+      // perf: skip rendering balloons completely outside the visible canvas
+      if (balloon.y < -balloon.radius * 2 || balloon.y > canvasHeight.value + balloon.radius * 2)
+        return;
+      if (balloon.x < -balloon.radius * 2 || balloon.x > canvasWidth.value + balloon.radius * 2)
+        return;
+
       let key: string;
       if (balloon.type === 'golden') key = 'golden';
       else if (balloon.type === 'rainbow') key = 'rainbow';
@@ -370,22 +467,34 @@ export function useBalloonEngine() {
       }
     });
 
-    // 绘制爆裂效果：闪光 + 纸屑（带重力飞散）
+    // 爆裂效果：闪光 + 纸屑（带重力飞散）— in-place compaction
     if (popParticles.length > 0) {
-      popParticles = popParticles.filter((p) => {
+      let writeP = 0;
+      for (let i = 0; i < popParticles.length; i++) {
+        const p = popParticles[i];
         p.x += Math.cos(p.angle) * p.speed;
         p.y += Math.sin(p.angle) * p.speed + 0.12;
         p.radius += p.grow;
         p.alpha -= p.grow > 0 ? 0.08 : 0.045;
-        if (p.alpha <= 0) return false;
-        c.globalAlpha = p.alpha;
-        c.fillStyle = p.color;
-        c.beginPath();
-        c.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-        c.fill();
-        c.globalAlpha = 1;
-        return true;
-      });
+        if (p.alpha <= 0) continue; // dead — skip copy, slot reclaimed by pool
+
+        // perf: viewport culling for particles
+        if (
+          p.x >= -p.radius &&
+          p.x <= canvasWidth.value + p.radius &&
+          p.y >= -p.radius &&
+          p.y <= canvasHeight.value + p.radius
+        ) {
+          c.globalAlpha = p.alpha;
+          c.fillStyle = p.color;
+          c.beginPath();
+          c.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+          c.fill();
+          c.globalAlpha = 1;
+        }
+        popParticles[writeP++] = p;
+      }
+      popParticles.length = writeP;
     }
 
     // 飘分数字

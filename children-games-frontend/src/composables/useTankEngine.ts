@@ -32,6 +32,7 @@ export interface Bullet {
   y: number;
   speed: number;
   isPlayer: boolean;
+  active: boolean; // perf: object pool marker
 }
 
 export interface Explosion {
@@ -40,6 +41,7 @@ export interface Explosion {
   radius: number;
   alpha: number;
   color: string;
+  active: boolean; // perf: object pool marker
 }
 
 export interface TankLevelConfig {
@@ -86,8 +88,57 @@ export function useTankEngine() {
     lastFire: 0,
   };
   let enemies: Tank[] = [];
-  let bullets: Bullet[] = [];
-  let explosions: Explosion[] = [];
+
+  // perf: object pools for bullets and explosions
+  const MAX_BULLETS = 30;
+  const MAX_EXPLOSIONS = 20;
+  const bullets: Bullet[] = [];
+  const explosions: Explosion[] = [];
+
+  // perf: reset bullet for pool reuse
+  const resetBullet = (b: Bullet, x: number, y: number, speed: number, isPlayer: boolean) => {
+    b.x = x;
+    b.y = y;
+    b.speed = speed;
+    b.isPlayer = isPlayer;
+    b.active = true;
+  };
+
+  // perf: reset explosion for pool reuse
+  const resetExplosion = (e: Explosion, x: number, y: number, radius: number, color: string) => {
+    e.x = x;
+    e.y = y;
+    e.radius = radius;
+    e.alpha = 1;
+    e.color = color;
+    e.active = true;
+  };
+
+  // perf: spawn bullet from pool or grow pool
+  const spawnBullet = (x: number, y: number, speed: number, isPlayer: boolean) => {
+    for (let i = bullets.length - 1; i >= 0; i--) {
+      if (!bullets[i].active) {
+        resetBullet(bullets[i], x, y, speed, isPlayer);
+        return;
+      }
+    }
+    if (bullets.length < MAX_BULLETS) {
+      bullets.push({ x, y, speed, isPlayer, active: true });
+    }
+  };
+
+  // perf: spawn explosion from pool or grow pool
+  const spawnExplosion = (x: number, y: number, radius: number, color: string) => {
+    for (let i = explosions.length - 1; i >= 0; i--) {
+      if (!explosions[i].active) {
+        resetExplosion(explosions[i], x, y, radius, color);
+        return;
+      }
+    }
+    if (explosions.length < MAX_EXPLOSIONS) {
+      explosions.push({ x, y, radius, alpha: 1, color, active: true });
+    }
+  };
   let muzzleFlash: { x: number; y: number; life: number } | null = null;
   let gameEnded = false;
   let levelSelectPaused = false;
@@ -97,6 +148,10 @@ export function useTankEngine() {
   let isPressed = false;
   let autoFireInterval: ReturnType<typeof setInterval> | null = null;
   let boundCanvas: HTMLCanvasElement | null = null;
+  // perf: offscreen canvas caches static background
+  let bgCanvas: HTMLCanvasElement | null = null;
+  let bgCanvasWidth = 0;
+  let bgCanvasHeight = 0;
 
   const tankImages = new ImageLoader();
 
@@ -144,14 +199,17 @@ export function useTankEngine() {
 
     playerHP.value = 3;
     player.hp = 3;
-    bullets = [];
-    explosions = [];
+    // perf: reset object pools in-place to preserve pre-allocated capacity (GC optimization)
+    for (let i = 0; i < bullets.length; i++) bullets[i].active = false;
+    for (let i = 0; i < explosions.length; i++) explosions[i].active = false;
+    // NOTE: do NOT set length=0, which would discard the pool and force re-allocation
     muzzleFlash = null;
     playerHitFlash.value = 0;
     showResult.value = false;
     gameWon.value = false;
     stars.value = 0;
     gameEnded = false;
+    bgCanvas = null; // perf: reset background cache
 
     player.x = canvasWidth.value / 2 - player.width / 2;
     player.y = canvasHeight.value - 120;
@@ -221,12 +279,12 @@ export function useTankEngine() {
   const enemyShoot = (enemy: Tank) => {
     const now = Date.now();
     if (now - enemy.lastFire < 1000) return;
-    bullets.push({
-      x: enemy.x + enemy.width / 2,
-      y: enemy.y + enemy.height,
-      speed: levelConfig.value.enemyBulletSpeed,
-      isPlayer: false,
-    });
+    spawnBullet(
+      enemy.x + enemy.width / 2,
+      enemy.y + enemy.height,
+      levelConfig.value.enemyBulletSpeed,
+      false
+    );
     enemy.lastFire = now;
   };
 
@@ -235,12 +293,7 @@ export function useTankEngine() {
     const now = Date.now();
     if (now - player.lastFire < 300) return;
     sounds.play('shoot');
-    bullets.push({
-      x: player.x + player.width / 2,
-      y: player.y,
-      speed: levelConfig.value.playerBulletSpeed,
-      isPlayer: true,
-    });
+    spawnBullet(player.x + player.width / 2, player.y, levelConfig.value.playerBulletSpeed, true);
     muzzleFlash = { x: player.x + player.width / 2, y: player.y - 4, life: 5 };
     player.lastFire = now;
   };
@@ -261,11 +314,17 @@ export function useTankEngine() {
       }
     });
 
-    bullets = bullets.filter((bullet) => {
+    // perf: in-place compaction instead of filter() to avoid array allocation
+    let writeIdx = 0;
+    for (let i = 0; i < bullets.length; i++) {
+      const bullet = bullets[i];
+      if (!bullet.active) continue;
+
+      let keep = true;
       if (bullet.isPlayer) {
         bullet.y -= bullet.speed;
-        for (let i = enemies.length - 1; i >= 0; i--) {
-          const enemy = enemies[i];
+        for (let j = enemies.length - 1; j >= 0; j--) {
+          const enemy = enemies[j];
           if (
             bullet.x >= enemy.x &&
             bullet.x <= enemy.x + enemy.width &&
@@ -274,24 +333,21 @@ export function useTankEngine() {
           ) {
             enemy.hp--;
             if (enemy.hp <= 0) {
-              for (let j = 0; j < 6; j++) {
-                if (explosions.length < 20) {
-                  explosions.push({
-                    x: enemy.x + enemy.width / 2,
-                    y: enemy.y + enemy.height / 2,
-                    radius: 3 + Math.random() * 5,
-                    alpha: 1,
-                    color: ['#FF4500', '#FF6347', '#FFA500', '#FFD700'][
-                      Math.floor(Math.random() * 4)
-                    ],
-                  });
-                }
+              // perf: spawn explosions from pool
+              for (let k = 0; k < 6; k++) {
+                spawnExplosion(
+                  enemy.x + enemy.width / 2,
+                  enemy.y + enemy.height / 2,
+                  3 + Math.random() * 5,
+                  ['#FF4500', '#FF6347', '#FFA500', '#FFD700'][Math.floor(Math.random() * 4)]
+                );
               }
               sounds.play('explosion');
-              enemies.splice(i, 1);
+              enemies.splice(j, 1);
               enemyCount.value = enemies.length;
             }
-            return false;
+            keep = false;
+            break;
           }
         }
       } else {
@@ -309,11 +365,17 @@ export function useTankEngine() {
           if (playerHP.value <= 0) {
             endGame(false);
           }
-          return false;
+          keep = false;
         }
       }
-      return bullet.y > 0 && bullet.y < canvasHeight.value;
-    });
+
+      if (keep && bullet.y > 0 && bullet.y < canvasHeight.value) {
+        bullets[writeIdx++] = bullet;
+      } else {
+        bullet.active = false;
+      }
+    }
+    bullets.length = writeIdx;
 
     if (enemies.length === 0) {
       endGame(true);
@@ -321,19 +383,34 @@ export function useTankEngine() {
   };
 
   // ── 渲染 ──
+  // perf: ensure background offscreen canvas is ready
+  const ensureBackground = (w: number, h: number) => {
+    if (bgCanvas && bgCanvasWidth === w && bgCanvasHeight === h) return;
+    bgCanvas = document.createElement('canvas');
+    bgCanvas.width = w;
+    bgCanvas.height = h;
+    bgCanvasWidth = w;
+    bgCanvasHeight = h;
+    const bgCtx = bgCanvas.getContext('2d')!;
+    bgCtx.fillStyle = '#8B4513';
+    bgCtx.fillRect(0, 0, w, h);
+    const groundImg = tankImages.get('ground');
+    if (groundImg) {
+      bgCtx.drawImage(groundImg, 0, h - 60, w, 60);
+    }
+  };
+
   const render = () => {
     if (!ctx) return;
     const c = ctx;
+    const w = canvasWidth.value;
+    const h = canvasHeight.value;
 
-    c.clearRect(0, 0, canvasWidth.value, canvasHeight.value);
+    c.clearRect(0, 0, w, h);
 
-    c.fillStyle = '#8B4513';
-    c.fillRect(0, 0, canvasWidth.value, canvasHeight.value);
-
-    const groundImg = tankImages.get('ground');
-    if (groundImg) {
-      c.drawImage(groundImg, 0, canvasHeight.value - 60, canvasWidth.value, 60);
-    }
+    // perf: single drawImage for cached background
+    ensureBackground(w, h);
+    c.drawImage(bgCanvas!, 0, 0);
 
     enemies.forEach((enemy) => {
       const enemyImg = tankImages.get(enemy.hp > 3 ? 'boss' : 'enemy');
@@ -409,16 +486,24 @@ export function useTankEngine() {
       c.fill();
     });
 
+    // perf: in-place compaction for explosions, no filter()
     if (explosions.length > 0) {
-      explosions = explosions.filter((e) => {
+      let expWriteIdx = 0;
+      for (let i = 0; i < explosions.length; i++) {
+        const e = explosions[i];
+        if (!e.active) continue;
+
         e.radius += 1.5;
         e.alpha -= 0.04;
-        if (e.alpha <= 0) return false;
-        const glow = c.createRadialGradient(e.x, e.y, 0, e.x, e.y, e.radius * 1.6);
-        glow.addColorStop(0, e.color);
-        glow.addColorStop(1, 'rgba(255,255,255,0)');
+
+        if (e.alpha <= 0) {
+          e.active = false;
+          continue;
+        }
+
+        // perf: use fillArc with globalAlpha instead of creating radial gradient per frame
         c.globalAlpha = e.alpha;
-        c.fillStyle = glow;
+        c.fillStyle = e.color;
         c.beginPath();
         c.arc(e.x, e.y, e.radius * 1.6, 0, Math.PI * 2);
         c.fill();
@@ -434,8 +519,10 @@ export function useTankEngine() {
           c.stroke();
         }
         c.globalAlpha = 1;
-        return true;
-      });
+
+        explosions[expWriteIdx++] = e;
+      }
+      explosions.length = expWriteIdx;
     }
 
     if (muzzleFlash) {
@@ -443,21 +530,14 @@ export function useTankEngine() {
       if (muzzleFlash.life <= 0) {
         muzzleFlash = null;
       } else {
+        // perf: use simple arc instead of radial gradient for muzzle flash
         const r = 6 + (5 - muzzleFlash.life) * 2;
-        const flash = c.createRadialGradient(
-          muzzleFlash.x,
-          muzzleFlash.y,
-          0,
-          muzzleFlash.x,
-          muzzleFlash.y,
-          r
-        );
-        flash.addColorStop(0, 'rgba(255,241,118,0.95)');
-        flash.addColorStop(1, 'rgba(255,160,0,0)');
-        c.fillStyle = flash;
+        c.globalAlpha = muzzleFlash.life / 5;
+        c.fillStyle = '#FFD700';
         c.beginPath();
         c.arc(muzzleFlash.x, muzzleFlash.y, r, 0, Math.PI * 2);
         c.fill();
+        c.globalAlpha = 1;
       }
     }
   };

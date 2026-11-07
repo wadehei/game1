@@ -53,6 +53,51 @@ export const settleRankingChips = async (
   }
 };
 
+/** 批量排名积分结算：单事务处理所有玩家，减少数据库往返和锁竞争
+ *  性能优化：相比 settleRankingChips 的 N 次独立事务，这里只用 1 次事务
+ *  死锁预防：按 userId 排序后加锁，确保并发事务以相同顺序获取锁 */
+export const settleRankingChipsBatch = async (
+  gameType: string,
+  entries: Array<{ userId: number; nickname?: string }>,
+  recordCareer: boolean
+): Promise<void> => {
+  try {
+    // sort by userId to prevent deadlock when multiple games end concurrently
+    const sorted = [...entries].sort((a, b) => a.userId - b.userId);
+    await withTransaction(async (t) => {
+      for (let i = 0; i < sorted.length; i += 1) {
+        const entry = sorted[i];
+        const user = await User.findByPk(entry.userId, {
+          attributes: ['id', 'battleChips'],
+          transaction: t,
+          lock: t.LOCK.UPDATE,
+        });
+        if (!user) continue;
+
+        const delta =
+          i === 0 ? CHIP_RANK_REWARDS[0] : i === 1 ? CHIP_RANK_REWARDS[1] : CHIP_RANK_REWARDS[2];
+        user.battleChips = Math.max(0, user.battleChips + delta);
+        await user.save({ transaction: t });
+
+        if (recordCareer) {
+          await BattleRecord.create(
+            {
+              userId: entry.userId,
+              gameType,
+              result: i === 0 ? 'win' : `rank:${i + 1}`,
+              chipsDelta: delta,
+              chipsAfter: user.battleChips,
+            },
+            { transaction: t }
+          );
+        }
+      }
+    }, 'settleRankingChipsBatch');
+  } catch (err) {
+    logError('chips', '批量排名积分结算失败', err instanceof Error ? err.stack : String(err));
+  }
+};
+
 /** 牌类局终写生涯记录（每手实时入账由 handler 调 applyChipDelta，这里只补局记录） */
 export const writeCareerRecords = async (
   gameType: string,
