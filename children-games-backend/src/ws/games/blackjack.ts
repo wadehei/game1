@@ -4,6 +4,7 @@ import type { Room, Member } from '../roomManager';
 import { addTimer, clearRoomTimers, getRoom } from '../roomManager';
 import type { ActionResult, GameHandler } from './types';
 import { getRoomBus } from '../bus';
+import { config } from '../../config';
 import { applyChipDelta, writeCareerRecords } from '../../services/battleChips';
 import { securePickOne } from '../../utils/secureRandom';
 import {
@@ -185,6 +186,14 @@ const dealCards = (room: Room): void => {
   for (const m of actives) dealCardsTo(m.userId);
   st.banker.cards = [st.deck.pop()!];
   st.banker.cards.push(st.deck.pop()!);
+  // 测试钩子（仅 development 生效，生产为死代码）：BLACKJACK_RIGGED=banker 强制庄家 BJ
+  // —— TM-07 曾整体移除，因 rigged 协议套件是庄家 BJ 规则的唯一 E2E 守卫而以开发门控恢复
+  if (config.nodeEnv !== 'production' && process.env.BLACKJACK_RIGGED === 'banker') {
+    st.banker.cards = [
+      { suit: '♠', rank: 1 },
+      { suit: '♥', rank: 13 },
+    ];
+  }
   // 庄家 Blackjack：立即亮牌开牌，闲家不再行动（玩家 BJ 平局退注，其余输原注）
   if (isBlackjack(st.banker.cards)) {
     for (const [, h] of st.hands) h.done = true;
