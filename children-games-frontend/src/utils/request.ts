@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { API_ORIGIN } from './apiOrigin';
+import { storage } from '@/utils/storage';
 
 export { API_ORIGIN };
 
@@ -12,7 +13,7 @@ const instance = axios.create({
 
 // 请求拦截器：附加登录 token（家庭角色登录后存在 localStorage）
 instance.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  const token = storage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -25,7 +26,7 @@ let refreshing: Promise<string> | null = null;
 const tryRefresh = async (): Promise<string> => {
   if (!refreshing) {
     refreshing = (async () => {
-      const refreshToken = localStorage.getItem('refresh_token');
+      const refreshToken = storage.getItem('refresh_token');
       if (!refreshToken) throw new Error('无 refreshToken');
       // 独立 axios 调用，避免再次进入本实例的 401 拦截逻辑
       const resp = await axios.post(

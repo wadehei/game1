@@ -1,11 +1,12 @@
 import { ref } from 'vue';
 import { soundManager } from '@/utils/sound';
+import { storage } from '@/utils/storage';
 
 const MUTE_STORAGE_KEY = 'games_sound_muted';
 
 function readStoredMute(): boolean {
   try {
-    return localStorage.getItem(MUTE_STORAGE_KEY) === '1';
+    return storage.getItem(MUTE_STORAGE_KEY) === '1';
   } catch {
     return false;
   }
@@ -22,7 +23,7 @@ export function useGameSounds() {
     isMuted.value = !isMuted.value;
     soundManager.setMuted(isMuted.value);
     try {
-      localStorage.setItem(MUTE_STORAGE_KEY, isMuted.value ? '1' : '0');
+      storage.setItem(MUTE_STORAGE_KEY, isMuted.value ? '1' : '0');
     } catch {
       // localStorage 不可用时忽略
     }

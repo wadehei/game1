@@ -54,6 +54,7 @@ import {
   getTodayPlaySeconds,
   resetTodayPlayTime,
 } from '@/composables/usePlayTimeGuard';
+import { storage } from '@/utils/storage';
 
 const emit = defineEmits<{
   (e: 'verified'): void;
@@ -107,7 +108,7 @@ const handleResetPlayTime = () => {
 const saveInterval = (value: number) => {
   restInterval.value = value;
   try {
-    localStorage.setItem('parent_rest_interval', String(value));
+    storage.setItem('parent_rest_interval', String(value));
   } catch {
     // ignore
   }

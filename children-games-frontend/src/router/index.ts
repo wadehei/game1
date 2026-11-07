@@ -1,4 +1,5 @@
 import { createRouter, createWebHashHistory } from 'vue-router';
+import { storage } from '@/utils/storage';
 
 const routes = [
   {
@@ -116,16 +117,16 @@ const router = createRouter({
 // 未登录（没有角色凭证）时先去选角色页；后台管理走独立的密码体系
 // 记住了"上次是谁"（last_profile_id）且该角色未设口令时，静默重登无感恢复
 router.beforeEach(async (to) => {
-  if (to.path === '/admin' && !localStorage.getItem('admin_token')) {
+  if (to.path === '/admin' && !storage.getItem('admin_token')) {
     return { path: '/admin/login' };
   }
   if (to.path.startsWith('/admin') || to.path === '/profiles') {
     return true;
   }
-  if (localStorage.getItem('token')) {
+  if (storage.getItem('token')) {
     return true;
   }
-  const lastId = localStorage.getItem('last_profile_id');
+  const lastId = storage.getItem('last_profile_id');
   if (lastId) {
     try {
       const { familyLogin } = await import('@/api/user');

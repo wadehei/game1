@@ -4,12 +4,14 @@
  * - 选择持久化在 localStorage('theme')；'auto' 跟随系统 prefers-color-scheme
  */
 
+import { storage } from '@/utils/storage';
+
 export type ThemeChoice = 'auto' | 'light' | 'dark';
 
 const THEME_KEY = 'theme';
 
 export const getThemeChoice = (): ThemeChoice => {
-  const v = localStorage.getItem(THEME_KEY);
+  const v = storage.getItem(THEME_KEY);
   return v === 'light' || v === 'dark' ? v : 'auto';
 };
 
@@ -37,6 +39,6 @@ export const initTheme = (): void => {
 };
 
 export const setTheme = (choice: ThemeChoice): void => {
-  localStorage.setItem(THEME_KEY, choice);
+  storage.setItem(THEME_KEY, choice);
   apply(choice);
 };

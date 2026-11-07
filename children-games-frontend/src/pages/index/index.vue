@@ -63,6 +63,7 @@ import GameList from './components/GameList.vue';
 import DailyTaskCard from './components/DailyTaskCard.vue';
 import BattleModeEntry from './components/BattleModeEntry.vue';
 import ModeTabs, { type HomeMode } from './components/ModeTabs.vue';
+import { storage } from '@/utils/storage';
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -153,12 +154,12 @@ const pickTheme = (v: ThemeChoice) => {
 
 // ── 首页双入口：小朋友游戏 / 好友对战 ──
 const MODE_KEY = 'home_mode';
-const homeMode = ref<HomeMode>((localStorage.getItem(MODE_KEY) as HomeMode) || 'kids');
+const homeMode = ref<HomeMode>((storage.getItem(MODE_KEY) as HomeMode) || 'kids');
 const pickMode = (m: HomeMode) => {
   homeMode.value = m;
   soundManager.playClick();
   try {
-    localStorage.setItem(MODE_KEY, m);
+    storage.setItem(MODE_KEY, m);
   } catch {
     // ignore
   }

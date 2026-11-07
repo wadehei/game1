@@ -1,4 +1,5 @@
 import { useUserStore } from '@/store/user';
+import { storage } from '@/utils/storage';
 
 /**
  * 难度自适应辅助（按 角色+游戏 隔离存储）：
@@ -13,7 +14,7 @@ export function useAdaptiveAssist(gameId: string) {
 
   const readState = (): { assist: number; streak: number } => {
     try {
-      const raw = JSON.parse(localStorage.getItem(storageKey()) || '{}');
+      const raw = JSON.parse(storage.getItem(storageKey()) || '{}');
       return {
         assist: Math.min(2, Math.max(0, parseInt(raw.assist, 10) || 0)),
         streak: Math.max(0, parseInt(raw.streak, 10) || 0),
@@ -25,7 +26,7 @@ export function useAdaptiveAssist(gameId: string) {
 
   const writeState = (state: { assist: number; streak: number }): void => {
     try {
-      localStorage.setItem(storageKey(), JSON.stringify(state));
+      storage.setItem(storageKey(), JSON.stringify(state));
     } catch {
       // ignore
     }

@@ -1,5 +1,6 @@
 import { api } from '../utils/request';
 import { useUserStore, type UserInfo } from '../store/user';
+import { storage } from '@/utils/storage';
 
 interface LoginResult {
   /** 短期访问凭证（15 分钟），所有请求的 Bearer token */
@@ -40,7 +41,7 @@ export const familyLogin = async (data: {
   userStore.setUserInfo(result.userInfo);
   // 记住"上次是谁"：token 失效后选角色页能标记/自动重登
   try {
-    localStorage.setItem('last_profile_id', String(result.userInfo.id));
+    storage.setItem('last_profile_id', String(result.userInfo.id));
   } catch {
     // ignore
   }
@@ -53,7 +54,7 @@ export const familyLogin = async (data: {
  */
 export const logoutNotify = async (): Promise<void> => {
   try {
-    const refreshToken = localStorage.getItem('refresh_token');
+    const refreshToken = storage.getItem('refresh_token');
     if (!refreshToken) return;
     await api.post('/user/logout', { refreshToken });
   } catch {
@@ -64,7 +65,7 @@ export const logoutNotify = async (): Promise<void> => {
 /** 上次使用的角色 id（登录时记录，登出不删除——重新打开应用可无感恢复） */
 export const getLastProfileId = (): number | null => {
   try {
-    const v = parseInt(localStorage.getItem('last_profile_id') || '', 10);
+    const v = parseInt(storage.getItem('last_profile_id') || '', 10);
     return Number.isFinite(v) && v > 0 ? v : null;
   } catch {
     return null;

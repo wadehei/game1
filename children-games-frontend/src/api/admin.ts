@@ -1,6 +1,7 @@
 import axios from 'axios';
 import type { AxiosResponse } from 'axios';
 import { API_ORIGIN } from '../utils/request';
+import { storage } from '@/utils/storage';
 
 const BASE_URL = `${API_ORIGIN}/api/admin`;
 const TOKEN_KEY = 'admin_token';
@@ -20,7 +21,7 @@ type UnwrapResponse<T> = T;
 const client = axios.create({ baseURL: BASE_URL, timeout: 15000 });
 
 client.interceptors.request.use((config) => {
-  const token = localStorage.getItem(TOKEN_KEY);
+  const token = storage.getItem(TOKEN_KEY);
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -44,7 +45,7 @@ client.interceptors.response.use(
   (response) => unwrapResponse(response),
   (error) => {
     if (error?.response?.status === 401) {
-      localStorage.removeItem(TOKEN_KEY);
+      storage.removeItem(TOKEN_KEY);
       if (!window.location.hash.startsWith('#/admin/login')) {
         window.location.hash = '#/admin/login';
       }
@@ -79,10 +80,10 @@ async function apiDelete<T = void>(url: string): Promise<T> {
   return result as unknown as T;
 }
 
-export const isAdminLoggedIn = (): boolean => !!localStorage.getItem(TOKEN_KEY);
+export const isAdminLoggedIn = (): boolean => !!storage.getItem(TOKEN_KEY);
 
 export const adminLogout = (): void => {
-  localStorage.removeItem(TOKEN_KEY);
+  storage.removeItem(TOKEN_KEY);
 };
 
 export interface AdminLoginResult {
@@ -97,7 +98,7 @@ export interface AdminLoginResult {
 export const adminLogin = async (password: string): Promise<AdminLoginResult> => {
   const data = await apiPost<AdminLoginResult>('/login', { password });
   if (data.token) {
-    localStorage.setItem(TOKEN_KEY, data.token);
+    storage.setItem(TOKEN_KEY, data.token);
   }
   return data;
 };
@@ -105,7 +106,7 @@ export const adminLogin = async (password: string): Promise<AdminLoginResult> =>
 /** 登录第二步：2FA 临时令牌 + 验证码 → 完整管理员 JWT（后端 /2fa/verify） */
 export const verify2faLogin = async (tempToken: string, code: string): Promise<void> => {
   const data = await apiPost<{ token: string }>('/2fa/verify', { token: tempToken, code });
-  localStorage.setItem(TOKEN_KEY, data.token);
+  storage.setItem(TOKEN_KEY, data.token);
 };
 
 // ─── 数据看板 ────────────────────────────────
@@ -242,7 +243,7 @@ export const downloadBackup = async (): Promise<void> => {
   // blob 响应不走统一拦截器（response.data.data 解包会破坏二进制）
   const res = await axios.get(`${BASE_URL}/backup`, {
     responseType: 'blob',
-    headers: { Authorization: `Bearer ${localStorage.getItem(TOKEN_KEY)}` },
+    headers: { Authorization: `Bearer ${storage.getItem(TOKEN_KEY)}` },
   });
   const url = URL.createObjectURL(res.data as Blob);
   const link = document.createElement('a');

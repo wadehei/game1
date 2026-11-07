@@ -12,6 +12,7 @@
 import { API_ORIGIN } from './apiOrigin';
 import { listVoiceLines } from '../api/voice';
 import type { VoiceLine } from '../types/voice';
+import { storage } from '@/utils/storage';
 
 /** 音色优先级：从上到下第一个命中的即使用 */
 const VOICE_PREFERENCES: RegExp[] = [
@@ -98,7 +99,7 @@ export const playVoice = (key: string, fallbackText: string): void => {
 
 const isMuted = (): boolean => {
   try {
-    return localStorage.getItem('games_sound_muted') === '1';
+    return storage.getItem('games_sound_muted') === '1';
   } catch {
     return false;
   }
@@ -143,7 +144,7 @@ export const speak = (text: string): void => {
         utter.pitch = 1.0;
         // 与音效共用音量设置
         try {
-          const v = parseFloat(localStorage.getItem('games_volume') || '');
+          const v = parseFloat(storage.getItem('games_volume') || '');
           if (Number.isFinite(v)) utter.volume = Math.max(0, Math.min(1, v));
         } catch {
           // ignore

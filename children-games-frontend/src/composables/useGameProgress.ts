@@ -1,6 +1,7 @@
 import { useGameStore } from '@/store/game';
 import { getGameProgress, updateGameProgress, recordPlay } from '@/api/game';
 import { notifyAchievements } from '@/utils/achievementBus';
+import { storage } from '@/utils/storage';
 
 const localKey = (gameId: string) => `game_progress_${gameId}`;
 
@@ -12,7 +13,7 @@ interface LocalProgress {
 
 function readLocalProgress(gameId: string): LocalProgress | null {
   try {
-    const raw = localStorage.getItem(localKey(gameId));
+    const raw = storage.getItem(localKey(gameId));
     return raw ? (JSON.parse(raw) as LocalProgress) : null;
   } catch {
     return null;
@@ -49,7 +50,7 @@ export function useGameProgress(gameId: string) {
   }): Promise<void> => {
     try {
       const result = await updateGameProgress(gameId, data);
-      localStorage.removeItem(localKey(gameId));
+      storage.removeItem(localKey(gameId));
       // 新解锁的成就交给全局 toast 展示
       if (result?.newAchievements?.length) {
         notifyAchievements(result.newAchievements);
@@ -62,7 +63,7 @@ export function useGameProgress(gameId: string) {
           data.level > prev.level ||
           (data.level === prev.level && (data.score || 0) > (prev.score || 0));
         if (better) {
-          localStorage.setItem(localKey(gameId), JSON.stringify(data));
+          storage.setItem(localKey(gameId), JSON.stringify(data));
         }
       } catch {
         // localStorage 不可用时放弃

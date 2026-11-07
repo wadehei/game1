@@ -5,6 +5,7 @@
  */
 
 import { API_ORIGIN } from './apiOrigin';
+import { storage } from '@/utils/storage';
 
 const THROTTLE_MS = 30 * 1000;
 const MAX_PER_SESSION = 20;
@@ -26,7 +27,7 @@ const report = (message: string, detail?: string): void => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${localStorage.getItem('token') || ''}`,
+        Authorization: `Bearer ${storage.getItem('token') || ''}`,
       },
       body: JSON.stringify({ message, detail }),
     }).catch(() => {

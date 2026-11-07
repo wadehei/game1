@@ -2,6 +2,7 @@
 // 增强功能：指数退避 + jitter、消息队列离线缓冲、ACK 可靠性确认、双层心跳保活
 import { ref } from 'vue';
 import type { S2CEvent } from './wsTypes';
+import { storage } from '@/utils/storage';
 
 export type WsHandler = (msg: S2CEvent) => void;
 /** 'disconnected' 事件实际转发的是浏览器 CloseEvent */
@@ -104,7 +105,7 @@ export const useRoomWs = () => {
   };
 
   const connect = (roomId: string) => {
-    const token = localStorage.getItem('token') || '';
+    const token = storage.getItem('token') || '';
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     // 鉴权走握手 URL 的 token 参数：后端在连接时校验（必须为 access token 且未进黑名单），
     // 失效会以 4001 关闭。连接建立后的长连接不再重复鉴权。

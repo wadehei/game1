@@ -6,16 +6,17 @@
 import axios from 'axios';
 import { API_ORIGIN } from '../utils/request';
 import type { VoiceLine, RoomVoiceUploadResult } from '../types/voice';
+import { storage } from '@/utils/storage';
 
 export type { VoiceLine, RoomVoiceUploadResult } from '../types/voice';
 
 // ─── 共享工具函数 ────────────────────────────────────────────
 
 /** 获取管理员 token（配音接口需要管理员权限） */
-const getAdminToken = (): string | null => localStorage.getItem('admin_token');
+const getAdminToken = (): string | null => storage.getItem('admin_token');
 
 /** 获取用户 token（房间语音接口需要用户权限） */
-const getUserToken = (): string | null => localStorage.getItem('token');
+const getUserToken = (): string | null => storage.getItem('token');
 
 // ─── 管理员配音 API（家长原声） ────────────────────────────────
 

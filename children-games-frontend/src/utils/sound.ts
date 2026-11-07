@@ -2,6 +2,8 @@
  * SoundManager — Web Audio API 合成音效系统
  * 为儿童游戏生成合成音效，无需外部音频文件
  */
+import { storage } from '@/utils/storage';
+
 class SoundManager {
   private ctx: AudioContext | null = null;
   private muted: boolean = false;
@@ -55,7 +57,7 @@ class SoundManager {
   setVolume(volume: number): void {
     const v = Math.max(0, Math.min(1, volume));
     try {
-      localStorage.setItem('games_volume', String(v));
+      storage.setItem('games_volume', String(v));
     } catch {
       // ignore
     }
@@ -66,7 +68,7 @@ class SoundManager {
 
   getVolume(): number {
     try {
-      const v = parseFloat(localStorage.getItem('games_volume') || '');
+      const v = parseFloat(storage.getItem('games_volume') || '');
       if (Number.isFinite(v) && v >= 0 && v <= 1) return v;
     } catch {
       // ignore

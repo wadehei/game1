@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
+import { storage } from '@/utils/storage';
 
 export interface UserInfo {
   id: number;
@@ -17,16 +18,16 @@ export const TOKEN_KEY = 'token';
 export const REFRESH_TOKEN_KEY = 'refresh_token';
 
 export const useUserStore = defineStore('user', () => {
-  const token = ref<string>(localStorage.getItem(TOKEN_KEY) || '');
-  const refreshToken = ref<string>(localStorage.getItem(REFRESH_TOKEN_KEY) || '');
-  const stored = localStorage.getItem('userInfo');
+  const token = ref<string>(storage.getItem(TOKEN_KEY) || '');
+  const refreshToken = ref<string>(storage.getItem(REFRESH_TOKEN_KEY) || '');
+  const stored = storage.getItem('userInfo');
   let parsed: UserInfo | null = null;
   if (stored) {
     try {
       parsed = JSON.parse(stored);
     } catch {
       // localStorage 数据损坏，清除后重置
-      localStorage.removeItem('userInfo');
+      storage.removeItem('userInfo');
     }
   }
   const userInfo = ref<UserInfo | null>(parsed);
@@ -35,32 +36,32 @@ export const useUserStore = defineStore('user', () => {
   const setTokens = (accessToken: string, refresh: string) => {
     token.value = accessToken;
     refreshToken.value = refresh;
-    localStorage.setItem(TOKEN_KEY, accessToken);
+    storage.setItem(TOKEN_KEY, accessToken);
     if (refresh) {
-      localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
+      storage.setItem(REFRESH_TOKEN_KEY, refresh);
     } else {
-      localStorage.removeItem(REFRESH_TOKEN_KEY);
+      storage.removeItem(REFRESH_TOKEN_KEY);
     }
   };
 
   /** 仅更新 accessToken（静默刷新后调用） */
   const setToken = (accessToken: string) => {
     token.value = accessToken;
-    localStorage.setItem(TOKEN_KEY, accessToken);
+    storage.setItem(TOKEN_KEY, accessToken);
   };
 
   const setUserInfo = (info: UserInfo) => {
     userInfo.value = info;
-    localStorage.setItem('userInfo', JSON.stringify(info));
+    storage.setItem('userInfo', JSON.stringify(info));
   };
 
   const logout = () => {
     token.value = '';
     refreshToken.value = '';
     userInfo.value = null;
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
-    localStorage.removeItem('userInfo');
+    storage.removeItem(TOKEN_KEY);
+    storage.removeItem(REFRESH_TOKEN_KEY);
+    storage.removeItem('userInfo');
   };
 
   const isLoggedIn = () => {
