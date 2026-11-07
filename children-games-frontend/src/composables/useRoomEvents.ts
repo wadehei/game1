@@ -239,6 +239,24 @@ export const useRoomEvents = (ws: WsLike, ctx: RoomEventContext) => {
     ws.on('draw_clear', () => {
       gameEvents.clear = { ts: Date.now() };
     });
+    ws.on('tank_start', (m: unknown) => {
+      gameEvents.tankStart = m;
+      gameEvents.tankTick = null;
+      gameEvents.tankBoom = null;
+    });
+    ws.on('tank_tick', (m: unknown) => {
+      gameEvents.tankTick = m;
+    });
+    ws.on('tank_hit', (m: unknown) => {
+      gameEvents.tankHit = m;
+    });
+    ws.on('tank_boom', (m: unknown) => {
+      gameEvents.tankBoom = m;
+    });
+    ws.on('tank_final', (m: unknown) => {
+      gameEvents.final = m as never;
+      gameEvents.tankTick = null;
+    });
     ws.on('draw_round_end', (m: Extract<S2CDrawEvent, { t: 'draw_round_end' }>) => {
       gameEvents.roundEnd = m;
     });

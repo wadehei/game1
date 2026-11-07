@@ -9,6 +9,7 @@ import { spyHandler } from './spy';
 import { unoHandler } from './uno';
 import { blackjackHandler } from './blackjack';
 import { zjhHandler } from './zjh';
+import { tankHandler } from './tank';
 
 export const gameHandlers: Partial<Record<GameType, GameHandler>> = {
   gomoku: gomokuHandler,
@@ -18,6 +19,7 @@ export const gameHandlers: Partial<Record<GameType, GameHandler>> = {
   uno: unoHandler,
   blackjack: blackjackHandler,
   zjh: zjhHandler,
+  tank: tankHandler,
 };
 
 export const getHandler = (type: GameType): GameHandler => {

@@ -413,6 +413,11 @@ export type GameEvents = {
   undo: { ts: number } | null;
   clear: { ts: number } | null;
   roundEnd: unknown;
+  // 坦克对决
+  tankStart: unknown;
+  tankTick: unknown;
+  tankHit: unknown;
+  tankBoom: unknown;
   // 卧底
   phase: unknown;
   deal: unknown;
@@ -463,6 +468,11 @@ export type GameEvents = {
  * WebSocket 事件映射
  */
 export interface WsEventMap {
+  tank_start: unknown;
+  tank_tick: unknown;
+  tank_hit: unknown;
+  tank_boom: unknown;
+  tank_final: unknown;
   joined: S2CJoined;
   snapshot: S2CSnapshot;
   member_update: S2CMemberUpdate;

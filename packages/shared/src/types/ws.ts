@@ -25,7 +25,8 @@ export type C2SMessage =
   | C2SSpyVote
   | C2SUnoAction
   | C2SBlackjackAction
-  | C2SZjhAction;
+  | C2SZjhAction
+  | C2STankAction;
 
 // ─────────────────────────────────────────────────────────────
 // 房间通用消息
@@ -135,6 +136,8 @@ export type C2SZjhAction =
   | { t: 'zjh_fold' }
   | { t: 'zjh_compare'; targetUserId: number };
 
+/** 坦克对决：移动/开火（dir 边沿触发，-1 停 / 0 上 / 1 右 / 2 下 / 3 左） */
+export type C2STankAction = { t: 'tank_move'; dir: number } | { t: 'tank_fire' };
 /**
  * 服务端 → 客户端事件
  */
@@ -163,6 +166,7 @@ export type S2CEvent =
   | S2CSpyEvent
   | S2CUnoEvent
   | S2CBlackjackEvent
+  | S2CTankEvent
   | S2CZjhEvent;
 
 // ─────────────────────────────────────────────────────────────
@@ -361,3 +365,41 @@ export type S2CZjhEvent =
   | { t: 'zjh_showdown'; reveals: unknown }
   | { t: 'zjh_settle'; round: number; winner: number; winnerNickname?: string; reason?: string; winAmount?: number; reveals?: unknown; deltas: Array<{ userId: number; delta: number; chips: number }>; nextDeadline?: number }
   | { t: 'zjh_final'; ranking: Array<{ userId: number; nickname: string; chips: number }> };
+
+// ─────────────────────────────────────────────────────────────
+// 坦克对决事件
+// ─────────────────────────────────────────────────────────────
+export interface TankPlayerView {
+  userId: number;
+  seat: number;
+  x: number;
+  y: number;
+  dir: number;
+  hp: number;
+  alive: boolean;
+  kills: number;
+}
+export interface TankBulletView {
+  id: number;
+  ownerId: number;
+  x: number;
+  y: number;
+  dir: number;
+}
+export type S2CTankEvent =
+  | {
+      t: 'tank_start';
+      seconds: number;
+      walls: Array<{ x: number; y: number; w: number; h: number }>;
+      arena: { w: number; h: number };
+      size: number;
+      players: TankPlayerView[];
+    }
+  | { t: 'tank_tick'; players: TankPlayerView[]; bullets: TankBulletView[]; remainMs: number }
+  | { t: 'tank_hit'; userId: number; hp: number; byUserId: number }
+  | { t: 'tank_boom'; userId: number; killerUserId: number; kills: number; respawnMs: number }
+  | {
+      t: 'tank_final';
+      ranking: Array<{ userId: number; nickname: string; total: number; seat: number }>;
+      reason: string;
+    };

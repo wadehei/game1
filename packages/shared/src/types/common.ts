@@ -5,7 +5,7 @@
 /**
  * 游戏类型枚举
  */
-export type GameType = 'gomoku' | 'quiz' | 'draw' | 'spy' | 'uno' | 'blackjack' | 'zjh';
+export type GameType = 'gomoku' | 'quiz' | 'draw' | 'spy' | 'uno' | 'blackjack' | 'zjh' | 'tank';
 
 /**
  * 游戏类型数组（用于迭代）
@@ -18,6 +18,7 @@ export const GAME_TYPES: readonly GameType[] = [
   'uno',
   'blackjack',
   'zjh',
+  'tank',
 ] as const;
 
 /**
