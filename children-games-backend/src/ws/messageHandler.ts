@@ -19,7 +19,17 @@ import { filterChatMessage } from '../utils/contentFilter';
 import type WebSocket from 'ws';
 
 /** 已知房间级消息类型白名单（游戏动作由各 handler 自行校验） */
-const KNOWN_ROOM_ACTIONS = new Set(['ping', 'ready', 'rematch', 'chat', 'leave', 'disband']);
+const KNOWN_ROOM_ACTIONS = new Set([
+  'ping',
+  'ready',
+  'rematch',
+  'chat',
+  'leave',
+  'disband',
+  // 传输层控制消息（前后端约定，不路由到游戏逻辑）
+  '__ping__',
+  '__ack__',
+]);
 
 export interface MessageHandlerDeps extends GameFlowDeps {
   handleLeave: (room: Room, userId: number) => void;
@@ -69,6 +79,15 @@ export const dispatchMessage = (
   switch (msg.t) {
     case 'ping':
       send(ws, { t: 'pong' });
+      break;
+
+    // 客户端心跳（传输层）：回复 __pong__ 供前端确认连接存活
+    case '__ping__':
+      send(ws, { t: '__pong__' });
+      break;
+
+    // 客户端发来的 ACK 确认：仅用于标记消息已送达，无需额外处理
+    case '__ack__':
       break;
 
     case 'ready': {
@@ -198,5 +217,11 @@ export const dispatchMessage = (
       }
       break;
     }
+  }
+
+  // ─── 消息 ACK 响应 ───────────────────
+  // 若消息携带 ack 字段，回复 __ack__ 确认已处理（前端可用于消息可靠性追踪）
+  if (typeof msg.ack === 'string' && msg.ack.length > 0) {
+    send(ws, { t: '__ack__', ackId: msg.ack });
   }
 };

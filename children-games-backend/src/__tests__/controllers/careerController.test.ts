@@ -7,7 +7,7 @@ import { User, UserPlaytime, GameProgress, DailyTask } from '../../models';
 // Mock dependencies - explicit factory to avoid Sequelize class auto-mock issues
 vi.mock('../../models', () => ({
   User: { findByPk: vi.fn() },
-  UserPlaytime: { findAll: vi.fn(), findOrCreate: vi.fn() },
+  UserPlaytime: { findAll: vi.fn(), findOne: vi.fn(), findOrCreate: vi.fn() },
   GameProgress: { findAll: vi.fn() },
   DailyTask: { findAll: vi.fn() },
 }));
@@ -52,7 +52,7 @@ describe('careerController', () => {
   let mockStatus: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     mockJson = vi.fn();
     mockStatus = vi.fn().mockReturnValue({ json: mockJson });
     mockRes = {
@@ -99,25 +99,35 @@ describe('careerController', () => {
         { date: '2024-06-01', seconds: 120 },
         { date: '2024-06-02', seconds: 60 },
       ];
-      const mockRewardRows = [{ taskReward: 5 }, { taskReward: 3 }];
 
       vi.mocked(User.findByPk).mockResolvedValue(mockUser as any);
       vi.mocked(GameProgress.findAll).mockResolvedValue(mockProgresses as any);
       vi.mocked(UserPlaytime.findAll).mockResolvedValue(mockTimeRows as any);
-      vi.mocked(DailyTask.findAll).mockResolvedValue(mockRewardRows as any);
+      // 汇总走 SQL 聚合（findOne raw）：全历史口径
+      vi.mocked(UserPlaytime.findOne).mockResolvedValue({
+        totalSeconds: '180',
+        activeDays: '2',
+      } as any);
+      vi.mocked(DailyTask.findAll).mockResolvedValue([{ total: '8' }] as any);
 
       await getMyCareer(mockReq, mockRes, () => {});
 
       expect(User.findByPk).toHaveBeenCalledWith(123);
       expect(GameProgress.findAll).toHaveBeenCalledWith({ where: { userId: 123 } });
-      expect(UserPlaytime.findAll).toHaveBeenCalledWith({
-        where: { userId: 123 },
-        attributes: ['date', 'seconds'],
-      });
-      expect(DailyTask.findAll).toHaveBeenCalledWith({
-        where: { userId: 123 },
-        attributes: ['taskReward'],
-      });
+      // 图表查询：仅最近 N 天（where 内含动态日期，用 objectContaining 校验）
+      expect(UserPlaytime.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ userId: 123 }),
+          attributes: ['date', 'seconds'],
+        })
+      );
+      // 汇总聚合查询：不带日期过滤
+      expect(UserPlaytime.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { userId: 123 } })
+      );
+      expect(DailyTask.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { userId: 123 } })
+      );
       expect(mockStatus).toHaveBeenCalledWith(200);
       expect(mockJson).toHaveBeenCalledWith(
         expect.objectContaining({

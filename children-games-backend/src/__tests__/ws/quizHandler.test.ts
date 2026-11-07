@@ -167,20 +167,23 @@ describe('quizHandler', () => {
     });
 
     it('should load questions, set state, and initialize scores on success', async () => {
-      mockFindAll.mockResolvedValue(mockQuestions(12) as any);
+      // SQL ORDER BY RAND() + LIMIT 10：DB 最多返回 QUESTION_COUNT 条，mock 按此契约给 10 条
+      mockFindAll.mockResolvedValue(mockQuestions(10) as any);
       const room = makeRoom({}, [makeMember({ userId: 1 }), makeMember({ userId: 2, seat: 1 })]);
 
       quizHandler.start!(room);
       await yieldMicrotasks();
 
       const st = room.game as ReturnType<typeof quizHandler.create>;
-      expect(st.total).toBe(10); // QUESTION_COUNT = 10, sliced from 12
+      expect(st.total).toBe(10);
       expect(st.questions.length).toBe(10);
       expect(st.index).toBe(-1);
       expect(st.scores.size).toBe(2);
       expect(st.scores.get(1)).toBe(0);
       expect(st.scores.get(2)).toBe(0);
       expect(st.answers.size).toBe(0);
+      // 锁定下推 DB 的随机抽样契约（题库大时不再全表加载）
+      expect(mockFindAll).toHaveBeenCalledWith(expect.objectContaining({ limit: 10 }));
     });
 
     it('should use all questions when fewer than QUESTION_COUNT', async () => {

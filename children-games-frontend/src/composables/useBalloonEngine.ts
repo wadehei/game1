@@ -105,7 +105,7 @@ export function useBalloonEngine() {
   let spawnTimer: ReturnType<typeof setInterval> | null = null;
   let shakeOffset = { x: 0, y: 0 };
   let bgGradient: CanvasGradient | null = null;
-  let floatTexts: FloatText[] = [];
+  const floatTexts: FloatText[] = [];
   // perf: pre-fill float text pool
   for (let i = 0; i < MAX_FLOAT_TEXTS; i++) {
     floatTexts.push({ x: 0, y: 0, text: '', life: 0, color: '' });
@@ -205,8 +205,9 @@ export function useBalloonEngine() {
     balloonList = [];
     bulletList = [];
     // perf: reset pools in-place to preserve pre-allocated capacity (GC optimization)
-    popParticles.length = 0;
-    floatTexts.length = 0;
+    // 标记所有槽位为"死亡"状态，spawn 函数可立即复用，避免丢弃预分配容量
+    for (let i = 0; i < popParticles.length; i++) popParticles[i].alpha = 0;
+    for (let i = 0; i < floatTexts.length; i++) floatTexts[i].life = 0;
     showResult.value = false;
     gameWon.value = false;
     stars.value = 0;
@@ -497,12 +498,14 @@ export function useBalloonEngine() {
       popParticles.length = writeP;
     }
 
-    // 飘分数字
+    // 飘分数字 — in-place compaction 避免 filter() 每帧分配新数组
     if (floatTexts.length > 0) {
-      floatTexts = floatTexts.filter((t) => {
+      let writeFt = 0;
+      for (let i = 0; i < floatTexts.length; i++) {
+        const t = floatTexts[i];
         t.y -= 1.3;
         t.life -= 0.03;
-        if (t.life <= 0) return false;
+        if (t.life <= 0) continue; // dead — skip copy
         c.globalAlpha = Math.min(1, t.life * 1.4);
         c.font = 'bold 18px sans-serif';
         c.textAlign = 'center';
@@ -512,8 +515,9 @@ export function useBalloonEngine() {
         c.fillStyle = t.color;
         c.fillText(t.text, t.x, t.y);
         c.globalAlpha = 1;
-        return true;
-      });
+        floatTexts[writeFt++] = t;
+      }
+      floatTexts.length = writeFt;
     }
 
     c.restore();

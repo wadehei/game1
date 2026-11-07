@@ -16,6 +16,8 @@ export type C2SMessage =
   | C2SResign
   | C2SChat
   | C2SVoice
+  // 传输层控制消息（心跳保活）
+  | C2SPing
   // 各游戏 action
   | C2SGomokuMove
   | C2SQuizAnswer
@@ -59,6 +61,11 @@ export interface C2SVoice {
   t: 'voice';
   voiceId: string;
   duration: number;
+}
+
+/** 客户端传输层心跳（后端回复 __pong__） */
+export interface C2SPing {
+  t: '__ping__';
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -145,6 +152,10 @@ export type S2CEvent =
   | S2CVoice
   | S2CClosed
   | S2CDisconnected
+  // 传输层控制消息（心跳保活、消息确认）
+  | S2CPong
+  | S2CPongLegacy
+  | S2CAck
   // 各游戏事件
   | S2CGomokuEvent
   | S2CQuizEvent
@@ -230,6 +241,26 @@ export interface S2CClosed {
 
 export interface S2CDisconnected {
   t: 'disconnected';
+}
+
+// ─────────────────────────────────────────────────────────────
+// 传输层控制消息（心跳保活、消息确认）
+// ─────────────────────────────────────────────────────────────
+
+/** 服务端对客户端 __ping__ 的回复，确认连接存活 */
+export interface S2CPong {
+  t: '__pong__';
+}
+
+/** 游戏层心跳回复（兼容旧版客户端 ping） */
+export interface S2CPongLegacy {
+  t: 'pong';
+}
+
+/** 服务端对携带 ack 字段的消息的确认回复 */
+export interface S2CAck {
+  t: '__ack__';
+  ackId: string;
 }
 
 // ─────────────────────────────────────────────────────────────

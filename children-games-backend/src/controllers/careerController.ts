@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import { Op, fn, col, literal } from 'sequelize';
 import { User, UserPlaytime, GameProgress, DailyTask } from '../models';
 import { AuthRequest } from '../middleware/auth';
 import { success, asyncHandler } from '../utils/response';
@@ -29,13 +30,11 @@ function buildLast7DaysChart(timeRows: { date: string; seconds: number }[]) {
 /** 生涯汇总数据 */
 function computeCareerTotals(
   progresses: GameProgressType[],
-  timeRows: { seconds: number }[],
-  rewardRows: { taskReward: number | null }[],
+  playSeconds: number,
+  playDays: number,
+  rewardStars: number,
   achievements: string[]
 ) {
-  const playSeconds = timeRows.reduce((sum, r) => sum + r.seconds, 0);
-  const playDays = timeRows.filter((r) => r.seconds > 0).length;
-  const rewardStars = rewardRows.reduce((sum, r) => sum + (r.taskReward || 0), 0);
   const totalPlayCount = progresses.reduce((sum, p) => sum + (p.playCount || 0), 0);
   const totalWinCount = progresses.reduce((sum, p) => sum + (p.winCount || 0), 0);
 
@@ -57,14 +56,52 @@ export const getMyCareer = asyncHandler(async (req: AuthRequest, res: Response) 
     throw new NotFoundError('用户不存在');
   }
 
-  const [progresses, timeRows, rewardRows] = await Promise.all([
+  // 性能优化：限制查询日期范围 + 使用 SQL 聚合减少内存占用
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - RECENT_DAYS);
+
+  const [progresses, timeRows, playAgg, rewardRows] = await Promise.all([
     GameProgress.findAll({ where: { userId } }),
-    UserPlaytime.findAll({ where: { userId }, attributes: ['date', 'seconds'] }),
-    DailyTask.findAll({ where: { userId }, attributes: ['taskReward'] }),
+    // 只查最近 N 天的时长数据（图表展示需要）
+    UserPlaytime.findAll({
+      where: {
+        userId,
+        date: { [Op.gte]: cutoffDate.toISOString().split('T')[0] },
+      },
+      attributes: ['date', 'seconds'],
+      order: [['date', 'ASC']],
+    }),
+    // 汇总聚合：保持全历史口径（勿改成近 N 天，家长端"总时长/天数"以此为源）
+    UserPlaytime.findOne({
+      where: { userId },
+      attributes: [
+        [fn('SUM', col('seconds')), 'totalSeconds'],
+        [fn('SUM', literal('CASE WHEN seconds > 0 THEN 1 ELSE 0 END')), 'activeDays'],
+      ],
+      raw: true,
+    }),
+    // 性能优化：使用 SQL SUM 聚合替代 findAll + JS reduce
+    DailyTask.findAll({
+      where: { userId },
+      attributes: [[fn('SUM', col('taskReward')), 'total']],
+      raw: true,
+    }),
   ]);
 
+  const agg = (playAgg ?? {}) as { totalSeconds?: string | null; activeDays?: string | null };
+  const totalReward = parseInt(
+    (rewardRows[0] as unknown as { total: string | null } | undefined)?.total || '0',
+    10
+  );
+
   const achievements = safeJsonParse<string[]>(user.achievements, []);
-  const totals = computeCareerTotals(progresses, timeRows, rewardRows, achievements);
+  const totals = computeCareerTotals(
+    progresses,
+    parseInt(agg.totalSeconds || '0', 10),
+    parseInt(agg.activeDays || '0', 10),
+    totalReward,
+    achievements
+  );
   const last7 = buildLast7DaysChart(timeRows);
 
   success(res, {

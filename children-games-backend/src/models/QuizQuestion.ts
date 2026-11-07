@@ -71,6 +71,10 @@ QuizQuestion.init(
       {
         fields: ['category'],
       },
+      // 按难度筛选题目
+      {
+        fields: ['difficulty'],
+      },
     ],
   }
 );

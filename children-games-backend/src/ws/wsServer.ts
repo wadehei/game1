@@ -32,9 +32,24 @@ import {
 interface Ctx {
   userId: number;
   roomId: string | null;
+  /** 心跳标记：ws 库 pong 事件回调中置 true，定时检查时若为 false 则视为僵死 */
+  isAlive: boolean;
 }
 
 const clients = new WeakMap<WebSocket, Ctx>();
+
+// ─── 心跳参数（双层设计）───────────────────
+// 第一层：ws 库原生 ping/pong 帧（本文件实现）
+//   - 目的：检测 TCP 层面的僵死连接（网络中断、客户端崩溃等无 close 帧的情况）
+//   - 机制：服务端每 30s 发送 ws.ping()，客户端自动回复 pong；若下次检查时 isAlive 仍为 false 则 terminate()
+//   - 优点：协议级实现，无需业务代码参与，开销极低
+// 第二层：应用层 __ping__ 消息（客户端 → 服务端，见 useRoomWs.ts）
+//   - 目的：客户端主动确认"我仍在线"，触发服务端重发未送达的消息（消息队列补偿）
+//   - 机制：客户端定时器每 N 秒发送 { t: '__ping__' }，服务端收到后回复 { t: '__pong__', ...pendingMsgs }
+//   - 优点：应用层可控，支持消息补偿、RTT 测量、跨代理保活
+// 两者职责不同，互为补充：原生层管"连接死活"，应用层管"消息必达"
+const HEARTBEAT_INTERVAL = 30_000; // 每 30 秒发送一次 ping
+// pong 超时判定：若下次心跳检查时 isAlive 仍为 false（即 30s 内未收到 pong），视为僵死
 
 // ─── Bus 层：带积分结算拦截的广播 ───────────────────
 const busBroadcast = (
@@ -124,8 +139,15 @@ export const initWsServer = (server: Server): void => {
       chips = await grantDailyRelief(userId);
     }
 
-    const ctx: Ctx = { userId, roomId: null };
+    const ctx: Ctx = { userId, roomId: null, isAlive: true };
     clients.set(ws, ctx);
+
+    // 心跳：收到 pong 时标记存活
+    ws.on('pong', () => {
+      const c = clients.get(ws);
+      if (c) c.isAlive = true;
+    });
+
     send(ws, { t: 'auth_ok', userId, chips });
 
     // 连接即带 roomId → 直接进房（重连也走这里）
@@ -250,6 +272,27 @@ export const initWsServer = (server: Server): void => {
       logError('ws', `WebSocket 连接错误: ${err.message}`);
     });
   });
+
+  // ─── 心跳检测：清理僵死连接 ───────────────────
+  // 使用 ws 库原生 ping/pong 帧（非应用层消息），每 30 秒检查一次
+  const heartbeatTimer = setInterval(() => {
+    wss.clients.forEach((ws) => {
+      const ctx = clients.get(ws);
+      if (!ctx) return;
+      if (ctx.isAlive === false) {
+        // 上次 ping 未收到 pong → 连接已僵死，触发断线流程（保留 60s 等重连）
+        logError('ws', `心跳超时，关闭僵死连接 userId=${ctx.userId}`);
+        ws.terminate();
+        return;
+      }
+      ctx.isAlive = false;
+      ws.ping();
+    });
+  }, HEARTBEAT_INTERVAL);
+  heartbeatTimer.unref?.();
+
+  // 服务关闭时清理心跳定时器
+  wss.on('close', () => clearInterval(heartbeatTimer));
 
   // 定期清理：空闲房间 + 过期语音
   setInterval(

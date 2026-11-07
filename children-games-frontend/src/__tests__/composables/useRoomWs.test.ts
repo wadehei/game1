@@ -154,10 +154,11 @@ describe('composables/useRoomWs', () => {
       expect(last).toEqual({ t: 'move', x: 1, y: 2 });
     });
 
-    it('should return false when WebSocket is not open', () => {
+    it('should return true and queue message when WebSocket is not open', () => {
       const { send } = useRoomWs();
       const result = send({ t: 'test' });
-      expect(result).toBe(false);
+      // 消息队列功能：连接不可用时入队而非丢弃，返回 true 表示已入队
+      expect(result).toBe(true);
     });
   });
 
@@ -288,14 +289,18 @@ describe('composables/useRoomWs', () => {
       expect(instances).toHaveLength(1);
     });
 
-    it('should use exponential backoff', () => {
+    it('should use exponential backoff with jitter', () => {
+      // Mock Math.random to return 0.5 → jitter = delay * 0.25 * (0.5 * 2 - 1) = 0
+      // 这样退避延迟与无 jitter 时相同，测试可预测
+      const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5);
+
       const { connect } = useRoomWs();
       connect('room-backoff');
 
       // First connection closes unexpectedly
       instances[0].simulateOpen();
       instances[0].simulateClose(1006);
-      // retry=1, delay = 1000 * 2^0 = 1000ms
+      // retry=1, delay = 1000 * 2^0 = 1000ms (jitter=0)
 
       // Should not reconnect before delay
       vi.advanceTimersByTime(500);
@@ -307,7 +312,7 @@ describe('composables/useRoomWs', () => {
 
       // Second connection also closes without opening (so retry accumulates)
       instances[1].simulateClose(1006);
-      // retry=2, delay = 1000 * 2^1 = 2000ms
+      // retry=2, delay = 1000 * 2^1 = 2000ms (jitter=0)
 
       // Should not reconnect before delay
       vi.advanceTimersByTime(1500);
@@ -316,11 +321,13 @@ describe('composables/useRoomWs', () => {
       // Second reconnect at 2000ms
       vi.advanceTimersByTime(500);
       expect(instances).toHaveLength(3);
+
+      randomSpy.mockRestore();
     });
   });
 
   describe('ping', () => {
-    it('should send ping every 25 seconds', () => {
+    it('should send __ping__ (transport-layer heartbeat) every 25 seconds', () => {
       const { connect } = useRoomWs();
       connect('room-ping');
       instances[0].simulateOpen();
@@ -330,7 +337,7 @@ describe('composables/useRoomWs', () => {
       vi.advanceTimersByTime(25000);
       expect(instances[0].sentMessages).toHaveLength(1);
       const pingMsg = JSON.parse(instances[0].sentMessages[0]);
-      expect(pingMsg).toEqual({ t: 'ping' });
+      expect(pingMsg).toEqual({ t: '__ping__' });
     });
   });
 
@@ -345,6 +352,87 @@ describe('composables/useRoomWs', () => {
       instances[0].simulateClose(1006);
 
       expect(handler).toHaveBeenCalledWith(expect.objectContaining({ code: 1006 }));
+    });
+  });
+
+  describe('message queue', () => {
+    it('should queue messages during disconnection and flush on reconnect', () => {
+      const { connect, send } = useRoomWs();
+      connect('room-queue');
+      instances[0].simulateOpen();
+
+      // Send a message while connected → should go through immediately
+      send({ t: 'chat', content: 'hello' });
+      expect(instances[0].sentMessages).toHaveLength(1);
+
+      // Simulate disconnect
+      instances[0].simulateClose(1006);
+
+      // Send messages while disconnected → should be queued
+      send({ t: 'chat', content: 'msg1' });
+      send({ t: 'chat', content: 'msg2' });
+      // No new WebSocket instance yet, messages queued
+      expect(instances).toHaveLength(1);
+
+      // Reconnect
+      vi.advanceTimersByTime(2000);
+      expect(instances).toHaveLength(2);
+      instances[1].simulateOpen();
+
+      // Queued messages should be flushed (2 queued messages)
+      expect(instances[1].sentMessages).toHaveLength(2);
+      const flushed1 = JSON.parse(instances[1].sentMessages[0]);
+      const flushed2 = JSON.parse(instances[1].sentMessages[1]);
+      expect(flushed1).toEqual({ t: 'chat', content: 'msg1' });
+      expect(flushed2).toEqual({ t: 'chat', content: 'msg2' });
+    });
+
+    it('should drop messages when queue is full (max 50)', () => {
+      const { connect, send } = useRoomWs();
+      connect('room-queue-full');
+      instances[0].simulateOpen();
+      instances[0].simulateClose(1006);
+
+      // Fill the queue beyond capacity
+      let delivered = 0;
+      for (let i = 0; i < 55; i++) {
+        if (send({ t: 'test', i })) delivered++;
+      }
+
+      // First 50 should be queued (returning true), last 5 dropped (returning false)
+      expect(delivered).toBe(50);
+    });
+  });
+
+  describe('ACK support', () => {
+    it('should call ackCallback when server sends __ack__', () => {
+      const { connect, send, on } = useRoomWs();
+      connect('room-ack');
+      instances[0].simulateOpen();
+
+      const ackFn = vi.fn();
+      send({ t: 'chat', content: 'important' }, ackFn);
+
+      // The sent message should include an ack field
+      const sent = JSON.parse(instances[0].sentMessages[0]);
+      expect(sent.ack).toBeDefined();
+      expect(typeof sent.ack).toBe('string');
+
+      // Simulate server ACK response
+      instances[0].simulateMessage({ t: '__ack__', ackId: sent.ack });
+
+      expect(ackFn).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not crash on unexpected __ack__ messages', () => {
+      const { connect, on } = useRoomWs();
+      connect('room-ack-unknown');
+      instances[0].simulateOpen();
+
+      // Server sends ACK for unknown ID → should not throw
+      expect(() => {
+        instances[0].simulateMessage({ t: '__ack__', ackId: 'unknown_id' });
+      }).not.toThrow();
     });
   });
 });

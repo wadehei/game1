@@ -28,6 +28,7 @@ vi.mock('../../../src/models', () => ({
   },
   UserPlaytime: {
     findAll: vi.fn(),
+    findOne: vi.fn(),
     findOrCreate: vi.fn(),
   },
   GameProgress: {
@@ -441,7 +442,9 @@ describe('userController', () => {
         { date: '2024-01-01', seconds: 600 },
         { date: '2024-01-02', seconds: 300 },
       ]);
-      (DailyTask.findAll as Mock).mockResolvedValue([{ taskReward: 10 }, { taskReward: 10 }]);
+      // 汇总走 SQL 聚合（findOne raw）：全历史口径
+      (UserPlaytime.findOne as Mock).mockResolvedValue({ totalSeconds: '900', activeDays: '2' });
+      (DailyTask.findAll as Mock).mockResolvedValue([{ total: '20' }]);
 
       const req = mockReq({ userId: 400 });
       const res = mockRes();

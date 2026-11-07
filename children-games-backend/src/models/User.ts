@@ -120,5 +120,13 @@ User.init(
     sequelize,
     tableName: 'users',
     timestamps: true,
+    indexes: [
+      // 排行榜排序：按对战积分排名
+      { fields: ['battleChips'] },
+      // 排行榜排序：按总星星数排名
+      { fields: ['totalStars'] },
+      // 筛选查询：按等级过滤
+      { fields: ['level'] },
+    ],
   }
 );

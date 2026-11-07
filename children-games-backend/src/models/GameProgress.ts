@@ -119,6 +119,11 @@ GameProgress.init(
         fields: ['userId', 'updatedAt'],
         name: 'idx_gp_user_updated',
       },
+      // 游戏排行榜查询：按游戏ID + 高分排序
+      {
+        fields: ['gameId', 'highScore'],
+        name: 'idx_gp_game_highscore',
+      },
     ],
   }
 );

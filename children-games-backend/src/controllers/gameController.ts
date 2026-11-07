@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Op, Transaction } from 'sequelize';
+import { Op, Transaction, fn, col } from 'sequelize';
 import { z } from 'zod';
 import { GameProgress, User } from '../models';
 import { GameProgressCreationAttributes } from '../models/GameProgress';
@@ -300,8 +300,14 @@ async function recalcUserStats(userId: number, t: Transaction) {
   const user = await User.findByPk(userId, { transaction: t, lock: t.LOCK.UPDATE });
   if (!user) throw new Error('用户不存在');
 
-  const allProgress = await GameProgress.findAll({ where: { userId }, transaction: t });
-  const gameStars = allProgress.reduce((sum, p) => sum + p.stars, 0);
+  // 性能优化：使用 SQL SUM 聚合替代 findAll + JS reduce，减少内存占用和网络传输
+  const [starResult] = (await GameProgress.findAll({
+    where: { userId },
+    attributes: [[fn('SUM', col('stars')), 'total']],
+    raw: true,
+    transaction: t,
+  })) as unknown as Array<{ total: string | null }>;
+  const gameStars = parseInt(starResult?.total || '0', 10);
 
   const playedGames = await countTodayPlayedGames(userId, t);
   await updateDailyTask(userId, playedGames, t);
