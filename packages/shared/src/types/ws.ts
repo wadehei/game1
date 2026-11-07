@@ -302,7 +302,7 @@ export type S2CDrawEvent =
   | { t: 'draw_stroke'; stroke: { seq: number; points: number[][]; color: string; width: number } }
   | { t: 'draw_undo' }
   | { t: 'draw_clear' }
-  | { t: 'draw_round_end'; word: string; category: string; reason: string; scores: Array<{ userId: number; total: number }> }
+  | { t: 'draw_round_end'; word: string; category: string; reason: string; scores: Array<{ userId: number; total: number }>; strokes: Array<{ seq: number; points: number[][]; color: string; width: number }> }
   | { t: 'guess_result'; userId: number; nickname: string; correct: boolean }
   | { t: 'draw_final'; ranking: Array<{ userId: number; nickname: string; total: number }>; reason?: string };
 

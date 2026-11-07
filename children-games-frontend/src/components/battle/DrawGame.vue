@@ -106,6 +106,25 @@
       </div>
       <div class="qf-tip">等待房主发起「再来一局」</div>
     </div>
+
+    <!-- 回放入口：回合结束后可用，新回合开始即消失 -->
+    <button v-if="replayData && !showReplay" class="replay-btn" @click="openReplay">
+      ▶ 回放上一回合
+    </button>
+
+    <!-- 回放浮层 -->
+    <div v-if="showReplay" class="replay-overlay" @click.self="closeReplay">
+      <div class="replay-card">
+        <div class="replay-title">
+          回放<template v-if="replayData?.word"> · 谜底「{{ replayData.word }}」</template>
+        </div>
+        <canvas ref="replayCanvas" class="replay-canvas"></canvas>
+        <div class="replay-actions">
+          <button class="replay-act" @click="playReplay">重播</button>
+          <button class="replay-act" @click="closeReplay">关闭</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -166,6 +185,80 @@ const final = computed(
 const hintChar = computed(() =>
   isDrawer.value ? '' : (props.events.hint as { char?: string } | undefined)?.char || ''
 );
+// ── 回合回放：draw_round_end 现在携带当回合全部笔迹 ──
+interface ReplayStroke {
+  seq: number;
+  points: number[][];
+  color: string;
+  width: number;
+}
+const replayData = ref<{ strokes: ReplayStroke[]; word: string | null } | null>(null);
+const showReplay = ref(false);
+const replayCanvas = ref<HTMLCanvasElement | null>(null);
+let replayRaf = 0;
+
+watch(
+  () => props.events.roundEnd,
+  (m: unknown) => {
+    const ev = m as { strokes?: ReplayStroke[]; word?: string | null } | null | undefined;
+    if (ev && Array.isArray(ev.strokes) && ev.strokes.length > 0) {
+      replayData.value = { strokes: ev.strokes, word: ev.word ?? null };
+    } else {
+      replayData.value = null;
+    }
+    showReplay.value = false;
+  }
+);
+
+const openReplay = (): void => {
+  showReplay.value = true;
+  setTimeout(() => void playReplay(), 60); // 等 canvas 挂载
+};
+
+const closeReplay = (): void => {
+  showReplay.value = false;
+  cancelAnimationFrame(replayRaf);
+};
+
+const playReplay = async (): Promise<void> => {
+  const canvas = replayCanvas.value;
+  const data = replayData.value;
+  if (!canvas || !data) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  const { width, height } = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = width * dpr;
+  canvas.height = height * dpr;
+  ctx.scale(dpr, dpr);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.clearRect(0, 0, width, height);
+  cancelAnimationFrame(replayRaf);
+  for (const stroke of data.strokes) {
+    const pts = (stroke.points || []).map((p) => [p[0] * width, p[1] * height] as const);
+    if (pts.length < 2) continue;
+    ctx.strokeStyle = stroke.color;
+    ctx.lineWidth = stroke.width || 3;
+    // 每帧推进一段，笔速均匀（一笔最多 ~40 帧）
+    const perFrame = Math.max(1, Math.ceil(pts.length / 40));
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i += 1) {
+      ctx.lineTo(pts[i][0], pts[i][1]);
+      if (i % perFrame === 0) {
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(pts[i][0], pts[i][1]);
+        await new Promise<void>((r) => {
+          replayRaf = requestAnimationFrame(() => r());
+        });
+      }
+    }
+    ctx.stroke();
+  }
+};
+
 // 候选词用本地 ref 保存：draw_candidates 私发事件早于 game_start 到达，
 // 而 game_start 会把 events 全部清空，直接读 events.candidates 会丢
 const candidates = ref<string[]>([]);
@@ -573,5 +666,77 @@ watch(tick, () => {
   padding: 10px;
   border-radius: 10px;
   cursor: pointer;
+}
+
+/* ── 回放 ── */
+.replay-btn {
+  margin-top: 10px;
+  width: 100%;
+  padding: 11px;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.replay-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 160;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.replay-card {
+  background: #fff;
+  border-radius: 18px;
+  padding: 16px;
+  width: 92%;
+  max-width: 420px;
+}
+
+.replay-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.replay-canvas {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: #fffdf7;
+  border: 2px solid #e8e0cd;
+  border-radius: 12px;
+  display: block;
+}
+
+.replay-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.replay-act {
+  flex: 1;
+  padding: 10px 0;
+  border: none;
+  border-radius: 12px;
+  background: #f0f0f0;
+  color: #555;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.replay-act:first-child {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
 }
 </style>

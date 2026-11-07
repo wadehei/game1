@@ -154,6 +154,7 @@ C.send({ t: 'guess', content: WORD });
 const roundEnd = await A.waitNew('draw_round_end', 0);
 check('全员猜对提前结束回合', roundEnd.word === WORD);
 check('回合得分已广播', Array.isArray(roundEnd.scores) && roundEnd.scores.length === 3);
+check('回合结束携带本回合笔迹（回放数据）', Array.isArray(roundEnd.strokes) && roundEnd.strokes.length >= 1 && Array.isArray(roundEnd.strokes[0].points));
 
 // 画家换了（座位 1 = uid4 = B）
 const round2 = await A.waitNew('draw_round', 1);

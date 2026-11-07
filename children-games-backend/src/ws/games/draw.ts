@@ -71,6 +71,8 @@ const endRound = (room: Room, reason: string): void => {
     category: st.category,
     reason,
     scores: [...st.scores].map(([userId, total]) => ({ userId, total })),
+    // 回放数据：本回合全部笔迹（此刻尚未清空，下一回合 start 才清）
+    strokes: st.strokes,
   });
 
   // 判断是否全部回合完成
