@@ -152,6 +152,8 @@ export function useTankEngine() {
   let bgCanvas: HTMLCanvasElement | null = null;
   let bgCanvasWidth = 0;
   let bgCanvasHeight = 0;
+  // perf: frame time tracking for fps-independent enemy fire rate
+  let lastFrameTime = Date.now();
 
   const tankImages = new ImageLoader();
 
@@ -210,6 +212,7 @@ export function useTankEngine() {
     stars.value = 0;
     gameEnded = false;
     bgCanvas = null; // perf: reset background cache
+    lastFrameTime = Date.now(); // reset frame time tracking
 
     player.x = canvasWidth.value / 2 - player.width / 2;
     player.y = canvasHeight.value - 120;
@@ -299,6 +302,11 @@ export function useTankEngine() {
   };
 
   const update = () => {
+    // perf: calculate delta time for fps-independent mechanics
+    const now = Date.now();
+    const dt = (now - lastFrameTime) / 1000; // seconds
+    lastFrameTime = now;
+
     if (moveDirection !== 0) {
       player.x += moveDirection * player.speed;
       player.x = Math.max(0, Math.min(player.x, canvasWidth.value - player.width));
@@ -309,7 +317,9 @@ export function useTankEngine() {
       if (enemy.x <= 0 || enemy.x >= canvasWidth.value - enemy.width) {
         enemy.direction *= -1;
       }
-      if (Math.random() < levelConfig.value.enemyFireRate * 0.01) {
+      // perf: fps-independent fire probability using dt
+      // enemyFireRate is "probability per second", multiply by dt for this frame's probability
+      if (Math.random() < levelConfig.value.enemyFireRate * dt) {
         enemyShoot(enemy);
       }
     });

@@ -5,7 +5,7 @@ import { addTimer, clearRoomTimers } from '../roomManager';
 import type { ActionResult, GameHandler } from './types';
 import { getRoomBus } from '../bus';
 import { QuizQuestion } from '../../models';
-import { secureShuffle } from '../../utils/secureRandom';
+import { sequelize } from '../../config/database';
 
 const QUESTION_SECONDS = 15;
 const REVEAL_SECONDS = 3;
@@ -31,8 +31,6 @@ interface QuizState {
 }
 
 const QUESTION_COUNT = 10;
-
-const shuffle = <T>(arr: T[]): T[] => secureShuffle(arr);
 
 const playingUsers = (room: Room): Member[] =>
   [...room.members.values()].filter((m) => m.seat >= 0);
@@ -75,14 +73,19 @@ export const quizHandler: GameHandler<QuizState> = {
     clearRoomTimers(room);
     void (async () => {
       try {
-        const rows = await QuizQuestion.findAll();
+        // 性能优化：使用 SQL ORDER BY RAND() + LIMIT 替代全表查询 + JS shuffle
+        // 避免加载全部题目到内存（题库大时效果显著）
+        // TODO: 题库超过 500 题时考虑改用随机偏移方案（RAND() * MAX(id)）优化性能
+        const rows = await QuizQuestion.findAll({
+          order: sequelize.random(),
+          limit: QUESTION_COUNT,
+        });
         if (rows.length === 0) {
           getRoomBus().broadcast(room, { t: 'error', message: '题库为空，请联系管理员导入题目' });
           return;
         }
-        const picked = shuffle(rows).slice(0, Math.min(QUESTION_COUNT, rows.length));
         const st = room.game as QuizState;
-        st.questions = picked.map((r) => ({
+        st.questions = rows.map((r) => ({
           qid: r.id,
           text: r.text,
           options: (r.options as string[]) || [],
