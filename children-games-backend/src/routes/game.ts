@@ -6,6 +6,7 @@ import {
   getDailyTask,
   getAchievements,
   getLeaderboard,
+  getStarsLeaderboard,
 } from '../controllers/gameController';
 import { authMiddleware } from '../middleware/auth';
 
@@ -167,6 +168,7 @@ router.get('/achievements', authMiddleware, getAchievements);
  *             schema:
  *               $ref: '#/components/schemas/Success'
  */
+router.get('/leaderboard/stars', getStarsLeaderboard);
 router.get('/leaderboard/:gameId', getLeaderboard);
 
 export default router;

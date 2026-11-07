@@ -507,6 +507,34 @@ export const getDailyTask = asyncHandler(async (req: AuthRequest, res: Response)
  *                         example: 5
  */
 // 获取排行榜（先查 Redis 缓存，miss 后再查 DB 并回填缓存）
+/** 家庭总星榜：family 用户按累计星星排序（无缓存——家庭规模小，直接查） */
+export const getStarsLeaderboard = asyncHandler(async (req: Request, res: Response) => {
+  const limit = Math.min(
+    Math.max(parseInt(req.query.limit as string, 10) || LEADERBOARD_DEFAULT_LIMIT, 1),
+    LEADERBOARD_MAX_LIMIT
+  );
+  const users = await User.findAll({
+    where: { openid: { [Op.like]: 'family_%' } },
+    attributes: ['id', 'nickname', 'avatar', 'totalStars', 'level'],
+    order: [
+      ['totalStars', 'DESC'],
+      ['id', 'ASC'],
+    ],
+    limit,
+  });
+  success(
+    res,
+    users.map((u, i) => ({
+      rank: i + 1,
+      userId: u.id,
+      nickname: u.nickname,
+      avatar: u.avatar,
+      totalStars: u.totalStars,
+      level: u.level,
+    }))
+  );
+});
+
 export const getLeaderboard = asyncHandler(async (req: Request, res: Response) => {
   const paramsResult = gameIdParamSchema.safeParse(req.params);
   if (!paramsResult.success) {

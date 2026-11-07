@@ -63,6 +63,20 @@ export const getLeaderboard = async (gameId: string, limit = 50) => {
   >(`/game/leaderboard/${gameId}`, { limit });
 };
 
+export interface StarsLeaderboardRow {
+  rank: number;
+  userId: number;
+  nickname: string;
+  avatar: string;
+  totalStars: number;
+  level: number;
+}
+
+/** 家庭总星榜：家庭成员按累计星星排序 */
+export const getStarsLeaderboard = async (limit = 20): Promise<StarsLeaderboardRow[]> => {
+  return api.get<StarsLeaderboardRow[]>('/game/leaderboard/stars', { limit });
+};
+
 // 获取今日任务进度
 export const getDailyTask = async (): Promise<DailyTaskInfo> => {
   return api.get<DailyTaskInfo>('/game/daily-task');
