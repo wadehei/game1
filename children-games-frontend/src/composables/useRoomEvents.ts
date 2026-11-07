@@ -50,9 +50,9 @@ import type {
   ChipsRankingFinal,
 } from './wsTypes';
 
-export interface RoomEventContext extends TypedRoomEventContext {}
+export type RoomEventContext = TypedRoomEventContext;
 
-interface WsLike extends TypedWsLike {}
+type WsLike = TypedWsLike;
 
 // ─── composable ────────────────────────────────────
 export const useRoomEvents = (ws: WsLike, ctx: RoomEventContext) => {

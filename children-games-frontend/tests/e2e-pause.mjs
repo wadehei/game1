@@ -68,7 +68,11 @@ for (const g of GAMES) {
   console.log(
     `${ok ? '✅' : '❌'} ${g.name}：暂停弹层${overlayShown ? '出现' : '未出现'} → 继续后${overlayGone ? '关闭' : '仍显示'}`
   );
-  ok ? pass++ : fail++;
+  if (ok) {
+    pass++;
+  } else {
+    fail++;
+  }
 }
 
 // ─── 专项：数学暂停期间计时冻结（成绩=用时，暂停必须公平） ───
@@ -93,7 +97,11 @@ const frozenOk = duringPause <= beforePause + 1 && afterResume >= beforePause; /
 console.log(
   `${frozenOk ? '✅' : '❌'} 数学计时冻结：暂停前 ${beforePause}s → 暂停3秒后 ${duringPause}s（应不变）→ 恢复后 ${afterResume}s（继续走）`
 );
-frozenOk ? pass++ : fail++;
+if (frozenOk) {
+  pass++;
+} else {
+  fail++;
+}
 
 const real = pageErrors.filter((e) => !isNoise(e));
 console.log(

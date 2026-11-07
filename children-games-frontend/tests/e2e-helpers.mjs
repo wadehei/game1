@@ -38,7 +38,11 @@ export function createChecker() {
 
   return {
     check: (label, cond) => {
-      cond ? pass++ : fail++;
+      if (cond) {
+        pass++;
+      } else {
+        fail++;
+      }
       console.log(`${cond ? '✅' : '❌'} ${label}`);
       return cond;
     },
@@ -129,34 +133,40 @@ export function createAdminApiHelper(page) {
 // ─── 创建/删除测试用户 ───────────────────────────────
 
 export async function createTestUser(page, nickname, avatar, pin = null) {
-  return page.evaluate(async ({ nickname, avatar, pin }) => {
-    const login = await (
-      await fetch('/api/user/login/family', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nickname, avatar }),
-      })
-    ).json();
-    const uid = login.data.userInfo.id;
-    const token = login.data.token;
-    if (pin) {
-      await fetch('/api/user/pin', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ newPin: pin }),
-      });
-    }
-    return { uid, token };
-  }, { nickname, avatar, pin });
+  return page.evaluate(
+    async ({ nickname, avatar, pin }) => {
+      const login = await (
+        await fetch('/api/user/login/family', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nickname, avatar }),
+        })
+      ).json();
+      const uid = login.data.userInfo.id;
+      const token = login.data.token;
+      if (pin) {
+        await fetch('/api/user/pin', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ newPin: pin }),
+        });
+      }
+      return { uid, token };
+    },
+    { nickname, avatar, pin }
+  );
 }
 
 export async function deleteTestUser(page, uid, adminToken) {
-  return page.evaluate(async ({ uid, adminToken }) => {
-    await fetch(`/api/admin/users/${uid}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${adminToken}` },
-    });
-  }, { uid, adminToken });
+  return page.evaluate(
+    async ({ uid, adminToken }) => {
+      await fetch(`/api/admin/users/${uid}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+    },
+    { uid, adminToken }
+  );
 }
 
 // ─── 截图辅助 ─────────────────────────────────────────
@@ -189,11 +199,13 @@ export async function waitForWsConnection(page, timeout = TIMEOUTS.WS_CONNECT) {
 
 // ─── 结束测试 ─────────────────────────────────────────
 
-export async function cleanup(browser, pageErrors, isNoise = NOISE_PATTERNS.test.bind(NOISE_PATTERNS)) {
+export async function cleanup(
+  browser,
+  pageErrors,
+  isNoise = NOISE_PATTERNS.test.bind(NOISE_PATTERNS)
+) {
   const real = pageErrors.filter((e) => !isNoise(e));
-  console.log(
-    `\n页面异常：${real.length}${real.length ? ' → ' + real.join(' | ') : ' ✅ 无'}`
-  );
+  console.log(`\n页面异常：${real.length}${real.length ? ' → ' + real.join(' | ') : ' ✅ 无'}`);
   await browser.close();
   process.exit(real.length > 0 ? 1 : 0);
 }
@@ -205,10 +217,7 @@ export async function getLocalStorage(page, key) {
 }
 
 export async function setLocalStorage(page, key, value) {
-  return page.evaluate(
-    ({ key, value }) => localStorage.setItem(key, value),
-    { key, value }
-  );
+  return page.evaluate(({ key, value }) => localStorage.setItem(key, value), { key, value });
 }
 
 export async function removeLocalStorage(page, key) {

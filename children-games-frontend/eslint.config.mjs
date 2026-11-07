@@ -1,8 +1,8 @@
-import js from '@eslint/js'
-import ts from 'typescript-eslint'
-import vue from 'eslint-plugin-vue'
-import globals from 'globals'
-import prettier from 'eslint-plugin-prettier/recommended'
+import js from '@eslint/js';
+import ts from 'typescript-eslint';
+import vue from 'eslint-plugin-vue';
+import globals from 'globals';
+import prettier from 'eslint-plugin-prettier/recommended';
 
 export default [
   // Base configs
@@ -15,13 +15,7 @@ export default [
 
   // Global ignores
   {
-    ignores: [
-      'dist/**',
-      'node_modules/**',
-      'coverage/**',
-      '*.config.js',
-      '*.config.ts',
-    ],
+    ignores: ['dist/**', 'node_modules/**', 'coverage/**', '*.config.js', '*.config.ts'],
   },
 
   // Vue files config
@@ -109,4 +103,4 @@ export default [
       'no-var': 'error',
     },
   },
-]
+];

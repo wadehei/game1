@@ -13,7 +13,11 @@ const check = (label, cond) => console.log(`${cond ? '✅' : '❌'} ${label}`);
 let pass = 0,
   fail = 0;
 const count = (label, cond) => {
-  cond ? pass++ : fail++;
+  if (cond) {
+    pass++;
+  } else {
+    fail++;
+  }
 };
 
 await page.goto(`${BASE}/#/profiles`, { waitUntil: 'networkidle2', timeout: 30000 });
