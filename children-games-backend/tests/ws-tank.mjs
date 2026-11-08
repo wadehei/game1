@@ -81,9 +81,11 @@ B.send({ t: 'ready' });
 
 const start = await A.waitNew('tank_start');
 check('开局 tank_start 带障碍与出生点', start && Array.isArray(start.walls) && start.players.length === 2 && start.arena.w === 640);
+check('地图来自地图集（3~4 墙合法形状）', start && [3, 4].includes(start.walls.length) && start.walls.every((w) => w.w > 0 && w.h > 0 && w.x >= 0 && w.y >= 0));
 
 const tick0 = await A.waitNew('tank_tick');
 check('10Hz tick 快照广播', tick0 && Array.isArray(tick0.players) && tick0.players.length === 2 && typeof tick0.remainMs === 'number');
+check('tick 携带道具数组（v2）', tick0 && Array.isArray(tick0.powerups));
 
 // 移动：A 向右推进 1.5s，位置应明显变化
 const px0 = A.events.filter((e) => e.t === 'tank_tick').at(-1).players.find((p) => p.userId === 2).x;
@@ -112,6 +114,29 @@ const final = await A.waitNew('tank_final', 0, 15000);
 check('加速终局 tank_final 带排名', final && Array.isArray(final.ranking) && final.ranking.length === 2);
 const gameOver = A.events.filter((e) => e.t === 'game_over').at(-1);
 check('game_over 广播（积分结算挂点）', gameOver && typeof gameOver.winnerSeat === 'number');
+
+// ── 道具拾取（v2）：独立新房，A 沿上走廊右移穿过首个固定道具点 (300,40) ──
+const created2 = await http('POST', '/api/room', { gameType: 'tank' }, tokens[0]);
+const roomId2 = created2.data.roomId;
+const A2 = new Client(tokens[0], 'A2');
+const B2 = new Client(tokens[1], 'B2');
+await A2.connect(roomId2);
+await B2.connect(roomId2);
+A2.send({ t: 'ready' });
+B2.send({ t: 'ready' });
+await A2.waitNew('tank_start');
+A2.send({ t: 'tank_move', dir: 1 });
+const pickup = await (async () => {
+  const deadline = Date.now() + 10000;
+  while (Date.now() < deadline) {
+    const p = A2.events.filter((e) => e.t === 'tank_pickup').at(-1);
+    if (p) return p;
+    await sleep(80);
+  }
+  return null;
+})();
+check('道具拾取事件（首个固定 rapid）', pickup && pickup.kind === 'rapid' && pickup.userId === 2);
+A2.send({ t: 'tank_move', dir: -1 });
 
 console.log(`\n结果: ${pass} 通过, ${fail} 失败`);
 process.exit(fail ? 1 : 0);

@@ -20,12 +20,35 @@ const KILL_TARGET = 10; // 先到 10 杀提前终局
 const ARENA_W = 640;
 const ARENA_H = 480;
 
-/** 固定对称障碍（含边界由碰撞函数兜底）；v1 静态布局 */
-const WALLS: Array<{ x: number; y: number; w: number; h: number }> = [
-  { x: 280, y: 90, w: 80, h: 300 }, // 中央竖墙（上下留通道）
-  { x: 110, y: 215, w: 120, h: 50 }, // 左横墙
-  { x: 410, y: 215, w: 120, h: 50 }, // 右横墙
+/**
+ * 地图集（v2 轮换）：每张图的上下/左右出生走廊（坦克 34px）必须畅通——
+ * 上走廊 y30~64、下走廊 y416~450、左列 x30~64、右列 x576~610，摆障碍前先对照
+ */
+const MAPS: Array<Array<{ x: number; y: number; w: number; h: number }>> = [
+  [
+    // 经典：中央竖墙 + 两侧横墙
+    { x: 280, y: 90, w: 80, h: 300 },
+    { x: 110, y: 215, w: 120, h: 50 },
+    { x: 410, y: 215, w: 120, h: 50 },
+  ],
+  [
+    // 四柱：中央四块柱子
+    { x: 150, y: 130, w: 80, h: 80 },
+    { x: 410, y: 130, w: 80, h: 80 },
+    { x: 150, y: 270, w: 80, h: 80 },
+    { x: 410, y: 270, w: 80, h: 80 },
+  ],
+  [
+    // 双闸：两段错位竖墙 + 中央横墙
+    { x: 200, y: 80, w: 50, h: 180 },
+    { x: 390, y: 220, w: 50, h: 180 },
+    { x: 280, y: 215, w: 80, h: 50 },
+  ],
 ];
+const POWERUP_MS = Math.max(500, Number(process.env.TANK_POWERUP_MS) || 8000);
+const POWERUP_SIZE = 26;
+const POWERUP_TTL_MS = 15000;
+const RAPID_MS = 10000; // 快速开火持续时长（冷却减半）
 
 const SPAWNS = [
   { x: 30, y: 30, dir: 1 }, // 左上，朝右
@@ -54,6 +77,7 @@ interface TankPlayer {
   deaths: number;
   respawnAt: number; // 0=无需复活
   lastFireAt: number;
+  rapidUntil: number; // 快速开火截止时间戳（0=无）
 }
 
 interface Bullet {
@@ -64,13 +88,25 @@ interface Bullet {
   dir: number;
 }
 
+interface Powerup {
+  id: number;
+  kind: 'heal' | 'rapid';
+  x: number;
+  y: number;
+  expireAt: number;
+}
+
 interface TankState {
   started: boolean;
   endAt: number; // 开局时间戳+时长
   tickTimer: NodeJS.Timeout | null;
+  walls: Array<{ x: number; y: number; w: number; h: number }>;
   players: Map<number, TankPlayer>;
   bullets: Bullet[];
   bulletSeq: number;
+  powerups: Powerup[];
+  powerupSeq: number;
+  nextPowerupAt: number;
   ranking: Array<{ userId: number; nickname: string; total: number; seat: number }> | null;
 }
 
@@ -86,15 +122,23 @@ const hitRect = (
 ): boolean => x < rx + rw && x + w > rx && y < ry + rh && y + h > ry;
 
 /** 坦克与墙/边界是否重叠 */
-const collides = (x: number, y: number): boolean => {
+const collides = (
+  x: number,
+  y: number,
+  walls: Array<{ x: number; y: number; w: number; h: number }>
+): boolean => {
   if (x < 0 || y < 0 || x + TANK_SIZE > ARENA_W || y + TANK_SIZE > ARENA_H) return true;
-  return WALLS.some((w) => hitRect(x, y, TANK_SIZE, TANK_SIZE, w.x, w.y, w.w, w.h));
+  return walls.some((w) => hitRect(x, y, TANK_SIZE, TANK_SIZE, w.x, w.y, w.w, w.h));
 };
 
 /** 子弹点是否撞墙/出界 */
-const bulletBlocked = (x: number, y: number): boolean => {
+const bulletBlocked = (
+  x: number,
+  y: number,
+  walls: Array<{ x: number; y: number; w: number; h: number }>
+): boolean => {
   if (x < 0 || y < 0 || x > ARENA_W || y > ARENA_H) return true;
-  return WALLS.some((w) => x >= w.x && x <= w.x + w.w && y >= w.y && y <= w.y + w.h);
+  return walls.some((w) => x >= w.x && x <= w.x + w.w && y >= w.y && y <= w.y + w.h);
 };
 
 const playerPayload = (st: TankState) =>
@@ -118,6 +162,12 @@ const tickPayload = (st: TankState) => ({
     x: Math.round(b.x),
     y: Math.round(b.y),
     dir: b.dir,
+  })),
+  powerups: st.powerups.map((u) => ({
+    id: u.id,
+    kind: u.kind,
+    x: Math.round(u.x),
+    y: Math.round(u.y),
   })),
   remainMs: Math.max(0, st.endAt - Date.now()),
 });
@@ -156,8 +206,8 @@ const tick = (room: Room): void => {
     const [dx, dy] = DIR_VEC[p.intent];
     const nx = p.x + dx * TANK_SPEED * dt;
     const ny = p.y + dy * TANK_SPEED * dt;
-    if (!collides(nx, p.y)) p.x = nx;
-    if (!collides(p.x, ny)) p.y = ny;
+    if (!collides(nx, p.y, st.walls)) p.x = nx;
+    if (!collides(p.x, ny, st.walls)) p.y = ny;
   }
 
   // 2) 子弹推进 + 碰撞
@@ -166,7 +216,7 @@ const tick = (room: Room): void => {
     const [dx, dy] = DIR_VEC[b.dir];
     b.x += dx * BULLET_SPEED * dt;
     b.y += dy * BULLET_SPEED * dt;
-    if (bulletBlocked(b.x, b.y)) continue; // 撞墙消失
+    if (bulletBlocked(b.x, b.y, st.walls)) continue; // 撞墙消失
     for (const [uid, p] of st.players) {
       if (!p.alive || uid === b.ownerId) continue;
       if (hitRect(b.x, b.y, 4, 4, p.x, p.y, TANK_SIZE, TANK_SIZE)) {
@@ -206,7 +256,62 @@ const tick = (room: Room): void => {
       p.hp = MAX_HP;
       p.alive = true;
       p.respawnAt = 0;
+      p.rapidUntil = 0;
     }
+  }
+
+  // 3.5) 道具：过期清理 → 生成（首个固定在上走廊中央，便于学习拾取）→ 碰撞拾取
+  st.powerups = st.powerups.filter((u) => u.expireAt > now);
+  if (now >= st.nextPowerupAt && st.powerups.length < 3) {
+    st.nextPowerupAt = now + POWERUP_MS;
+    const fixed = st.powerupSeq === 0;
+    let ux = 0;
+    let uy = 0;
+    let ok = false;
+    for (let tries = 0; tries < 24 && !ok; tries += 1) {
+      if (fixed) {
+        ux = 300;
+        uy = 40; // 上走廊中央（三张图均畅通）
+      } else {
+        ux = 70 + Math.random() * (ARENA_W - 140 - POWERUP_SIZE);
+        uy = 70 + Math.random() * (ARENA_H - 140 - POWERUP_SIZE);
+      }
+      ok =
+        !bulletBlocked(ux + POWERUP_SIZE / 2, uy + POWERUP_SIZE / 2, st.walls) &&
+        ![...st.players.values()].some(
+          (p) =>
+            p.alive && hitRect(ux, uy, POWERUP_SIZE, POWERUP_SIZE, p.x, p.y, TANK_SIZE, TANK_SIZE)
+        ) &&
+        !st.powerups.some((u) =>
+          hitRect(ux, uy, POWERUP_SIZE, POWERUP_SIZE, u.x, u.y, POWERUP_SIZE, POWERUP_SIZE)
+        );
+      if (fixed) break;
+    }
+    if (ok) {
+      st.powerupSeq += 1;
+      st.powerups.push({
+        id: st.powerupSeq,
+        kind: fixed ? 'rapid' : Math.random() < 0.5 ? 'heal' : 'rapid',
+        x: ux,
+        y: uy,
+        expireAt: now + POWERUP_TTL_MS,
+      });
+    }
+  }
+  for (const [uid, p] of st.players) {
+    if (!p.alive) continue;
+    const idx = st.powerups.findIndex((u) =>
+      hitRect(p.x, p.y, TANK_SIZE, TANK_SIZE, u.x, u.y, POWERUP_SIZE, POWERUP_SIZE)
+    );
+    if (idx < 0) continue;
+    const u = st.powerups[idx];
+    st.powerups.splice(idx, 1);
+    if (u.kind === 'heal') {
+      p.hp = Math.min(MAX_HP, p.hp + 1);
+    } else {
+      p.rapidUntil = now + RAPID_MS;
+    }
+    bus.broadcast(r, { t: 'tank_pickup', userId: uid, kind: u.kind });
   }
 
   // 4) 终局判定：时间到 或 有人达到击杀目标
@@ -239,9 +344,13 @@ export const tankHandler: GameHandler<TankState> = {
       started: false,
       endAt: 0,
       tickTimer: null,
+      walls: MAPS[0],
       players: new Map(),
       bullets: [],
       bulletSeq: 0,
+      powerups: [],
+      powerupSeq: 0,
+      nextPowerupAt: 0,
       ranking: null,
     };
   },
@@ -250,9 +359,13 @@ export const tankHandler: GameHandler<TankState> = {
     const st = room.game as TankState;
     if (st.started) return;
     st.started = true;
+    st.walls = MAPS[Math.floor(Math.random() * MAPS.length)];
     const players = getSeatedPlayers(room);
     st.players = new Map();
     st.bullets = [];
+    st.powerups = [];
+    st.powerupSeq = 0;
+    st.nextPowerupAt = Date.now() + POWERUP_MS;
     players.forEach((m, i) => {
       const spawn = SPAWNS[i % SPAWNS.length];
       st.players.set(m.userId, {
@@ -267,13 +380,14 @@ export const tankHandler: GameHandler<TankState> = {
         deaths: 0,
         respawnAt: 0,
         lastFireAt: 0,
+        rapidUntil: 0,
       });
     });
     st.endAt = Date.now() + MATCH_SECONDS * 1000;
     getRoomBus().broadcast(room, {
       t: 'tank_start',
       seconds: MATCH_SECONDS,
-      walls: WALLS,
+      walls: st.walls,
       arena: { w: ARENA_W, h: ARENA_H },
       size: TANK_SIZE,
       players: playerPayload(st),
@@ -321,7 +435,8 @@ export const tankHandler: GameHandler<TankState> = {
     if (action === 'tank_fire') {
       if (!p.alive) return { error: '复活中' };
       const now = Date.now();
-      if (now - p.lastFireAt < FIRE_COOLDOWN_MS) return {};
+      const cooldown = now < p.rapidUntil ? FIRE_COOLDOWN_MS / 2 : FIRE_COOLDOWN_MS;
+      if (now - p.lastFireAt < cooldown) return {};
       if (st.bullets.filter((b) => b.ownerId === member.userId).length >= MAX_LIVE_BULLETS)
         return {};
       p.lastFireAt = now;
@@ -345,7 +460,7 @@ export const tankHandler: GameHandler<TankState> = {
     return {
       ...tickPayload(st),
       started: st.started,
-      walls: WALLS,
+      walls: st.walls,
       arena: { w: ARENA_W, h: ARENA_H },
       size: TANK_SIZE,
       killTarget: KILL_TARGET,

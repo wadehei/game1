@@ -5,10 +5,14 @@
         <span class="tf-title">🏁 坦克对决结束</span>
       </template>
       <template v-else-if="snapshot">
-        <span>
+        <span v-if="isPlayer">
           ⚔️ 击杀 {{ myKills }} · HP {{ myHp }}/{{ maxHp }}
+          <template v-if="rapidActive"> · ⚡速射中</template>
           <template v-if="leader"> ·领先 {{ leader.name }} {{ leader.kills }} 杀</template>
         </span>
+        <span v-else
+          >👁️ 观战中 · {{ leader ? `领先 ${leader.name} ${leader.kills} 杀` : '等待战况' }}</span
+        >
         <span class="tank-timer">{{ Math.ceil(remainSec) }}s</span>
       </template>
       <template v-else>
@@ -21,8 +25,8 @@
       <div v-if="boomFlash" class="boom-flash">💥 {{ boomFlash }}</div>
     </div>
 
-    <!-- 触屏操控：方向 + 开火 -->
-    <div v-if="phase === 'playing'" class="tank-controls">
+    <!-- 触屏操控：方向 + 开火（观战者不显示） -->
+    <div v-if="phase === 'playing' && isPlayer" class="tank-controls">
       <div class="dpad">
         <button
           class="dp up"
@@ -111,9 +115,16 @@ interface Wall {
   w: number;
   h: number;
 }
+interface TankPowerupView {
+  id: number;
+  kind: 'heal' | 'rapid';
+  x: number;
+  y: number;
+}
 interface TickSnapshot {
   players: TankPlayerView[];
   bullets: TankBulletView[];
+  powerups?: TankPowerupView[];
   remainMs: number;
 }
 
@@ -145,9 +156,11 @@ const final = computed(
       { ranking: Array<{ userId: number; total: number }>; reason: string } | null | undefined) ??
     null
 );
-const myKills = computed(
-  () => snapshot.value?.players.find((p) => p.userId === myId.value)?.kills ?? 0
-);
+const me = computed(() => snapshot.value?.players.find((p) => p.userId === myId.value) ?? null);
+const isPlayer = computed(() => !!me.value);
+const rapidUntil = ref(0);
+const rapidActive = computed(() => rapidUntil.value > Date.now());
+const myKills = computed(() => me.value?.kills ?? 0);
 const myHp = computed(() => snapshot.value?.players.find((p) => p.userId === myId.value)?.hp ?? 0);
 const leader = computed(() => {
   const top = [...(snapshot.value?.players ?? [])].sort((a, b) => b.kills - a.kills)[0];
@@ -198,6 +211,18 @@ watch(
     setTimeout(() => (boomFlash.value = ''), 1600);
   }
 );
+watch(
+  () => props.events.tankPickup,
+  (m: unknown) => {
+    const ev = m as { userId: number; kind: 'heal' | 'rapid' } | null;
+    if (!ev) return;
+    if (ev.userId === myId.value) {
+      if (ev.kind === 'rapid') rapidUntil.value = Date.now() + 10000;
+      boomFlash.value = ev.kind === 'heal' ? '❤️ 生命 +1' : '⚡ 快速开火！';
+      setTimeout(() => (boomFlash.value = ''), 1400);
+    }
+  }
+);
 
 // ── 渲染循环（rAF 常驻，快照驱动） ──
 const TANK_COLORS = ['#667eea', '#e8447f', '#43c59e', '#f0a24b'];
@@ -233,6 +258,12 @@ const render = (): void => {
     ctx.beginPath();
     ctx.arc(b.x, b.y, 3.5, 0, Math.PI * 2);
     ctx.fill();
+  }
+  // 道具（❤️ 回血 / ⚡ 速射）
+  ctx.font = '20px sans-serif';
+  ctx.textAlign = 'center';
+  for (const u of snap.powerups ?? []) {
+    ctx.fillText(u.kind === 'heal' ? '❤️' : '⚡', u.x + 13, u.y + 20);
   }
   // 坦克
   const S = tankSize.value;

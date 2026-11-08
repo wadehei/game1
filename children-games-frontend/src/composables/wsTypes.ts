@@ -418,6 +418,7 @@ export type GameEvents = {
   tankTick: unknown;
   tankHit: unknown;
   tankBoom: unknown;
+  tankPickup: unknown;
   // 卧底
   phase: unknown;
   deal: unknown;
@@ -472,6 +473,7 @@ export interface WsEventMap {
   tank_tick: unknown;
   tank_hit: unknown;
   tank_boom: unknown;
+  tank_pickup: unknown;
   tank_final: unknown;
   joined: S2CJoined;
   snapshot: S2CSnapshot;

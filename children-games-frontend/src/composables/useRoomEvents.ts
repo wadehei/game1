@@ -253,6 +253,9 @@ export const useRoomEvents = (ws: WsLike, ctx: RoomEventContext) => {
     ws.on('tank_boom', (m: unknown) => {
       gameEvents.tankBoom = m;
     });
+    ws.on('tank_pickup', (m: unknown) => {
+      gameEvents.tankPickup = m;
+    });
     ws.on('tank_final', (m: unknown) => {
       gameEvents.final = m as never;
       gameEvents.tankTick = null;

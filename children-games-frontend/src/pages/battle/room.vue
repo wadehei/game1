@@ -225,6 +225,7 @@ const gameEvents = reactive<Partial<GameEvents>>({
   tankTick: null,
   tankHit: null,
   tankBoom: null,
+  tankPickup: null,
   phase: null,
   deal: null,
   voteUpdate: null,
