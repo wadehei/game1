@@ -274,6 +274,11 @@ export const LEVEL_FIELD_DEFS: Record<string, FieldDef[]> = {
     { key: 'countMax', label: '数数上限（0=按关卡自动）' },
     { key: 'addMax', label: '加法上限（0=按关卡自动）' },
   ],
+  // 快乐连线（曾被契约测试抓漏：公式在但面板字段缺失，后台无法配置难度覆盖）
+  match: [
+    { key: 'pairs', label: '配对数量（3~6）' },
+    { key: 'timeLimit', label: '时限（秒）' },
+  ],
   match3: [
     { key: 'targetScore', label: '目标分数' },
     { key: 'moves', label: '步数' },

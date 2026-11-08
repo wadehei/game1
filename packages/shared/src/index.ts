@@ -7,3 +7,4 @@ export * from './types/user';
 export * from './types/game';
 export * from './types/room';
 export * from './types/ws';
+export * from './gameRegistry';

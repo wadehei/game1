@@ -95,7 +95,8 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     id: 'all_rounder',
     name: '全能玩家',
     icon: '🏅',
-    desc: '玩过全部 13 个游戏',
+    // 游戏数随 GAME_RULES 动态（曾硬编码 8/11/13 三次漂移，勿再写死）
+    desc: `玩过全部 ${Object.keys(GAME_RULES).length} 个游戏`,
     check: (c) => c.distinctGames >= Object.keys(GAME_RULES).length,
   },
   {
