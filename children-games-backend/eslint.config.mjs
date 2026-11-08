@@ -1,7 +1,7 @@
-import js from '@eslint/js'
-import ts from 'typescript-eslint'
-import globals from 'globals'
-import prettier from 'eslint-plugin-prettier/recommended'
+import js from '@eslint/js';
+import ts from 'typescript-eslint';
+import globals from 'globals';
+import prettier from 'eslint-plugin-prettier/recommended';
 
 export default [
   // Base configs
@@ -88,4 +88,4 @@ export default [
       'prefer-promise-reject-errors': 'error',
     },
   },
-]
+];
