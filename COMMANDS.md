@@ -24,9 +24,9 @@ http://49.232.231.35:8888/tencentcloud
 ./deploy.sh back     # 只部署后端（含服务器依赖安装 + pm2 重启）
 ```
 
-脚本做的事：本地构建 → tar 管道经 SSH 上传（前端 dist 清空后解压、后端 dist 覆盖）→ 后端部署时同步 package.json 并 `npm install` → `pm2 restart children-games-api`。部署完访问 **http://game.985211.icu**（备案过渡期也可用 http://49.232.231.35 或 :90 端口）。
+脚本做的事：本地构建 → tar 管道经 SSH 上传（前端 dist 清空后解压、后端 dist 覆盖）→ 后端部署时同步 package.json 并 `npm install` → `pm2 restart children-games-api` → **部署后自检**（轮询 `/api/user/profiles` 到 200，开机有 10~15s 的 DB 同步+补备份窗口；非 200 打红警告并退出非零——PM2 显示 online 不代表进程活着）→ **把服务器每日备份拉回本机 `backups-prod/`**（gitignore；服务器只留 7 份且同盘，本机副本即异地容灾）。部署完访问 **http://game.985211.icu**（备案过渡期也可用 http://49.232.231.35 或 :90 端口）。
 
-> ⚠️ `deploy.sh` 含服务器账号，**已加 .gitignore 不入库**（公开仓库）；换电脑时按下述配置重建即可，脚本仅 30 行。
+> ⚠️ `deploy.sh` 含服务器账号，**已加 .gitignore 不入库**（公开仓库）；换电脑时按下述配置重建即可（含 health_check / pull_backups 两个函数，约 100 行）。
 
 > ⚠️ **80/443 端口被腾讯云未备案拦截**（域名访问会跳 DNSPod webblock 页），正式入口只有 **90 端口**。nginx 里 90 的入口和 /api 反代是独立文件：`/www/server/panel/vhost/nginx/game_port90.conf`（90 端口 server 块）和 `/www/server/panel/vhost/nginx/extension/game.985211.icu/api-proxy.conf`（/api → 127.0.0.1:3001，宝塔 extension 机制加载进主站点配置）——删了或宝塔重置配置后网站会 404/接口全挂，按这两个文件内容重建即可。
 
