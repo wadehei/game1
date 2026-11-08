@@ -1,4 +1,5 @@
-// 多人坦克 v1 协议测试：开局快照 / 移动 tick / 开火击毁 / 终局排名（加速 TANK_MATCH_SECONDS=8）
+// 多人坦克协议测试：开局快照 / 移动 tick / 开火击毁(连杀) / 终局排名 / 道具拾取 / 护盾挡弹
+// 加速 env：TANK_MATCH_SECONDS=8 TANK_POWERUP_MS=500；护盾用例需 TANK_FIRST_POWERUP=shield（regression.sh 已带）
 import WebSocket from 'ws';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -107,6 +108,7 @@ const boom = await (async () => {
   return null;
 })();
 check('子弹命中产生击毁事件', boom && typeof boom.killerUserId === 'number' && boom.kills >= 1);
+check('击毁携带连杀字段（首杀=1）', boom && boom.streak === 1);
 check('被击毁者进入复活等待', boom && boom.respawnMs > 0);
 
 // 终局（TANK_MATCH_SECONDS=8 加速）：等 tank_final + game_over
@@ -135,8 +137,43 @@ const pickup = await (async () => {
   }
   return null;
 })();
-check('道具拾取事件（首个固定 rapid）', pickup && pickup.kind === 'rapid' && pickup.userId === 2);
+check(
+  '道具拾取事件（首个固定种类）',
+  pickup && pickup.kind === (process.env.TANK_FIRST_POWERUP || 'rapid') && pickup.userId === 2
+);
 A2.send({ t: 'tank_move', dir: -1 });
+
+// ── 护盾挡弹（v3）：TANK_FIRST_POWERUP=shield 时，A 捡护盾后 B 走廊直射应无伤 ──
+if ((process.env.TANK_FIRST_POWERUP || 'rapid') === 'shield') {
+  const created3 = await http('POST', '/api/room', { gameType: 'tank' }, tokens[0]);
+  const A3 = new Client(tokens[0], 'A3');
+  const B3 = new Client(tokens[1], 'B3');
+  await A3.connect(created3.data.roomId);
+  await B3.connect(created3.data.roomId);
+  A3.send({ t: 'ready' });
+  B3.send({ t: 'ready' });
+  await A3.waitNew('tank_start');
+  A3.send({ t: 'tank_move', dir: 1 }); // A 沿上走廊右移去捡 (300,40) 的护盾
+  const shieldPicked = await (async () => {
+    const deadline = Date.now() + 8000;
+    while (Date.now() < deadline) {
+      const p = A3.events.filter((e) => e.t === 'tank_pickup').at(-1);
+      if (p && p.kind === 'shield') return p;
+      await sleep(80);
+    }
+    return null;
+  })();
+  A3.send({ t: 'tank_move', dir: -1 }); // 停车
+  B3.send({ t: 'tank_fire' }); // B（右上出生，朝左）沿走廊直射 A
+  await sleep(1400); // 等子弹到达（距离 <300px，弹速 ~400px/s）
+  const lastTick = A3.events.filter((e) => e.t === 'tank_tick').at(-1);
+  const a3 = lastTick?.players.find((p) => p.userId === 2);
+  check('护盾拾取（首个固定 shield）', shieldPicked && shieldPicked.userId === 2);
+  check('护盾生效：中弹不掉血', a3 && a3.hp === 3);
+  check('护盾标志随 tick 广播', a3 && a3.shield === true);
+} else {
+  console.log('⏭️ 跳过护盾用例（需 TANK_FIRST_POWERUP=shield 启动后端）');
+}
 
 console.log(`\n结果: ${pass} 通过, ${fail} 失败`);
 process.exit(fail ? 1 : 0);

@@ -49,6 +49,13 @@ const POWERUP_MS = Math.max(500, Number(process.env.TANK_POWERUP_MS) || 8000);
 const POWERUP_SIZE = 26;
 const POWERUP_TTL_MS = 15000;
 const RAPID_MS = 10000; // 快速开火持续时长（冷却减半）
+const SHIELD_MS = 3000; // 护盾无敌时长
+// 首个固定道具的种类（默认 rapid；测试用 TANK_FIRST_POWERUP=shield 可确定性测护盾）
+const FIRST_POWERUP = (['heal', 'rapid', 'shield'] as const).includes(
+  process.env.TANK_FIRST_POWERUP as 'heal' | 'rapid' | 'shield'
+)
+  ? (process.env.TANK_FIRST_POWERUP as 'heal' | 'rapid' | 'shield')
+  : 'rapid';
 
 const SPAWNS = [
   { x: 30, y: 30, dir: 1 }, // 左上，朝右
@@ -75,9 +82,11 @@ interface TankPlayer {
   alive: boolean;
   kills: number;
   deaths: number;
+  streak: number; // 连杀数（死亡清零）
   respawnAt: number; // 0=无需复活
   lastFireAt: number;
   rapidUntil: number; // 快速开火截止时间戳（0=无）
+  shieldUntil: number; // 护盾无敌截止时间戳（0=无）
 }
 
 interface Bullet {
@@ -90,7 +99,7 @@ interface Bullet {
 
 interface Powerup {
   id: number;
-  kind: 'heal' | 'rapid';
+  kind: 'heal' | 'rapid' | 'shield';
   x: number;
   y: number;
   expireAt: number;
@@ -151,6 +160,7 @@ const playerPayload = (st: TankState) =>
     hp: p.hp,
     alive: p.alive,
     kills: p.kills,
+    shield: p.shieldUntil > Date.now(),
   }));
 
 const tickPayload = (st: TankState) => ({
@@ -220,18 +230,24 @@ const tick = (room: Room): void => {
     for (const [uid, p] of st.players) {
       if (!p.alive || uid === b.ownerId) continue;
       if (hitRect(b.x, b.y, 4, 4, p.x, p.y, TANK_SIZE, TANK_SIZE)) {
+        if (Date.now() < p.shieldUntil) continue outer; // 护盾挡下：子弹消耗、无伤无事件
         p.hp -= 1;
         if (p.hp <= 0) {
           p.alive = false;
           p.deaths += 1;
+          p.streak = 0;
           p.respawnAt = Date.now() + RESPAWN_MS;
           const killer = st.players.get(b.ownerId);
-          if (killer) killer.kills += 1;
+          if (killer) {
+            killer.kills += 1;
+            killer.streak += 1;
+          }
           bus.broadcast(r, {
             t: 'tank_boom',
             userId: uid,
             killerUserId: b.ownerId,
             kills: killer?.kills ?? 0,
+            streak: killer?.streak ?? 0,
             respawnMs: RESPAWN_MS,
           });
         } else {
@@ -257,6 +273,7 @@ const tick = (room: Room): void => {
       p.alive = true;
       p.respawnAt = 0;
       p.rapidUntil = 0;
+      p.shieldUntil = 0;
     }
   }
 
@@ -277,7 +294,8 @@ const tick = (room: Room): void => {
         uy = 70 + Math.random() * (ARENA_H - 140 - POWERUP_SIZE);
       }
       ok =
-        !bulletBlocked(ux + POWERUP_SIZE / 2, uy + POWERUP_SIZE / 2, st.walls) &&
+        // 整箱与墙重叠检查（旧版只查中心点，26px 箱边缘会视觉蹭墙）
+        !st.walls.some((w) => hitRect(ux, uy, POWERUP_SIZE, POWERUP_SIZE, w.x, w.y, w.w, w.h)) &&
         ![...st.players.values()].some(
           (p) =>
             p.alive && hitRect(ux, uy, POWERUP_SIZE, POWERUP_SIZE, p.x, p.y, TANK_SIZE, TANK_SIZE)
@@ -291,7 +309,13 @@ const tick = (room: Room): void => {
       st.powerupSeq += 1;
       st.powerups.push({
         id: st.powerupSeq,
-        kind: fixed ? 'rapid' : Math.random() < 0.5 ? 'heal' : 'rapid',
+        kind: fixed
+          ? FIRST_POWERUP
+          : Math.random() < 0.34
+            ? 'heal'
+            : Math.random() < 0.5
+              ? 'rapid'
+              : 'shield',
         x: ux,
         y: uy,
         expireAt: now + POWERUP_TTL_MS,
@@ -308,6 +332,8 @@ const tick = (room: Room): void => {
     st.powerups.splice(idx, 1);
     if (u.kind === 'heal') {
       p.hp = Math.min(MAX_HP, p.hp + 1);
+    } else if (u.kind === 'shield') {
+      p.shieldUntil = now + SHIELD_MS;
     } else {
       p.rapidUntil = now + RAPID_MS;
     }
@@ -378,9 +404,11 @@ export const tankHandler: GameHandler<TankState> = {
         alive: true,
         kills: 0,
         deaths: 0,
+        streak: 0,
         respawnAt: 0,
         lastFireAt: 0,
         rapidUntil: 0,
+        shieldUntil: 0,
       });
     });
     st.endAt = Date.now() + MATCH_SECONDS * 1000;

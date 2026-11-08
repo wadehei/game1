@@ -378,6 +378,7 @@ export interface TankPlayerView {
   hp: number;
   alive: boolean;
   kills: number;
+  shield: boolean;
 }
 export interface TankBulletView {
   id: number;
@@ -388,7 +389,7 @@ export interface TankBulletView {
 }
 export interface TankPowerupView {
   id: number;
-  kind: 'heal' | 'rapid';
+  kind: 'heal' | 'rapid' | 'shield';
   x: number;
   y: number;
 }
@@ -408,9 +409,16 @@ export type S2CTankEvent =
       powerups: TankPowerupView[];
       remainMs: number;
     }
-  | { t: 'tank_pickup'; userId: number; kind: 'heal' | 'rapid' }
+  | { t: 'tank_pickup'; userId: number; kind: 'heal' | 'rapid' | 'shield' }
   | { t: 'tank_hit'; userId: number; hp: number; byUserId: number }
-  | { t: 'tank_boom'; userId: number; killerUserId: number; kills: number; respawnMs: number }
+  | {
+      t: 'tank_boom';
+      userId: number;
+      killerUserId: number;
+      kills: number;
+      streak: number;
+      respawnMs: number;
+    }
   | {
       t: 'tank_final';
       ranking: Array<{ userId: number; nickname: string; total: number; seat: number }>;

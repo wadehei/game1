@@ -8,6 +8,7 @@
         <span v-if="isPlayer">
           ⚔️ 击杀 {{ myKills }} · HP {{ myHp }}/{{ maxHp }}
           <template v-if="rapidActive"> · ⚡速射中</template>
+          <template v-if="me?.shield"> · 🛡️护盾中</template>
           <template v-if="leader"> ·领先 {{ leader.name }} {{ leader.kills }} 杀</template>
         </span>
         <span v-else
@@ -91,6 +92,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useUserStore } from '@/store/user';
+import { soundManager } from '@/utils/sound';
 
 interface TankPlayerView {
   userId: number;
@@ -101,6 +103,7 @@ interface TankPlayerView {
   hp: number;
   alive: boolean;
   kills: number;
+  shield?: boolean;
 }
 interface TankBulletView {
   id: number;
@@ -117,7 +120,7 @@ interface Wall {
 }
 interface TankPowerupView {
   id: number;
-  kind: 'heal' | 'rapid';
+  kind: 'heal' | 'rapid' | 'shield';
   x: number;
   y: number;
 }
@@ -200,25 +203,30 @@ watch(
 watch(
   () => props.events.tankBoom,
   (m: unknown) => {
-    const ev = m as { userId: number; killerUserId: number; kills: number } | null;
+    const ev = m as { userId: number; killerUserId: number; kills: number; streak?: number } | null;
     if (!ev) return;
-    boomFlash.value =
-      ev.userId === myId.value
-        ? '你被击毁了！'
-        : ev.killerUserId === myId.value
-          ? '击毁！漂亮！'
-          : '';
+    if (ev.userId === myId.value) {
+      boomFlash.value = '你被击毁了！';
+    } else if (ev.killerUserId === myId.value) {
+      const n = ev.streak ?? 1;
+      boomFlash.value =
+        n >= 2 ? `🔥 ${n === 2 ? '双杀' : n === 3 ? '三连杀' : `${n} 连杀`}！` : '击毁！漂亮！';
+      if (n >= 2) soundManager.speakFrench('势不可挡');
+    } else {
+      boomFlash.value = '';
+    }
     setTimeout(() => (boomFlash.value = ''), 1600);
   }
 );
 watch(
   () => props.events.tankPickup,
   (m: unknown) => {
-    const ev = m as { userId: number; kind: 'heal' | 'rapid' } | null;
+    const ev = m as { userId: number; kind: 'heal' | 'rapid' | 'shield' } | null;
     if (!ev) return;
     if (ev.userId === myId.value) {
       if (ev.kind === 'rapid') rapidUntil.value = Date.now() + 10000;
-      boomFlash.value = ev.kind === 'heal' ? '❤️ 生命 +1' : '⚡ 快速开火！';
+      boomFlash.value =
+        ev.kind === 'heal' ? '❤️ 生命 +1' : ev.kind === 'shield' ? '🛡️ 护盾！' : '⚡ 快速开火！';
       setTimeout(() => (boomFlash.value = ''), 1400);
     }
   }
@@ -259,11 +267,11 @@ const render = (): void => {
     ctx.arc(b.x, b.y, 3.5, 0, Math.PI * 2);
     ctx.fill();
   }
-  // 道具（❤️ 回血 / ⚡ 速射）
+  // 道具（❤️ 回血 / ⚡ 速射 / 🛡️ 护盾）
   ctx.font = '20px sans-serif';
   ctx.textAlign = 'center';
   for (const u of snap.powerups ?? []) {
-    ctx.fillText(u.kind === 'heal' ? '❤️' : '⚡', u.x + 13, u.y + 20);
+    ctx.fillText(u.kind === 'heal' ? '❤️' : u.kind === 'shield' ? '🛡️' : '⚡', u.x + 13, u.y + 20);
   }
   // 坦克
   const S = tankSize.value;
@@ -287,6 +295,14 @@ const render = (): void => {
     ctx.moveTo(cx, cy);
     ctx.lineTo(cx + d[0] * (S / 2 + 7), cy + d[1] * (S / 2 + 7));
     ctx.stroke();
+    // 护盾光环（服务器 10Hz 下发的 shield 标志驱动）
+    if (p.shield) {
+      ctx.strokeStyle = 'rgba(102, 126, 234, 0.9)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(cx, cy, S / 2 + 6, 0, Math.PI * 2);
+      ctx.stroke();
+    }
     // HP 点
     for (let i = 0; i < maxHp.value; i += 1) {
       ctx.fillStyle = i < p.hp ? '#2ecc71' : '#ddd';

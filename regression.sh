@@ -20,11 +20,15 @@ ACCEL_ENV=(
   LOGIN_RATE_MAX=1000 ADMIN_LOGIN_RATE_MAX=1000 GLOBAL_RATE_MAX=2000 REFRESH_RATE_MAX=1000
   BLACKJACK_BET_SECONDS=3 BLACKJACK_ACT_SECONDS=3 ZJH_BET_SECONDS=5
   DRAW_SECONDS=10 SPY_TALK_SECONDS=5 SPY_VOTE_SECONDS=5 REMATCH_AUTO_SECONDS=3
-  TANK_MATCH_SECONDS=8 TANK_POWERUP_MS=500
+  TANK_MATCH_SECONDS=8 TANK_POWERUP_MS=500 TANK_FIRST_POWERUP=shield
 )
 
 MAIN_SUITES=(ws-protocol ws-quiz ws-draw ws-draw-offline ws-spy ws-uno ws-blackjack ws-zjh ws-betlog ws-quit-continue ws-tank admin-console)
 RIGGED_SUITES=(ws-blackjack-rigged)
+
+# 全局导出：套件进程与后端进程须共享同一组变量
+# （ws-tank 会读 TANK_FIRST_POWERUP 断言首个道具种类，只传后端不传套件=断言错位）
+export "${ACCEL_ENV[@]}"
 
 # ---------- 基础工具 ----------
 port_busy() { netstat -ano | grep ":$PORT" | grep -q LISTEN; }
@@ -40,7 +44,6 @@ start_backend() { # $@ = 追加 env（如 BLACKJACK_RIGGED=banker）
   # 注意：勿用 `env VAR=x npx ...` —— 本机 Git Bash 下 env(1) exec npx 链路坏（0 字节日志静默死），用 export
   (
     cd "$BE_DIR" || exit 1
-    export "${ACCEL_ENV[@]}"
     [ $# -gt 0 ] && export "$@"
     npx ts-node src/app.ts >"$LOG" 2>&1
   ) &
