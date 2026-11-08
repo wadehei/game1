@@ -47,6 +47,10 @@ export default defineConfig(async ({ mode }) => ({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'),
+      // shared 包 package.json 的 main 指向 dist/index.js 但从未构建过 dist——
+      // 应用代码目前全是 type-only 导入（编译期擦除）才没炸；别名直接吃 TS 源码，
+      // 与 vitest.config 行为一致，未来 value-import（如 GAME_TYPES）不再踩雷
+      '@children-games/shared': path.resolve(__dirname, '../packages/shared/src'),
     },
   },
   // 生产构建移除 console 和 debugger

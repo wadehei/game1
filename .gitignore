@@ -51,3 +51,6 @@ pnpm-debug.log*
 **/src/**/*.js
 **/src/**/*.js.map
 !**/src/**/*.config.js
+
+# deploy.sh 拉回的生产备份（异地容灾副本）
+backups-prod/
