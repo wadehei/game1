@@ -92,6 +92,13 @@ pm2 stop children-games-api
 pm2 logs children-games-api --lines 50
 pm2 save
 pm2 startup
+
+# Redis（2026-11-09 上线，token 撤销/限流/排行榜缓存用）
+systemctl status redis          # 服务名就是 redis
+redis-cli -a "$(cat /root/.redis-app-password)" ping   # 应返回 PONG
+# 配置文件 /etc/redis/redis.conf（改前有 .bak 备份）：bind 127.0.0.1 + requirepass + appendonly yes + maxmemory 256mb
+# 应用密码存 /root/.redis-app-password（600），与后端 .env 的 REDIS_PASSWORD 一致；改密码两边要同步
+# ⚠️ Redis 停了不影响启动（tokenService 自动降级内存），但 PM2 重启又会=全员登出，记得 systemctl restart redis
 ```
 
 ---

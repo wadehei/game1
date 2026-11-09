@@ -1,0 +1,61 @@
+name: Uptime Probe（生产拨测）
+
+# 外部拨测：GitHub 机房视角定时探测生产入口，失败自动邮件通知仓库所有者。
+# 可选增强：配置仓库 Secret UPTIME_WEBHOOK（飞书自定义机器人地址）后，失败会同时推送即时消息。
+on:
+  schedule:
+    - cron: '*/5 * * * *' # 每 5 分钟
+  workflow_dispatch: {} # 支持手动触发验证
+
+concurrency:
+  group: uptime-probe
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    name: 探测生产 API 与首页
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 探测（单目标重试 1 次，双失败才告警，避免瞬时抖动误报）
+        env:
+          TARGETS: >-
+            http://49.232.231.35/api/user/profiles
+            http://49.232.231.35/
+        run: |
+          all_ok=true
+          for url in $TARGETS; do
+            hit=false
+            last_code='000'
+            for i in 1 2; do
+              code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "$url" || echo 000)
+              last_code="$code"
+              if [ "$code" = "200" ]; then hit=true; break; fi
+              echo "第 $i 次探测 $url -> HTTP $code，30s 后重试"
+              sleep 30
+            done
+            if [ "$hit" = "true" ]; then
+              echo "✅ $url 正常"
+            else
+              echo "❌ $url 连续两次不可达（最后 HTTP $last_code）"
+              all_ok=false
+            fi
+          done
+          if [ "$all_ok" != "true" ]; then
+            echo "::error::生产站点探测失败——API 或首页连续两次不可达，请检查服务器"
+            exit 1
+          fi
+
+      - name: 可选 Webhook 即时告警（需配置 Secret：UPTIME_WEBHOOK）
+        if: failure()
+        env:
+          UPTIME_WEBHOOK: ${{ secrets.UPTIME_WEBHOOK }}
+        run: |
+          if [ -z "$UPTIME_WEBHOOK" ]; then
+            echo "未配置 UPTIME_WEBHOOK，跳过即时推送（GitHub 已邮件通知仓库所有者）"
+            exit 0
+          fi
+          # 默认飞书自定义机器人格式；钉钉把 msg_type 改为 msgtype 即可
+          curl -s --max-time 10 -X POST "$UPTIME_WEBHOOK" \
+            -H 'Content-Type: application/json' \
+            -d '{"msg_type":"text","content":{"text":"🚨 game1 生产探测失败：API/首页连续不可达，请检查 http://49.232.231.35"}}'
