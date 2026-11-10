@@ -27,6 +27,7 @@ import type {
   S2CUnoEvent,
   S2CBlackjackEvent,
   S2CZjhEvent,
+  S2CDdzEvent,
 } from '@children-games/shared';
 
 // 对外导出：useRoomWs 等模块从本文件取 WS 事件类型
@@ -43,6 +44,7 @@ export type GameState =
   | UnoGameState
   | BlackjackGameState
   | ZjhGameState
+  | DdzGameState
   | null;
 
 /**
@@ -249,6 +251,49 @@ export interface ZjhGameState {
   } | null;
 }
 
+/** 斗地主：phase 事件 + 快照合并形状（后端 serializeFor/phasePayload 实际字段） */
+export interface DdzGameState {
+  round: number;
+  totalRounds: number;
+  phase: string;
+  turnSeat: number;
+  leadSeat: number;
+  bidStartSeat: number;
+  bidBestScore: number;
+  bidBase: number;
+  baseUnit: number;
+  multiplier: number;
+  landlordSeat: number | null;
+  bottomCards?: string[] | null;
+  lastPlay?: { seat: number; userId: number; cards: string[]; cardType: string } | null;
+  deadline: number;
+  chips: Record<number, number> | Array<{ userId: number; chips: number }>;
+  myCards?: string[];
+  myBid?: number | null;
+  myRole?: 'landlord' | 'farmer' | null;
+  others?: Array<{
+    userId: number;
+    nickname: string;
+    seat: number;
+    cardCount: number;
+    isLandlord: boolean;
+    bid: number | null;
+  }>;
+  betLedger?: Array<{
+    userId: number;
+    round: number;
+    bid: number;
+    multiplier: number;
+    role: 'landlord' | 'farmer';
+    delta: number | null;
+    ended: string | null;
+  }>;
+  ended?: {
+    ranking: Array<{ userId: number; nickname: string; chips: number }>;
+    reason?: string;
+  } | null;
+}
+
 /**
  * 游戏事件类型
  * 注：quiz 事件按后端实际广播形状声明（shared 包类型滞后，勿照抄 shared）：
@@ -383,9 +428,9 @@ export type UnoFinalEvent = {
   t: 'uno_final';
   ranking: Array<{ userId: number; nickname: string; penalty: number }>;
 };
-/** 21点/炸金花终局：按积分排名 */
+/** 21点/炸金花/斗地主终局：按积分排名 */
 export type ChipsRankingFinal = {
-  t: 'blackjack_final' | 'zjh_final';
+  t: 'blackjack_final' | 'zjh_final' | 'ddz_final';
   ranking: Array<{ userId: number; nickname: string; chips: number }>;
 };
 /** 卧底终局 */
@@ -463,6 +508,16 @@ export type GameEvents = {
   compare: unknown;
   showdown: unknown;
   settle: unknown;
+  // 斗地主
+  ddz_phase: unknown;
+  ddz_your_cards: unknown;
+  ddz_bid: unknown;
+  ddz_redeal: unknown;
+  ddz_bottom: unknown;
+  ddz_play: unknown;
+  ddz_pass: unknown;
+  ddz_settle: unknown;
+  ddz_error: unknown;
 };
 
 /**
@@ -534,6 +589,17 @@ export interface WsEventMap {
   zjh_showdown: Extract<S2CZjhEvent, { t: 'zjh_showdown' }>;
   zjh_settle: Extract<S2CZjhEvent, { t: 'zjh_settle' }>;
   zjh_final: ChipsRankingFinal;
+  // 斗地主
+  ddz_phase: Extract<S2CDdzEvent, { t: 'ddz_phase' }>;
+  ddz_your_cards: Extract<S2CDdzEvent, { t: 'ddz_your_cards' }>;
+  ddz_bid: Extract<S2CDdzEvent, { t: 'ddz_bid' }>;
+  ddz_redeal: Extract<S2CDdzEvent, { t: 'ddz_redeal' }>;
+  ddz_bottom: Extract<S2CDdzEvent, { t: 'ddz_bottom' }>;
+  ddz_play: Extract<S2CDdzEvent, { t: 'ddz_play' }>;
+  ddz_pass: Extract<S2CDdzEvent, { t: 'ddz_pass' }>;
+  ddz_settle: Extract<S2CDdzEvent, { t: 'ddz_settle' }>;
+  ddz_error: Extract<S2CDdzEvent, { t: 'ddz_error' }>;
+  ddz_final: ChipsRankingFinal;
 }
 
 /**

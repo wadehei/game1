@@ -9,6 +9,7 @@ import type {
   UnoGameState,
   BlackjackGameState,
   ZjhGameState,
+  DdzGameState,
 } from './wsTypes';
 
 export interface MemberInfo {
@@ -115,6 +116,18 @@ export function useMemberState({
       if (allIn) return '💰 all-in';
       if (g.turnSeat === m.seat) return seen ? '👀 行动中' : '🙈 行动中';
       return seen ? '👀 已看' : '🙈 闷牌';
+    }
+    if (gameType.value === 'ddz' && phase.value === 'playing') {
+      const g = game.value as DdzGameState;
+      if (g.phase === 'bidding') {
+        const o = (g.others || []).find((x) => x.userId === m.userId);
+        const self = m.userId === myId.value;
+        const bid = self ? g.myBid : (o?.bid ?? null);
+        if (bid === null) return '思考中';
+        return bid === 0 ? '不叫' : `叫 ${bid} 分`;
+      }
+      const isLm = g.landlordSeat === m.seat;
+      return isLm ? '👑 地主' : g.turnSeat === m.seat ? '出牌中' : '农民';
     }
     if (gameType.value === 'gomoku' && phase.value === 'playing') {
       return m.seat === 0 ? '执黑' : '执白';

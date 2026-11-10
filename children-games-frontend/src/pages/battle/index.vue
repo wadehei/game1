@@ -124,7 +124,44 @@
           <span class="cfg-note">打满即结算（2~30 手）</span>
         </div>
       </div>
-      <div v-if="selected === 'blackjack' || selected === 'zjh'" class="cfg-row career-row">
+      <div v-if="selected === 'ddz'" class="cfg">
+        <div class="cfg-title">🃏 斗地主 房间设置</div>
+        <div class="cfg-row">
+          <span class="cfg-label">局数</span>
+          <div class="seg">
+            <button
+              v-for="n in [1, 2, 3, 5]"
+              :key="n"
+              class="seg-btn"
+              :class="{ on: ddzRounds === n }"
+              @click="ddzRounds = n"
+            >
+              {{ n }} 局
+            </button>
+          </div>
+        </div>
+        <div class="cfg-row">
+          <span class="cfg-label">底分单位</span>
+          <div class="seg">
+            <button
+              v-for="u in [5, 10, 20]"
+              :key="u"
+              class="seg-btn"
+              :class="{ on: ddzBaseUnit === u }"
+              @click="ddzBaseUnit = u"
+            >
+              {{ u }} 分
+            </button>
+          </div>
+        </div>
+        <div class="cfg-note" style="width: 100%">
+          叫分 1-3 ×底分单位 = 本局底注；炸弹/火箭/春天 ×2，地主 ±2 份
+        </div>
+      </div>
+      <div
+        v-if="selected === 'blackjack' || selected === 'zjh' || selected === 'ddz'"
+        class="cfg-row career-row"
+      >
         <span class="cfg-label">战绩计入生涯</span>
         <button class="switch" :class="{ on: careerOn }" @click="careerOn = !careerOn">
           <span class="knob" />
@@ -202,6 +239,8 @@ const zjhTimeoutFold = ref(true);
 const zjhRounds = ref(15);
 const zjhBankerMode = ref<'rotate' | 'winner'>('rotate');
 const zjhMustBlind = ref(0);
+const ddzRounds = ref(2);
+const ddzBaseUnit = ref(10);
 const careerOn = ref(true);
 
 const buildConfig = (): Record<string, unknown> | undefined => {
@@ -220,6 +259,13 @@ const buildConfig = (): Record<string, unknown> | undefined => {
       career: careerOn.value,
       bankerMode: zjhBankerMode.value,
       mustBlindRounds: zjhMustBlind.value,
+    };
+  }
+  if (selected.value === 'ddz') {
+    return {
+      roundLimit: clampRound(ddzRounds.value, 1, 5, 2),
+      baseUnit: ddzBaseUnit.value,
+      career: careerOn.value,
     };
   }
   return undefined;

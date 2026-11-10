@@ -142,6 +142,7 @@ import type {
   UnoGameState,
   BlackjackGameState,
   ZjhGameState,
+  DdzGameState,
 } from '@/composables/wsTypes';
 import type { MemberInfo, S2CSnapshot } from '@children-games/shared';
 import { fetchRoomVoice, uploadRoomVoice } from '@/api/room';
@@ -205,7 +206,7 @@ const ws = useRoomWs();
 const wsStatus = ws.status;
 
 /** 牌类（积分桌）游戏：无"认输"，退出按弃牌处理 */
-const chipTableGames = ['blackjack', 'zjh'];
+const chipTableGames = ['blackjack', 'zjh', 'ddz'];
 
 const isHost = computed(() => hostUserId.value === myId.value);
 const myColor = computed(() => (mySeat.value === 0 ? BLACK : mySeat.value === 1 ? WHITE : 0));
@@ -236,6 +237,16 @@ const gameEvents = reactive<Partial<GameEvents>>({
   settle: null,
   compareCards: null,
   hint: null,
+  // 斗地主
+  ddz_phase: null,
+  ddz_your_cards: null,
+  ddz_bid: null,
+  ddz_redeal: null,
+  ddz_bottom: null,
+  ddz_play: null,
+  ddz_pass: null,
+  ddz_settle: null,
+  ddz_error: null,
 });
 const lastWsError = ref('');
 const rematchDeadlineAt = ref(0);
@@ -345,6 +356,20 @@ const playingStatusText = computed(() => {
     }
     const name = members.value.find((m) => m.seat === g.turnSeat)?.nickname;
     return name ? `等待 ${name} 行动…` : '对局进行中';
+  }
+  if (gt === 'ddz') {
+    const g = game.value as DdzGameState;
+    if (g.phase === 'settle') return '本局结算中…';
+    if (g.phase === 'bidding') {
+      if (g.turnSeat === mySeat.value) return '轮到你叫分（不叫/1/2/3 分）';
+      const name = members.value.find((m) => m.seat === g.turnSeat)?.nickname;
+      return name ? `等待 ${name} 叫分…` : '叫地主中…';
+    }
+    if (g.turnSeat === mySeat.value) {
+      return g.leadSeat === mySeat.value ? '你的出牌权，任意出牌' : '轮到你出牌（出牌或不出）';
+    }
+    const name = members.value.find((m) => m.seat === g.turnSeat)?.nickname;
+    return name ? `等待 ${name} 出牌…` : '对局进行中';
   }
   return '对局进行中';
 });

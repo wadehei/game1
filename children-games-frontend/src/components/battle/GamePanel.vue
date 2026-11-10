@@ -70,6 +70,15 @@
     :my-seat="mySeat"
     @action="emit('action', $event)"
   />
+  <DdzGame
+    v-else-if="gameType === 'ddz'"
+    :state="gameState as DdzGameState"
+    :events="events"
+    :members="members"
+    :phase="phase"
+    :my-seat="mySeat"
+    @action="emit('action', $event)"
+  />
   <!-- 后续游戏组件在此按 gameType 挂载 -->
   <div v-else class="game-placeholder">该游戏暂未开放</div>
 </template>
@@ -83,6 +92,7 @@ import UnoGame from './UnoGame.vue';
 import BlackjackGame from './BlackjackGame.vue';
 import ZjhGame from './ZjhGame.vue';
 import TankGame from './TankGame.vue';
+import DdzGame from './DdzGame.vue';
 import type {
   GameState,
   GameEvents,
@@ -93,6 +103,7 @@ import type {
   UnoGameState,
   BlackjackGameState,
   ZjhGameState,
+  DdzGameState,
 } from '@/composables/wsTypes';
 
 // gameState/events 由 room.vue 按 gameType 填充，模板内按分支窄化为对应游戏的形状
