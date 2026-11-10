@@ -21,9 +21,10 @@ ACCEL_ENV=(
   BLACKJACK_BET_SECONDS=3 BLACKJACK_ACT_SECONDS=3 ZJH_BET_SECONDS=5
   DRAW_SECONDS=10 SPY_TALK_SECONDS=5 SPY_VOTE_SECONDS=5 REMATCH_AUTO_SECONDS=3
   TANK_MATCH_SECONDS=8 TANK_POWERUP_MS=500 TANK_FIRST_POWERUP=shield
+  DDZ_BID_SECONDS=3 DDZ_PLAY_SECONDS=5
 )
 
-MAIN_SUITES=(ws-protocol ws-quiz ws-draw ws-draw-offline ws-spy ws-uno ws-blackjack ws-zjh ws-betlog ws-quit-continue ws-tank admin-console)
+MAIN_SUITES=(ws-protocol ws-quiz ws-draw ws-draw-offline ws-spy ws-uno ws-blackjack ws-zjh ws-ddz ws-betlog ws-quit-continue ws-tank admin-console)
 RIGGED_SUITES=(ws-blackjack-rigged)
 
 # 全局导出：套件进程与后端进程须共享同一组变量

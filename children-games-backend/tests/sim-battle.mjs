@@ -340,8 +340,118 @@ async function simBlackjack() {
   for (const b of bots) b.close();
 }
 
+/** 斗地主：固定 3 机器人完整局，每局零和 + 引擎倍数对拍 */
+async function simDdz() {
+  const engine = await import('../dist/ws/games/ddz/engine.js');
+  const datas = [];
+  for (const uid of UIDS) {
+    const d = await login(uid).catch(() => null);
+    if (d?.userInfo) datas.push(d);
+  }
+  if (datas.length < 3) {
+    console.error('[sim] 斗地主需要 3 个可用成员（服务器上不存在这些 uid）');
+    process.exit(1);
+  }
+  const players = datas.slice(0, 3);
+  const created = await fetch(`${BASE}/api/room`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${players[0].accessToken || players[0].token}` },
+    body: JSON.stringify({ gameType: 'ddz', config: { roundLimit: handLimit, baseUnit: 10, career: false } }),
+  }).then((r) => r.json());
+  const roomId = created.data.roomId;
+  console.log(`[sim] 斗地主房间 ${roomId}，3 个机器人，打 ${handLimit} 局`);
+  const bots = [];
+  for (const d of players) {
+    const b = new Bot(d, d.userInfo.nickname);
+    await b.connect(roomId);
+    bots.push(b);
+  }
+  for (const b of [...bots].reverse()) b.send({ t: 'ready' });
+
+  /** 从事件流重建机器人本地手牌（发牌 - 已出） */
+  const handOf = (b) => {
+    const dealt = b.all('ddz_your_cards').at(-1)?.cards || [];
+    const played = b.all('ddz_play').filter((e) => e.userId === b.uid).flatMap((e) => e.cards || []);
+    const hand = [...dealt];
+    for (const c of played) {
+      const idx = hand.indexOf(c);
+      if (idx >= 0) hand.splice(idx, 1);
+    }
+    return hand;
+  };
+
+  const acted = new Set();
+  const deadline = Date.now() + (handLimit + 2) * 180000;
+  const settles = [];
+  let final = null;
+  let zeroSumOk = true;
+  let payoutOk = true;
+  let verified = 0;
+  while (Date.now() < deadline && !final) {
+    let progressed = false;
+    for (const b of bots) {
+      const p = b.last('ddz_phase');
+      if (p && p.phase === 'bidding' && p.turnSeat === b.mySeat) {
+        const key = `bid:${b.all('ddz_bid').length}:${b.mySeat}`;
+        if (!acted.has(key)) {
+          acted.add(key);
+          progressed = true;
+          b.send({ t: 'ddz_bid', score: Math.min(3, (p.bidBestScore || 0) + 1) });
+        }
+      } else if (p && p.phase === 'playing' && p.turnSeat === b.mySeat) {
+        const key = `play:${p.round}:${b.all('ddz_play').length + b.all('ddz_pass').length}:${b.mySeat}`;
+        if (!acted.has(key)) {
+          acted.add(key);
+          progressed = true;
+          const hand = handOf(b);
+          const isLead = p.turnSeat === p.leadSeat || !p.lastPlay;
+          if (isLead) {
+            const min = hand.at(-1);
+            if (min) b.send({ t: 'ddz_play', cards: [min] });
+          } else {
+            b.send({ t: 'ddz_pass' });
+          }
+        }
+      }
+      const s = b.last('ddz_settle');
+      if (s && !settles.some((x) => x.round === s.round)) {
+        settles.push(s);
+        const sum = (s.deltas || []).reduce((acc, d) => acc + d.delta, 0);
+        if (sum !== 0) zeroSumOk = false;
+        // 引擎对拍：deltas 必须等于 payout(叫分×底分×倍数) 的地主/农民份（底封顶在满血局不会触发）
+        const expect = engine.payout(s.bid, s.baseUnit, s.multiplier, s.landlordWin);
+        for (const d of s.deltas || []) {
+          const mine = d.role === 'landlord' ? expect.landlord : expect.farmer;
+          if (d.delta !== mine) payoutOk = false;
+          verified += 1;
+        }
+      }
+      const f = b.last('ddz_final');
+      if (f) final = f;
+    }
+    if (!progressed) await sleep(200);
+  }
+
+  check(`斗地主 打满 ${handLimit} 局并终局`, !!final && final.ranking.length === 3);
+  check(`每局零和（${settles.length} 局 Σdelta 全为 0）`, settles.length > 0 && zeroSumOk);
+  check(`每局 delta 严格符合引擎倍数公式（核对 ${verified} 条）`, payoutOk && verified > 0);
+  const bottomOk = settles.every((s) => Array.isArray(s.bottomCards) && s.bottomCards.length === 3);
+  check('每局结算带 3 张底牌', bottomOk);
+  if (!final) {
+    console.log('[dbg] 未到终局。各机器人最后阶段：');
+    for (const b of bots) console.log(' ', b.name, JSON.stringify(b.last('ddz_phase'))?.slice(0, 200), '| settles:', settles.length);
+  }
+  const chips = (final?.ranking || []).map((r) => r.chips);
+  check('终局排名按积分降序', chips.every((c, i) => i === 0 || chips[i - 1] >= c));
+  const errs = bots.flatMap((b) => b.all('error')).map((e) => e.message || '');
+  const fatal = errs.filter((m) => m.includes('未知') || m.includes('异常'));
+  check('无协议级错误', fatal.length === 0);
+  for (const b of bots) b.close();
+}
+
 if (game === 'zjh') await simZjh();
 else if (game === 'blackjack') await simBlackjack();
+else if (game === 'ddz') await simDdz();
 else {
   console.error('未知游戏:', game);
   process.exit(1);
