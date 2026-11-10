@@ -5,8 +5,8 @@ import { logError } from '../utils/logger';
 import { settleRankingChips } from '../services/battleChips';
 import { REMATCH_AUTO_SECONDS } from '../config/constants';
 
-/** 牌类（blackjack/zjh）每手自行实时结算积分，game_over 时不再发排名分 */
-const CHIP_TABLE_GAMES = new Set(['blackjack', 'zjh']);
+/** 牌类（blackjack/zjh/ddz）每手自行实时结算积分，game_over 时不再发排名分 */
+const CHIP_TABLE_GAMES = new Set(['blackjack', 'zjh', 'ddz']);
 
 /** 再来一局表决超时自动重开（未表态视为同意）；0=关闭 */
 export const REMATCH_AUTO_MS =

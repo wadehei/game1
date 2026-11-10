@@ -1,7 +1,8 @@
 // 游戏插件接口定义：每个对战游戏实现一个 GameHandler，由 wsServer 路由分发
 import type { Room, Member } from '../roomManager';
 
-export type GameType = 'gomoku' | 'quiz' | 'draw' | 'spy' | 'uno' | 'blackjack' | 'zjh' | 'tank';
+export type GameType =
+  'gomoku' | 'quiz' | 'draw' | 'spy' | 'uno' | 'blackjack' | 'zjh' | 'tank' | 'ddz';
 
 export interface ActionResult {
   error?: string; // 非法操作原因，回给操作者

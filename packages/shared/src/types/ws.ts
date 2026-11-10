@@ -26,7 +26,8 @@ export type C2SMessage =
   | C2SUnoAction
   | C2SBlackjackAction
   | C2SZjhAction
-  | C2STankAction;
+  | C2STankAction
+  | C2SDdzAction;
 
 // ─────────────────────────────────────────────────────────────
 // 房间通用消息
@@ -138,6 +139,12 @@ export type C2SZjhAction =
 
 /** 坦克对决：移动/开火（dir 边沿触发，-1 停 / 0 上 / 1 右 / 2 下 / 3 左） */
 export type C2STankAction = { t: 'tank_move'; dir: number } | { t: 'tank_fire' };
+
+/** 斗地主：叫分（0=不叫）/出牌/过 */
+export type C2SDdzAction =
+  | { t: 'ddz_bid'; score: number }
+  | { t: 'ddz_play'; cards: string[] }
+  | { t: 'ddz_pass' };
 /**
  * 服务端 → 客户端事件
  */
@@ -167,7 +174,8 @@ export type S2CEvent =
   | S2CUnoEvent
   | S2CBlackjackEvent
   | S2CTankEvent
-  | S2CZjhEvent;
+  | S2CZjhEvent
+  | S2CDdzEvent;
 
 // ─────────────────────────────────────────────────────────────
 // 房间通用事件
@@ -365,6 +373,29 @@ export type S2CZjhEvent =
   | { t: 'zjh_showdown'; reveals: unknown }
   | { t: 'zjh_settle'; round: number; winner: number; winnerNickname?: string; reason?: string; winAmount?: number; reveals?: unknown; deltas: Array<{ userId: number; delta: number; chips: number }>; nextDeadline?: number }
   | { t: 'zjh_final'; ranking: Array<{ userId: number; nickname: string; chips: number }> };
+
+// ─────────────────────────────────────────────────────────────
+// 斗地主事件
+// ─────────────────────────────────────────────────────────────
+export interface DdzDelta {
+  userId: number;
+  nickname: string;
+  delta: number;
+  chips: number;
+  role: 'landlord' | 'farmer';
+}
+
+export type S2CDdzEvent =
+  | { t: 'ddz_phase'; round: number; totalRounds: number; phase: string; turnSeat: number; leadSeat: number; landlordSeat: number | null; bidStartSeat: number; bidBestScore: number; bidBase: number; baseUnit: number; multiplier: number; bottomCards: string[] | null; lastPlay: { seat: number; userId: number; cards: string[]; cardType: string } | null; deadline: number; chips: Array<{ userId: number; chips: number }> }
+  | { t: 'ddz_your_cards'; cards: string[]; phase: string }
+  | { t: 'ddz_bid'; userId: number; nickname: string; seat: number; score: number; auto: boolean; bestScore: number; bidCount: number }
+  | { t: 'ddz_redeal'; round: number }
+  | { t: 'ddz_bottom'; cards: string[]; landlordSeat: number }
+  | { t: 'ddz_play'; userId: number; nickname: string; seat: number; cards: string[]; cardType: string; multiplier: number; remain: number; auto: boolean }
+  | { t: 'ddz_pass'; userId: number; nickname: string; seat: number; passCount: number; auto: boolean }
+  | { t: 'ddz_settle'; round: number; winner: number; winnerNickname: string; landlordSeat: number; landlordWin: boolean; spring: 'spring' | 'anti' | null; reason: string; bid: number; baseUnit: number; multiplier: number; unitScore: number; deltas: DdzDelta[]; bottomCards: string[]; nextDeadline?: number }
+  | { t: 'ddz_error'; error: string }
+  | { t: 'ddz_final'; ranking: Array<{ userId: number; nickname: string; chips: number }> };
 
 // ─────────────────────────────────────────────────────────────
 // 坦克对决事件

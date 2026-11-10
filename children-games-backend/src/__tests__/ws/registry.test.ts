@@ -19,9 +19,9 @@ describe('game registry', () => {
   });
 
   describe('gameList', () => {
-    it('should return info for all 8 games', () => {
+    it('should return info for all 9 games', () => {
       const list = gameList();
-      expect(list.length).toBe(8);
+      expect(list.length).toBe(9);
     });
 
     it('should include required fields for each game', () => {
