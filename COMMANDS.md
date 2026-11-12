@@ -130,10 +130,10 @@ mysql -u root -p
 mysqldump -u root -p children_games > /home/songshaohui/children_games_$(date +%Y%m%d).sql
 
 # 本地导入
-cmd /c "D:\software\mysql-8.4\bin\mysql -u root -proot123 children_games < 备份文件.sql"
+cmd /c "D:\software\mysql-8.4\bin\mysql -u root -pSongYuan1122 children_games < 备份文件.sql"
 
 # 本地查看表
-D:\software\mysql-8.4\bin\mysql -u root -proot123 -e "USE children_games; SHOW TABLES;"
+D:\software\mysql-8.4\bin\mysql -u root -pSongYuan1122 -e "USE children_games; SHOW TABLES;"
 ```
 
 ---
@@ -181,8 +181,8 @@ ps aux | grep node
 
 | 项目 | 值 |
 |------|-----|
-| MySQL root 密码（线上） | `SongYuan1121` |
-| MySQL root 密码（本地） | `root123` |
+| MySQL root 密码（线上） | `SongYuan1122` |
+| MySQL root 密码（本地） | `SongYuan1122` |
 | 宝塔面板用户 | `bff38933` |
 | 宝塔面板密码 | `c72f7343f46b` |
 | JWT Secret（后端 .env） | `xK9mN2pQ7wR5tY8uI0oP4sD6fGaB3cV` |
@@ -224,7 +224,7 @@ ps aux | grep node
 | 主机 | `127.0.0.1` |
 | 端口 | `3306` |
 | 用户名 | `root` |
-| 密码 | `SongYuan1121` |
+| 密码 | `SongYuan1122` |
 
 ---
 
@@ -238,8 +238,8 @@ mysqldump -u root -p children_games > /home/songshaohui/children_games_$(date +%
 scp root@49.232.231.35:/home/songshaohui/children_games_20261013.sql D:\me\learn\AI\
 
 # 3. 本地重建并导入
-D:\software\mysql-8.4\bin\mysql -u root -proot123 -e "DROP DATABASE IF EXISTS children_games; CREATE DATABASE children_games DEFAULT CHARACTER SET utf8mb4;"
-cmd /c "D:\software\mysql-8.4\bin\mysql -u root -proot123 children_games < D:\me\learn\AI\children_games_20261013.sql"
+D:\software\mysql-8.4\bin\mysql -u root -pSongYuan1122 -e "DROP DATABASE IF EXISTS children_games; CREATE DATABASE children_games DEFAULT CHARACTER SET utf8mb4;"
+cmd /c "D:\software\mysql-8.4\bin\mysql -u root -pSongYuan1122 children_games < D:\me\learn\AI\children_games_20261013.sql"
 ```
 
 ---
