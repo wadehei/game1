@@ -1,0 +1,19 @@
+{
+  "name": "@children-games/shared",
+  "version": "1.0.0",
+  "description": "儿童游戏乐园共享类型定义",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "keywords": ["typescript", "shared", "types"],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}

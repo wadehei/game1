@@ -16,9 +16,22 @@ interface GameProgressAttributes {
   updatedAt?: Date;
 }
 
-interface GameProgressCreationAttributes extends Optional<GameProgressAttributes, 'id' | 'currentLevel' | 'highScore' | 'stars' | 'levelStars' | 'achievements' | 'playCount' | 'winCount'> {}
+export interface GameProgressCreationAttributes extends Optional<
+  GameProgressAttributes,
+  | 'id'
+  | 'currentLevel'
+  | 'highScore'
+  | 'stars'
+  | 'levelStars'
+  | 'achievements'
+  | 'playCount'
+  | 'winCount'
+> {}
 
-export class GameProgress extends Model<GameProgressAttributes, GameProgressCreationAttributes> implements GameProgressAttributes {
+export class GameProgress
+  extends Model<GameProgressAttributes, GameProgressCreationAttributes>
+  implements GameProgressAttributes
+{
   public id!: number;
   public userId!: number;
   public gameId!: string;
@@ -101,6 +114,15 @@ GameProgress.init(
       {
         unique: true,
         fields: ['userId', 'gameId'],
+      },
+      {
+        fields: ['userId', 'updatedAt'],
+        name: 'idx_gp_user_updated',
+      },
+      // 游戏排行榜查询：按游戏ID + 高分排序
+      {
+        fields: ['gameId', 'highScore'],
+        name: 'idx_gp_game_highscore',
       },
     ],
   }

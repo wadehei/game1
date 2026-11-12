@@ -9,6 +9,8 @@ import { spyHandler } from './spy';
 import { unoHandler } from './uno';
 import { blackjackHandler } from './blackjack';
 import { zjhHandler } from './zjh';
+import { tankHandler } from './tank';
+import { ddzHandler } from './ddz';
 
 export const gameHandlers: Partial<Record<GameType, GameHandler>> = {
   gomoku: gomokuHandler,
@@ -18,6 +20,8 @@ export const gameHandlers: Partial<Record<GameType, GameHandler>> = {
   uno: unoHandler,
   blackjack: blackjackHandler,
   zjh: zjhHandler,
+  tank: tankHandler,
+  ddz: ddzHandler,
 };
 
 export const getHandler = (type: GameType): GameHandler => {
@@ -26,7 +30,9 @@ export const getHandler = (type: GameType): GameHandler => {
   return handler;
 };
 
-export const gameList = (): Array<Pick<GameHandler, 'type' | 'title' | 'emoji' | 'desc' | 'minPlayers' | 'maxPlayers'>> =>
+export const gameList = (): Array<
+  Pick<GameHandler, 'type' | 'title' | 'emoji' | 'desc' | 'minPlayers' | 'maxPlayers'>
+> =>
   Object.values(gameHandlers).map((h) => ({
     type: h.type,
     title: h.title,

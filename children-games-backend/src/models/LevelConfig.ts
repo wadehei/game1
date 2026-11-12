@@ -12,7 +12,10 @@ interface LevelConfigAttributes {
 
 interface LevelConfigCreationAttributes extends Optional<LevelConfigAttributes, 'id'> {}
 
-export class LevelConfig extends Model<LevelConfigAttributes, LevelConfigCreationAttributes> implements LevelConfigAttributes {
+export class LevelConfig
+  extends Model<LevelConfigAttributes, LevelConfigCreationAttributes>
+  implements LevelConfigAttributes
+{
   public id!: number;
   public gameId!: string;
   public level!: number;

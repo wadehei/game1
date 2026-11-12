@@ -1,9 +1,19 @@
 import { ref, onUnmounted } from 'vue';
 import { emitGamePause, emitGameResume } from '@/utils/gameEvents';
 import { api } from '@/utils/request';
+import { storage } from '@/utils/storage';
 
 /** 游戏页面路由（大厅/个人中心不计入连续游玩时间） */
-const GAME_ROUTES = new Set(['/memory', '/fruit', '/puzzle', '/balloon', '/tank', '/mole', '/simon', '/math']);
+const GAME_ROUTES = new Set([
+  '/memory',
+  '/fruit',
+  '/puzzle',
+  '/balloon',
+  '/tank',
+  '/mole',
+  '/simon',
+  '/math',
+]);
 
 /** 每次护眼休息的时长（秒） */
 const REST_DURATION = 20;
@@ -20,7 +30,7 @@ let serverIntervalMinutes: number | null = null;
 /** 家长设置的护眼提醒间隔（分钟），0 为关闭；本地未覆盖时用后台下发的全局值 */
 export const getRestIntervalMinutes = (): number => {
   try {
-    const v = parseInt(localStorage.getItem('parent_rest_interval') || '', 10);
+    const v = parseInt(storage.getItem('parent_rest_interval') || '', 10);
     if (Number.isFinite(v) && v >= 0) {
       return v;
     }
@@ -50,7 +60,7 @@ const reportPlaytime = (seconds: number): void => {
 
 export const getTodayPlaySeconds = (): number => {
   try {
-    return parseInt(localStorage.getItem(todayKey()) || '0', 10) || 0;
+    return parseInt(storage.getItem(todayKey()) || '0', 10) || 0;
   } catch {
     return 0;
   }
@@ -58,7 +68,7 @@ export const getTodayPlaySeconds = (): number => {
 
 export const resetTodayPlayTime = (): void => {
   try {
-    localStorage.setItem(todayKey(), '0');
+    storage.setItem(todayKey(), '0');
   } catch {
     // ignore
   }
@@ -106,7 +116,7 @@ export function usePlayTimeGuard(routePath: () => string) {
 
   const persist = () => {
     try {
-      localStorage.setItem(todayKey(), String(todaySeconds));
+      storage.setItem(todayKey(), String(todaySeconds));
     } catch {
       // ignore
     }

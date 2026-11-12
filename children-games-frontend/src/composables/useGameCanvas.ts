@@ -15,7 +15,9 @@ export function useGameCanvas(maxDpr = 2) {
   let canvasEl: HTMLCanvasElement | null = null;
   let observer: ResizeObserver | null = null;
   let resolveFirstFit: (() => void) | null = null;
-  const firstFit = new Promise<void>((resolve) => { resolveFirstFit = resolve; });
+  const firstFit = new Promise<void>((resolve) => {
+    resolveFirstFit = resolve;
+  });
   const resizeHandlers: Array<(w: number, h: number, ctx: CanvasRenderingContext2D) => void> = [];
 
   const applyFit = () => {

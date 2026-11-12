@@ -1,4 +1,5 @@
 import { createRouter, createWebHashHistory } from 'vue-router';
+import { storage } from '@/utils/storage';
 
 const routes = [
   {
@@ -88,13 +89,28 @@ const routes = [
   },
   {
     path: '/match3',
-    name: 'Match',
+    name: 'Match3',
     component: () => import('@/pages/match3/index.vue'),
   },
   {
     path: '/math',
     name: 'Math',
     component: () => import('@/pages/math/index.vue'),
+  },
+  {
+    path: '/brick',
+    name: 'Brick',
+    component: () => import('@/pages/brick/index.vue'),
+  },
+  {
+    path: '/sudoku',
+    name: 'Sudoku',
+    component: () => import('@/pages/sudoku/index.vue'),
+  },
+  {
+    path: '/claw',
+    name: 'Claw',
+    component: () => import('@/pages/claw/index.vue'),
   },
 ];
 
@@ -106,16 +122,16 @@ const router = createRouter({
 // 未登录（没有角色凭证）时先去选角色页；后台管理走独立的密码体系
 // 记住了"上次是谁"（last_profile_id）且该角色未设口令时，静默重登无感恢复
 router.beforeEach(async (to) => {
-  if (to.path === '/admin' && !localStorage.getItem('admin_token')) {
+  if (to.path === '/admin' && !storage.getItem('admin_token')) {
     return { path: '/admin/login' };
   }
   if (to.path.startsWith('/admin') || to.path === '/profiles') {
     return true;
   }
-  if (localStorage.getItem('token')) {
+  if (storage.getItem('token')) {
     return true;
   }
-  const lastId = localStorage.getItem('last_profile_id');
+  const lastId = storage.getItem('last_profile_id');
   if (lastId) {
     try {
       const { familyLogin } = await import('@/api/user');

@@ -1,4 +1,6 @@
 // 21点纯逻辑：一副 52 张、A 软硬点自动取优；handler 只编排状态机，判定全在这里（可独立测试）
+import { secureShuffle } from '../../../utils/secureRandom';
+
 export interface Card {
   suit: '♠' | '♥' | '♦' | '♣';
   rank: number; // 1..13，1=A，11=J，12=Q，13=K
@@ -7,7 +9,16 @@ export interface Card {
 export const SUITS: Card['suit'][] = ['♠', '♥', '♦', '♣'];
 
 export const cardLabel = (c: Card): string => {
-  const r = c.rank === 1 ? 'A' : c.rank === 11 ? 'J' : c.rank === 12 ? 'Q' : c.rank === 13 ? 'K' : String(c.rank);
+  const r =
+    c.rank === 1
+      ? 'A'
+      : c.rank === 11
+        ? 'J'
+        : c.rank === 12
+          ? 'Q'
+          : c.rank === 13
+            ? 'K'
+            : String(c.rank);
   return `${c.suit}${r}`;
 };
 
@@ -19,14 +30,7 @@ export const buildDeck = (): Card[] => {
   return shuffle(deck);
 };
 
-export const shuffle = <T>(arr: T[]): T[] => {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-};
+export const shuffle = <T>(arr: T[]): T[] => secureShuffle(arr);
 
 /** 手牌点数：A 按 1/11 取最优；soft=存在按 11 计的 A */
 export const handValue = (cards: Card[]): { total: number; soft: boolean } => {
@@ -50,7 +54,8 @@ export const handValue = (cards: Card[]): { total: number; soft: boolean } => {
   return { total, soft };
 };
 
-export const isBlackjack = (cards: Card[]): boolean => cards.length === 2 && handValue(cards).total === 21;
+export const isBlackjack = (cards: Card[]): boolean =>
+  cards.length === 2 && handValue(cards).total === 21;
 
 export const isBusted = (cards: Card[]): boolean => handValue(cards).total > 21;
 
@@ -58,7 +63,11 @@ export const isBusted = (cards: Card[]): boolean => handValue(cards).total > 21;
 export const BET_OPTIONS = [10, 20, 50, 100];
 
 /** 结算单个闲家与庄家的输赢，返回派彩倍数（相对注金）：0=输，1=平退注，2=普通赢，2.5=Blackjack */
-export const payoutMultiplier = (playerCards: Card[], bankerCards: Card[], natural: boolean): number => {
+export const payoutMultiplier = (
+  playerCards: Card[],
+  bankerCards: Card[],
+  natural: boolean
+): number => {
   if (isBusted(playerCards)) return 0;
   const p = handValue(playerCards).total;
   const b = handValue(bankerCards).total;

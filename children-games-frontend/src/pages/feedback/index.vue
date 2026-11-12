@@ -17,9 +17,17 @@
           class="fb-type"
           :class="{ active: fbType === t.value }"
           @click="fbType = t.value"
-        >{{ t.label }}</button>
+        >
+          {{ t.label }}
+        </button>
       </div>
-      <textarea v-model="fbContent" class="fb-input" rows="4" maxlength="1000" placeholder="说说你的想法（最多 1000 字）" />
+      <textarea
+        v-model="fbContent"
+        class="fb-input"
+        rows="4"
+        maxlength="1000"
+        placeholder="说说你的想法（最多 1000 字）"
+      />
       <button class="fb-submit" :disabled="fbSubmitting || !fbContent.trim()" @click="submitFb">
         {{ fbSubmitting ? '提交中…' : '提交反馈' }}
       </button>
@@ -44,7 +52,10 @@
     <div v-else class="fb-list">
       <div v-for="f in feedbacks" :key="f.id" class="fb-item" :class="{ mine: f.userId === myId }">
         <div class="fb-line1">
-          <span class="fb-author">{{ f.user?.nickname || `角色#${f.userId}` }}<template v-if="f.userId === myId">（我）</template></span>
+          <span class="fb-author"
+            >{{ f.user?.nickname || `角色#${f.userId}`
+            }}<template v-if="f.userId === myId">（我）</template></span
+          >
           <span class="fb-status" :class="f.status">{{ statusLabel(f.status) }}</span>
         </div>
         <div class="fb-line2">
@@ -56,7 +67,9 @@
         <!-- 回复列表 -->
         <div v-if="f.replies.length" class="fb-replies">
           <div v-for="r in f.replies" :key="r.id" class="fb-reply" :class="{ official: r.isAdmin }">
-            <span class="fb-reply-author">{{ r.isAdmin ? '📣 官方回复' : r.user?.nickname || `角色#${r.userId}` }}</span>
+            <span class="fb-reply-author">{{
+              r.isAdmin ? '📣 官方回复' : r.user?.nickname || `角色#${r.userId}`
+            }}</span>
             <span class="fb-reply-content">{{ r.content }}</span>
             <span class="fb-reply-time">{{ formatFbTime(r.createdAt) }}</span>
           </div>
@@ -71,10 +84,20 @@
             placeholder="回复…（最多 500 字）"
             @keyup.enter="sendReply(f)"
           />
-          <button class="fb-reply-send" :disabled="replySubmitting || !replyContent.trim()" @click="sendReply(f)">发送</button>
+          <button
+            class="fb-reply-send"
+            :disabled="replySubmitting || !replyContent.trim()"
+            @click="sendReply(f)"
+          >
+            发送
+          </button>
         </div>
         <button class="fb-reply-toggle" @click="toggleReply(f)">
-          {{ replyForId === f.id ? '收起' : `回复${f.replies.length ? `（${f.replies.length}）` : ''}` }}
+          {{
+            replyForId === f.id
+              ? '收起'
+              : `回复${f.replies.length ? `（${f.replies.length}）` : ''}`
+          }}
         </button>
       </div>
     </div>
@@ -99,7 +122,10 @@ import {
 const router = useRouter();
 const userStore = useUserStore();
 
-const FB_TYPES = (Object.keys(FEEDBACK_TYPE_LABELS) as FeedbackType[]).map((v) => ({ value: v, label: FEEDBACK_TYPE_LABELS[v] }));
+const FB_TYPES = (Object.keys(FEEDBACK_TYPE_LABELS) as FeedbackType[]).map((v) => ({
+  value: v,
+  label: FEEDBACK_TYPE_LABELS[v],
+}));
 const fbType = ref<FeedbackType>('suggestion');
 const fbContent = ref('');
 const fbSubmitting = ref(false);

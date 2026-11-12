@@ -10,7 +10,7 @@ const page = await browser.newPage();
 await page.setViewport({ width: 1280, height: 800 });
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-let pageErrors = [];
+const pageErrors = [];
 page.on('pageerror', (err) => pageErrors.push(err.message));
 const isNoise = (e) => /NetworkError|Failed to fetch|AxiosError|ERR_|404|401/i.test(e);
 const check = (label, cond) => console.log(`${cond ? '✅' : '❌'} ${label}`);
@@ -18,11 +18,13 @@ const check = (label, cond) => console.log(`${cond ? '✅' : '❌'} ${label}`);
 await page.goto(`${BASE}/#/`, { waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {});
 await sleep(800);
 await page.evaluate(async (pw) => {
-  const admin = await (await fetch('/api/admin/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ password: pw }),
-  })).json();
+  const admin = await (
+    await fetch('/api/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw }),
+    })
+  ).json();
   localStorage.setItem('admin_token', admin.data.token);
   localStorage.setItem('token', 'offline');
 }, ADMIN_PASSWORD);
@@ -31,7 +33,9 @@ await page.evaluate(async (pw) => {
 await page.goto(`${BASE}/#/admin`, { waitUntil: 'networkidle2' });
 await sleep(1200);
 await page.evaluate(() => {
-  [...document.querySelectorAll('.nav-item, .mobile-tab')].find((t) => t.textContent.includes('语音配音'))?.click();
+  [...document.querySelectorAll('.nav-item, .mobile-tab')]
+    .find((t) => t.textContent.includes('语音配音'))
+    ?.click();
 });
 await sleep(1000);
 const lineCount = await page.evaluate(() => document.querySelectorAll('.line-row').length);
@@ -71,10 +75,18 @@ const served = await page.evaluate(async () => {
   if (!key) return { listOk: false };
   const res = await fetch(`/api/voice/${key}`);
   const buf = await res.arrayBuffer();
-  return { listOk: list.length === 1, key, status: res.status, type: res.headers.get('content-type'), size: buf.byteLength };
+  return {
+    listOk: list.length === 1,
+    key,
+    status: res.status,
+    type: res.headers.get('content-type'),
+    size: buf.byteLength,
+  };
 });
-check(`服务端列表含 ${served.key}（audio/${served.type?.includes('webm') ? 'webm' : '?'}，${served.size} 字节）`,
-  served.listOk && served.status === 200 && served.size > 0);
+check(
+  `服务端列表含 ${served.key}（audio/${served.type?.includes('webm') ? 'webm' : '?'}，${served.size} 字节）`,
+  served.listOk && served.status === 200 && served.size > 0
+);
 
 // ═══ 4. 孩子端页面加载走 playVoice 路径无异常 ═══
 await page.goto(`${BASE}/#/memory`, { waitUntil: 'networkidle2' });
@@ -85,7 +97,9 @@ check('游戏页在配音已启用时正常加载', true);
 await page.goto(`${BASE}/#/admin`, { waitUntil: 'networkidle2' });
 await sleep(1000);
 await page.evaluate(() => {
-  [...document.querySelectorAll('.nav-item, .mobile-tab')].find((t) => t.textContent.includes('语音配音'))?.click();
+  [...document.querySelectorAll('.nav-item, .mobile-tab')]
+    .find((t) => t.textContent.includes('语音配音'))
+    ?.click();
 });
 await sleep(800);
 await page.evaluate(() => {
@@ -93,7 +107,9 @@ await page.evaluate(() => {
   vis([...document.querySelectorAll('.act-btn.danger')])[0]?.click();
 });
 await sleep(800);
-const afterDelete = await page.evaluate(async () => (await (await fetch('/api/voice')).json()).data.length);
+const afterDelete = await page.evaluate(
+  async () => (await (await fetch('/api/voice')).json()).data.length
+);
 check(`删除后服务端列表为空（${afterDelete} 条）`, afterDelete === 0);
 
 const real = pageErrors.filter((e) => !isNoise(e));

@@ -6,13 +6,18 @@
         <span class="df-title">🏁 你画我猜结束</span>
       </template>
       <template v-else-if="phase === 'playing' && state?.phase === 'picking'">
-        <span v-if="!(isDrawer && candidates.length)">✏️ {{ nameOf(state?.drawerSeat) }} 正在选词…（第 {{ state?.round }}/{{ state?.totalRounds }} 回合）</span>
+        <span v-if="!(isDrawer && candidates.length)"
+          >✏️ {{ nameOf(state?.drawerSeat) }} 正在选词…（第 {{ state?.round }}/{{
+            state?.totalRounds
+          }}
+          回合）</span
+        >
         <span v-else class="pick-tip">选一个词来画：</span>
       </template>
       <template v-else-if="phase === 'playing' && state?.phase === 'drawing'">
         <span>
-          🎨 {{ isDrawer ? '你来画！' : `${nameOf(state?.drawerSeat)} 正在画` }}
-          · {{ state?.category }} · {{ state?.wordLen }} 个字
+          🎨 {{ isDrawer ? '你来画！' : `${nameOf(state?.drawerSeat)} 正在画` }} ·
+          {{ state?.category }} · {{ state?.wordLen }} 个字
           <template v-if="hintChar"> · 💡 首字「{{ hintChar }}」</template>
           <template v-if="state?.myGuessed"> · ✅ 你已猜对</template>
         </span>
@@ -40,8 +45,16 @@
     </div>
 
     <!-- 画家选词 -->
-    <div v-if="phase === 'playing' && isDrawer && state?.phase === 'picking' && candidates.length" class="pick-row">
-      <button v-for="(w, i) in candidates" :key="w" class="pick-btn" @click="emit('action', { t: 'draw_pick', index: i })">
+    <div
+      v-if="phase === 'playing' && isDrawer && state?.phase === 'picking' && candidates.length"
+      class="pick-row"
+    >
+      <button
+        v-for="(w, i) in candidates"
+        :key="w"
+        class="pick-btn"
+        @click="emit('action', { t: 'draw_pick', index: i })"
+      >
         {{ w }}
       </button>
     </div>
@@ -79,12 +92,38 @@
     <!-- 终局 -->
     <div v-if="phase === 'ended' && final" class="draw-final">
       <div class="df-title">🏁 排名</div>
-      <div v-for="(r, i) in final.ranking" :key="r.userId" class="df-row" :class="{ me: r.userId === myId }">
+      <div
+        v-for="(r, i) in final.ranking"
+        :key="r.userId"
+        class="df-row"
+        :class="{ me: r.userId === myId }"
+      >
         <span class="df-rank">{{ i + 1 }}.</span>
-        <span class="df-name">{{ r.nickname }}<template v-if="r.userId === myId">（我）</template></span>
+        <span class="df-name"
+          >{{ r.nickname }}<template v-if="r.userId === myId">（我）</template></span
+        >
         <span class="df-score">{{ r.total }} 分</span>
       </div>
       <div class="qf-tip">等待房主发起「再来一局」</div>
+    </div>
+
+    <!-- 回放入口：回合结束后可用，新回合开始即消失 -->
+    <button v-if="replayData && !showReplay" class="replay-btn" @click="openReplay">
+      ▶ 回放上一回合
+    </button>
+
+    <!-- 回放浮层 -->
+    <div v-if="showReplay" class="replay-overlay" @click.self="closeReplay">
+      <div class="replay-card">
+        <div class="replay-title">
+          回放<template v-if="replayData?.word"> · 谜底「{{ replayData.word }}」</template>
+        </div>
+        <canvas ref="replayCanvas" class="replay-canvas"></canvas>
+        <div class="replay-actions">
+          <button class="replay-act" @click="playReplay">重播</button>
+          <button class="replay-act" @click="closeReplay">关闭</button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -92,9 +131,15 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
 import { useUserStore } from '@/store/user';
+import type { DrawGameState, GameEvents, TotalRankingFinal } from '@/composables/wsTypes';
 
 const COLORS = ['#333333', '#e74c3c', '#2980b9', '#27ae60', '#f39c12', '#8e44ad'];
-const COLORS_CSS = { red: '#e74c3c', blue: '#2980b9', green: '#27ae60', yellow: '#f1c40f' } as Record<string, string>;
+const COLORS_CSS = {
+  red: '#e74c3c',
+  blue: '#2980b9',
+  green: '#27ae60',
+  yellow: '#f1c40f',
+} as Record<string, string>;
 
 interface Batch {
   points: number[][];
@@ -104,8 +149,8 @@ interface Batch {
 }
 
 const props = defineProps<{
-  state: any; // serializeFor 输出
-  events: Record<string, any>;
+  state: DrawGameState; // serializeFor 输出
+  events: Partial<GameEvents>;
   members: Array<{ userId: number; nickname: string; seat: number }>;
   phase: string;
   mySeat: number;
@@ -117,11 +162,14 @@ const userStore = useUserStore();
 const myId = computed(() => userStore.userInfo?.id || 0);
 
 const isDrawer = computed(() => !!props.state?.isDrawer);
-const canDraw = computed(() => isDrawer.value && props.state?.phase === 'drawing' && props.phase === 'playing');
+const canDraw = computed(
+  () => isDrawer.value && props.state?.phase === 'drawing' && props.phase === 'playing'
+);
 // 猜对名单：快照带 guessedUserIds（重连恢复），guess_result 事件实时追加
 const guessedIds = computed<number[]>(() => {
   const ids = new Set<number>((props.state?.guessedUserIds as number[]) || []);
-  for (const g of Array.isArray(props.events.guessResult) ? props.events.guessResult : []) {
+  for (const g of (props.events.guessResult as
+    Array<{ userId: number; correct?: boolean }> | undefined) || []) {
     if (g.correct) ids.add(g.userId);
   }
   return [...ids];
@@ -130,20 +178,100 @@ const guessedCount = computed(() => guessedIds.value.length);
 const guessedNames = computed(() => guessedIds.value.map(nameOfUser));
 
 // 终局：优先实时事件，兜底快照里的 ended 摘要（刷新/重连后事件已丢）
-const final = computed<any | null>(() => props.events.final || props.state?.ended || null);
+const final = computed(
+  () => (props.events.final as TotalRankingFinal | null | undefined) ?? props.state.ended ?? null
+);
 // 时间过半揭示的首字（画家不需要）
-const hintChar = computed(() => (isDrawer.value ? '' : props.events.hint?.char || ''));
+const hintChar = computed(() =>
+  isDrawer.value ? '' : (props.events.hint as { char?: string } | undefined)?.char || ''
+);
+// ── 回合回放：draw_round_end 现在携带当回合全部笔迹 ──
+interface ReplayStroke {
+  seq: number;
+  points: number[][];
+  color: string;
+  width: number;
+}
+const replayData = ref<{ strokes: ReplayStroke[]; word: string | null } | null>(null);
+const showReplay = ref(false);
+const replayCanvas = ref<HTMLCanvasElement | null>(null);
+let replayRaf = 0;
+
+watch(
+  () => props.events.roundEnd,
+  (m: unknown) => {
+    const ev = m as { strokes?: ReplayStroke[]; word?: string | null } | null | undefined;
+    if (ev && Array.isArray(ev.strokes) && ev.strokes.length > 0) {
+      replayData.value = { strokes: ev.strokes, word: ev.word ?? null };
+    } else {
+      replayData.value = null;
+    }
+    showReplay.value = false;
+  }
+);
+
+const openReplay = (): void => {
+  showReplay.value = true;
+  setTimeout(() => void playReplay(), 60); // 等 canvas 挂载
+};
+
+const closeReplay = (): void => {
+  showReplay.value = false;
+  cancelAnimationFrame(replayRaf);
+};
+
+const playReplay = async (): Promise<void> => {
+  const canvas = replayCanvas.value;
+  const data = replayData.value;
+  if (!canvas || !data) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  const { width, height } = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = width * dpr;
+  canvas.height = height * dpr;
+  ctx.scale(dpr, dpr);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.clearRect(0, 0, width, height);
+  cancelAnimationFrame(replayRaf);
+  for (const stroke of data.strokes) {
+    const pts = (stroke.points || []).map((p) => [p[0] * width, p[1] * height] as const);
+    if (pts.length < 2) continue;
+    ctx.strokeStyle = stroke.color;
+    ctx.lineWidth = stroke.width || 3;
+    // 每帧推进一段，笔速均匀（一笔最多 ~40 帧）
+    const perFrame = Math.max(1, Math.ceil(pts.length / 40));
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i += 1) {
+      ctx.lineTo(pts[i][0], pts[i][1]);
+      if (i % perFrame === 0) {
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(pts[i][0], pts[i][1]);
+        await new Promise<void>((r) => {
+          replayRaf = requestAnimationFrame(() => r());
+        });
+      }
+    }
+    ctx.stroke();
+  }
+};
+
 // 候选词用本地 ref 保存：draw_candidates 私发事件早于 game_start 到达，
 // 而 game_start 会把 events 全部清空，直接读 events.candidates 会丢
-const candidates = ref<any[]>([]);
+const candidates = ref<string[]>([]);
 watch(
   () => props.events.candidates,
-  (v: any) => {
-    if (Array.isArray(v) && v.length) candidates.value = v;
+  (v: unknown) => {
+    if (Array.isArray(v) && v.length) candidates.value = v as string[];
   },
   { immediate: true }
 );
-const remainSec = computed(() => Math.max(0, Math.ceil(((props.state?.deadline || 0) - Date.now()) / 1000)));
+const remainSec = computed(() =>
+  Math.max(0, Math.ceil(((props.state?.deadline || 0) - Date.now()) / 1000))
+);
 
 const nameOf = (seat: number): string => {
   const m = props.members?.find((x) => x.seat === seat);
@@ -201,7 +329,10 @@ const renderAll = () => {
     ctx.strokeStyle = b.color;
     ctx.lineWidth = b.width * (W / 400);
     ctx.beginPath();
-    const pts = (b.cont && prevEnd ? [prevEnd, ...b.points] : b.points).map(([nx, ny]) => [nx * W, ny * H]);
+    const pts = (b.cont && prevEnd ? [prevEnd, ...b.points] : b.points).map(([nx, ny]) => [
+      nx * W,
+      ny * H,
+    ]);
     if (pts.length === 1) {
       const [px, py] = pts[0];
       ctx.arc(px, py, (b.width * (W / 400)) / 2, 0, Math.PI * 2);
@@ -274,7 +405,12 @@ const onUp = () => {
   // 把余下的点补发（带上衔接点，服务端每批独立存档，快照重放可还原完整笔迹）
   if (currentBatch && pendingPoints.length > 0) {
     const pts = lastSentPoint ? [lastSentPoint, ...pendingPoints] : pendingPoints;
-    emit('action', { t: 'draw_stroke', points: pts, color: currentBatch.color, width: currentBatch.width });
+    emit('action', {
+      t: 'draw_stroke',
+      points: pts,
+      color: currentBatch.color,
+      width: currentBatch.width,
+    });
   }
   pendingPoints = [];
   currentBatch = null;
@@ -284,8 +420,8 @@ const onUp = () => {
 
 // ── 事件 → 渲染列表 ──
 watch(
-  () => props.events.stroke,
-  (m: any) => {
+  () => props.events.stroke as { stroke?: Batch } | null | undefined,
+  (m) => {
     if (!m?.stroke) return;
     batches.value.push(m.stroke);
     renderAll();
@@ -308,7 +444,7 @@ watch(
 // 快照带全量笔迹（重连/新进重放）
 watch(
   () => props.state?.strokes,
-  (strokes: any) => {
+  (strokes: Batch[]) => {
     if (Array.isArray(strokes)) {
       batches.value = strokes;
       renderAll();
@@ -319,7 +455,7 @@ watch(
 // 新回合清空画布与候选词（仅真实 round 事件触发；game_start 置 null 时不清，候选词本地副本要保留）
 watch(
   () => props.events.round,
-  (m: any) => {
+  (m: unknown) => {
     if (!m) return;
     batches.value = [];
     candidates.value = [];
@@ -530,5 +666,77 @@ watch(tick, () => {
   padding: 10px;
   border-radius: 10px;
   cursor: pointer;
+}
+
+/* ── 回放 ── */
+.replay-btn {
+  margin-top: 10px;
+  width: 100%;
+  padding: 11px;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.replay-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 160;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.replay-card {
+  background: #fff;
+  border-radius: 18px;
+  padding: 16px;
+  width: 92%;
+  max-width: 420px;
+}
+
+.replay-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.replay-canvas {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: #fffdf7;
+  border: 2px solid #e8e0cd;
+  border-radius: 12px;
+  display: block;
+}
+
+.replay-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.replay-act {
+  flex: 1;
+  padding: 10px 0;
+  border: none;
+  border-radius: 12px;
+  background: #f0f0f0;
+  color: #555;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.replay-act:first-child {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
 }
 </style>

@@ -24,9 +24,9 @@ http://49.232.231.35:8888/tencentcloud
 ./deploy.sh back     # 只部署后端（含服务器依赖安装 + pm2 重启）
 ```
 
-脚本做的事：本地构建 → tar 管道经 SSH 上传（前端 dist 清空后解压、后端 dist 覆盖）→ 后端部署时同步 package.json 并 `npm install` → `pm2 restart children-games-api`。部署完访问 **http://game.985211.icu**（备案过渡期也可用 http://49.232.231.35 或 :90 端口）。
+脚本做的事：本地构建 → tar 管道经 SSH 上传（前端 dist 清空后解压、后端 dist 覆盖）→ 后端部署时同步 package.json 并 `npm install` → `pm2 restart children-games-api` → **部署后自检**（轮询 `/api/user/profiles` 到 200，开机有 10~15s 的 DB 同步+补备份窗口；非 200 打红警告并退出非零——PM2 显示 online 不代表进程活着）→ **把服务器每日备份拉回本机 `backups-prod/`**（gitignore；服务器只留 7 份且同盘，本机副本即异地容灾）。部署完访问 **http://game.985211.icu**（备案过渡期也可用 http://49.232.231.35 或 :90 端口）。
 
-> ⚠️ `deploy.sh` 含服务器账号，**已加 .gitignore 不入库**（公开仓库）；换电脑时按下述配置重建即可，脚本仅 30 行。
+> ⚠️ `deploy.sh` 含服务器账号，**已加 .gitignore 不入库**（公开仓库）；换电脑时按下述配置重建即可（含 health_check / pull_backups 两个函数，约 100 行）。
 
 > ⚠️ **80/443 端口被腾讯云未备案拦截**（域名访问会跳 DNSPod webblock 页），正式入口只有 **90 端口**。nginx 里 90 的入口和 /api 反代是独立文件：`/www/server/panel/vhost/nginx/game_port90.conf`（90 端口 server 块）和 `/www/server/panel/vhost/nginx/extension/game.985211.icu/api-proxy.conf`（/api → 127.0.0.1:3001，宝塔 extension 机制加载进主站点配置）——删了或宝塔重置配置后网站会 404/接口全挂，按这两个文件内容重建即可。
 
@@ -92,6 +92,13 @@ pm2 stop children-games-api
 pm2 logs children-games-api --lines 50
 pm2 save
 pm2 startup
+
+# Redis（2026-11-09 上线，token 撤销/限流/排行榜缓存用）
+systemctl status redis          # 服务名就是 redis
+redis-cli -a "$(cat /root/.redis-app-password)" ping   # 应返回 PONG
+# 配置文件 /etc/redis/redis.conf（改前有 .bak 备份）：bind 127.0.0.1 + requirepass + appendonly yes + maxmemory 256mb
+# 应用密码存 /root/.redis-app-password（600），与后端 .env 的 REDIS_PASSWORD 一致；改密码两边要同步
+# ⚠️ Redis 停了不影响启动（tokenService 自动降级内存），但 PM2 重启又会=全员登出，记得 systemctl restart redis
 ```
 
 ---
@@ -123,10 +130,10 @@ mysql -u root -p
 mysqldump -u root -p children_games > /home/songshaohui/children_games_$(date +%Y%m%d).sql
 
 # 本地导入
-cmd /c "D:\software\mysql-8.4\bin\mysql -u root -proot123 children_games < 备份文件.sql"
+cmd /c "D:\software\mysql-8.4\bin\mysql -u root -pSongYuan1122 children_games < 备份文件.sql"
 
 # 本地查看表
-D:\software\mysql-8.4\bin\mysql -u root -proot123 -e "USE children_games; SHOW TABLES;"
+D:\software\mysql-8.4\bin\mysql -u root -pSongYuan1122 -e "USE children_games; SHOW TABLES;"
 ```
 
 ---
@@ -174,8 +181,8 @@ ps aux | grep node
 
 | 项目 | 值 |
 |------|-----|
-| MySQL root 密码（线上） | `SongYuan1121` |
-| MySQL root 密码（本地） | `root123` |
+| MySQL root 密码（线上） | `SongYuan1122` |
+| MySQL root 密码（本地） | `SongYuan1122` |
 | 宝塔面板用户 | `bff38933` |
 | 宝塔面板密码 | `c72f7343f46b` |
 | JWT Secret（后端 .env） | `xK9mN2pQ7wR5tY8uI0oP4sD6fGaB3cV` |
@@ -217,7 +224,7 @@ ps aux | grep node
 | 主机 | `127.0.0.1` |
 | 端口 | `3306` |
 | 用户名 | `root` |
-| 密码 | `SongYuan1121` |
+| 密码 | `SongYuan1122` |
 
 ---
 
@@ -231,8 +238,8 @@ mysqldump -u root -p children_games > /home/songshaohui/children_games_$(date +%
 scp root@49.232.231.35:/home/songshaohui/children_games_20261013.sql D:\me\learn\AI\
 
 # 3. 本地重建并导入
-D:\software\mysql-8.4\bin\mysql -u root -proot123 -e "DROP DATABASE IF EXISTS children_games; CREATE DATABASE children_games DEFAULT CHARACTER SET utf8mb4;"
-cmd /c "D:\software\mysql-8.4\bin\mysql -u root -proot123 children_games < D:\me\learn\AI\children_games_20261013.sql"
+D:\software\mysql-8.4\bin\mysql -u root -pSongYuan1122 -e "DROP DATABASE IF EXISTS children_games; CREATE DATABASE children_games DEFAULT CHARACTER SET utf8mb4;"
+cmd /c "D:\software\mysql-8.4\bin\mysql -u root -pSongYuan1122 children_games < D:\me\learn\AI\children_games_20261013.sql"
 ```
 
 ---

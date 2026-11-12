@@ -10,7 +10,8 @@ const post = async (path, body, token) => {
 const gameType = process.argv[2] || 'blackjack';
 const config = gameType === 'zjh' ? { roundLimit: 3, career: false, timeoutFold: false } : { bankerMode: 'rotate', roundLimit: 3, career: false };
 const login = await post('/api/user/login/family', { uid: 2 });
-const room = await post('/api/room', { gameType, config }, login.data.token);
+const TOKEN = login.data.accessToken || login.data.token; // 兼容双 token（新）/单 token（旧）
+const room = await post('/api/room', { gameType, config }, TOKEN);
 console.log('ROOM=' + room.data.roomId);
-console.log('TOKEN=' + login.data.token);
+console.log('TOKEN=' + TOKEN);
 console.log('USER=' + JSON.stringify(login.data.userInfo));

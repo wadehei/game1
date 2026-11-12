@@ -3,15 +3,38 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <!-- Resource hints for faster loading -->
+    <link rel="modulepreload" href="/src/main.ts" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#667eea" />
+    <meta name="description" content="适合儿童的益智游戏乐园，包含记忆翻牌、接水果、拼图、坦克大战等11款精选游戏，安全有趣，寓教于乐。" />
+    <meta property="og:title" content="儿童游戏乐园" />
+    <meta property="og:description" content="11款精选益智游戏，安全有趣，寓教于乐。" />
+    <meta property="og:type" content="website" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="游戏乐园" />
     <link rel="apple-touch-icon" href="/icons/icon-180.png" />
     <title>儿童游戏乐园</title>
+    <script>
+      // 主题尽早应用，避免夜间模式闪白（跟随系统或用户选择，详见 utils/theme.ts）
+      (function () {
+        try {
+          var c = localStorage.getItem('theme') || 'auto';
+          var dark = c === 'dark' || (c === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+        } catch (e) { /* ignore */ }
+        window.__earlyErrs = [];
+        window.addEventListener('error', function (e) {
+          window.__earlyErrs.push((e.message || 'error') + ' @ ' + (e.filename || '') + ':' + (e.lineno || 0));
+        });
+        window.addEventListener('unhandledrejection', function (e) {
+          window.__earlyErrs.push('rejection: ' + (e.reason && e.reason.message ? e.reason.message : String(e.reason)).slice(0, 300));
+        });
+      })();
+    </script>
     <style>
       #splash {
         position: fixed; inset: 0; z-index: 9999;

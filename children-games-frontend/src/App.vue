@@ -24,11 +24,23 @@ const { restShow, restCountdown, skipRest } = usePlayTimeGuard(() => route.path)
 initVoice();
 
 // 游戏过程中防止屏幕休眠（支持 WakeLock 的浏览器）
-let wakeLock: any = null;
+let wakeLock: {
+  release: () => Promise<void>;
+  addEventListener: (type: string, listener: () => void) => void;
+} | null = null;
 const requestWakeLock = async () => {
   try {
     if ('wakeLock' in navigator && !wakeLock) {
-      wakeLock = await (navigator as any).wakeLock.request('screen');
+      wakeLock = await (
+        navigator as unknown as {
+          wakeLock?: {
+            request: (type: string) => Promise<{
+              release: () => Promise<void>;
+              addEventListener: (type: string, listener: () => void) => void;
+            }>;
+          };
+        }
+      ).wakeLock!.request('screen');
       wakeLock.addEventListener('release', () => {
         wakeLock = null;
       });
@@ -48,15 +60,22 @@ document.addEventListener('visibilitychange', handleVisibilityForWakeLock);
 requestWakeLock();
 </script>
 
+<!--
+  以下为全局 intentional 样式：CSS reset、:root 变量、通用工具类（.container/.card/.btn-*）
+  这些样式需要作用于整个应用，不能 scoped，因此保留在全局 <style> 中。
+-->
 <style>
+/* ========== Global Reset & Variables ========== */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-html, body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+html,
+body {
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   background-color: #f5f5f5;
   width: 100%;
   height: 100%;
@@ -75,13 +94,13 @@ html, body {
 
 /* 全局颜色变量 */
 :root {
-  --primary-color: #FF6B6B;
-  --secondary-color: #4ECDC4;
-  --accent-color: #FFE66D;
+  --primary-color: #ff6b6b;
+  --secondary-color: #4ecdc4;
+  --accent-color: #ffe66d;
   --text-color: #333333;
   --text-light: #666666;
-  --bg-color: #F7F7F7;
-  --card-bg: #FFFFFF;
+  --bg-color: #f7f7f7;
+  --card-bg: #ffffff;
 }
 
 /* 通用样式 */

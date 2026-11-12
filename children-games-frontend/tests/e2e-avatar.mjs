@@ -35,11 +35,13 @@ await page.setViewport({ width: 390, height: 844 });
 const apiCalls = [];
 page.on('request', (req) => {
   if (req.url().includes('/api/user/info')) {
-    apiCalls.push(`${req.method()} ${req.url().slice(-20)} body=${(req.postData() || '').slice(0, 80)}`);
+    apiCalls.push(
+      `${req.method()} ${req.url().slice(-20)} body=${(req.postData() || '').slice(0, 80)}`
+    );
   }
 });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-let pageErrors = [];
+const pageErrors = [];
 page.on('pageerror', (err) => pageErrors.push(err.message));
 const isNoise = (e) => /NetworkError|Failed to fetch|AxiosError|ERR_|404/i.test(e);
 const check = (label, cond) => console.log(`${cond ? '✅' : '❌'} ${label}`);
@@ -75,13 +77,19 @@ check(`上传提示出现（${tip}）`, /已上传/.test(tip));
 
 // ═══ 2. 保存资料 ═══
 const btnState = await page.evaluate(() => {
-  const btn = [...document.querySelectorAll('.save-profile-btn')].find((b) => b.textContent.includes('保存资料'));
+  const btn = [...document.querySelectorAll('.save-profile-btn')].find((b) =>
+    b.textContent.includes('保存资料')
+  );
   const input = document.querySelector('.edit-input');
-  return btn ? { disabled: btn.disabled, text: btn.textContent.trim(), nickname: input?.value ?? '无输入框' } : null;
+  return btn
+    ? { disabled: btn.disabled, text: btn.textContent.trim(), nickname: input?.value ?? '无输入框' }
+    : null;
 });
 console.log('按钮状态:', JSON.stringify(btnState));
 await page.evaluate(() => {
-  [...document.querySelectorAll('.save-profile-btn')].find((b) => b.textContent.includes('保存资料'))?.click();
+  [...document.querySelectorAll('.save-profile-btn')]
+    .find((b) => b.textContent.includes('保存资料'))
+    ?.click();
 });
 await sleep(1500);
 console.log('期间 API 请求:', apiCalls.length ? apiCalls.join(' | ') : '（无 /user/info 请求）');
@@ -99,15 +107,20 @@ const served = await page.evaluate(async (url) => {
   const buf = await res.arrayBuffer();
   return { status: res.status, type: res.headers.get('content-type'), size: buf.byteLength };
 }, info.avatar);
-check(`头像静态服务 200（${served.type}，${served.size} 字节）`, served.status === 200 && served.type.startsWith('image/') && served.size > 0);
+check(
+  `头像静态服务 200（${served.type}，${served.size} 字节）`,
+  served.status === 200 && served.type.startsWith('image/') && served.size > 0
+);
 await page.screenshot({ path: 'test-results/avatar-uploaded.png' });
 
 // ═══ 4. 选角色页渲染 <img> ═══
 await page.goto(`${BASE}/#/profiles`, { waitUntil: 'networkidle2' });
 await sleep(1200);
-const imgRendered = await page.evaluate((url) =>
-  !!document.querySelector(`.profile-card img[src^="${url.slice(0, url.lastIndexOf('/'))}"]`)
-, info.avatar);
+const imgRendered = await page.evaluate(
+  (url) =>
+    !!document.querySelector(`.profile-card img[src^="${url.slice(0, url.lastIndexOf('/'))}"]`),
+  info.avatar
+);
 check('选角色页照片头像渲染为 <img>', imgRendered);
 
 // ═══ 5. 非图片文件被拒（伪装 content-type） ═══
@@ -125,7 +138,10 @@ check('伪装图片的文本被拒（400）', rejected === 400);
 await page.evaluate(async (avatar) => {
   await fetch('/api/user/info', {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${localStorage.getItem('token')}`,
+    },
     body: JSON.stringify({ avatar }),
   });
 }, originalAvatar || '😊');

@@ -42,7 +42,9 @@ const checkOverflow = async (label, hoverSelector) => {
     innerW: window.innerWidth,
   }));
   const ok = scrollW <= innerW;
-  console.log(`${ok ? '✅' : '❌'} ${label} scrollWidth=${scrollW} viewport=${innerW}${hoverSelector ? `（hover: ${hoverSelector}）` : ''}`);
+  console.log(
+    `${ok ? '✅' : '❌'} ${label} scrollWidth=${scrollW} viewport=${innerW}${hoverSelector ? `（hover: ${hoverSelector}）` : ''}`
+  );
   return ok;
 };
 
@@ -61,7 +63,9 @@ const box = await card.boundingBox();
 await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
 await sleep(400);
 const cardBox = await card.boundingBox();
-console.log(`✅ hover 缩放生效：卡片宽 ${box.width.toFixed(0)} → ${cardBox.width.toFixed(0)}（右侧超出部分被裁剪，无滚动条）`);
+console.log(
+  `✅ hover 缩放生效：卡片宽 ${box.width.toFixed(0)} → ${cardBox.width.toFixed(0)}（右侧超出部分被裁剪，无滚动条）`
+);
 
 await browser.close();
 process.exit(allOk ? 0 : 1);

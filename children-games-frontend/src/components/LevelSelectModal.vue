@@ -32,11 +32,14 @@ defineEmits<{
 
 const selected = ref(props.current);
 
-watch(() => props.show, (visible) => {
-  if (visible) {
-    selected.value = props.current;
+watch(
+  () => props.show,
+  (visible) => {
+    if (visible) {
+      selected.value = props.current;
+    }
   }
-});
+);
 
 const change = (delta: number) => {
   selected.value = Math.max(1, Math.min(props.maxLevel, selected.value + delta));
@@ -57,8 +60,12 @@ const change = (delta: number) => {
 }
 
 @keyframes levelFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .level-content {
@@ -73,8 +80,14 @@ const change = (delta: number) => {
 }
 
 @keyframes levelBounceIn {
-  from { transform: scale(0.5); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .level-title {
@@ -107,7 +120,9 @@ const change = (delta: number) => {
   font-size: 30px;
   font-weight: bold;
   cursor: pointer;
-  transition: transform 0.12s ease, opacity 0.12s ease;
+  transition:
+    transform 0.12s ease,
+    opacity 0.12s ease;
   touch-action: manipulation;
 }
 

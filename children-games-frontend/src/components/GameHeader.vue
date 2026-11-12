@@ -8,15 +8,14 @@
         :class="item.valueClass"
         title="点击选择关卡"
         @click="$emit('selectLevel')"
-      >{{ item.value }}</span>
+        >{{ item.value }}</span
+      >
       <span v-else class="value" :class="item.valueClass">{{ item.value }}</span>
     </div>
     <button class="sound-btn" @click="$emit('toggleSound')">
       {{ muted ? '🔇' : '🔊' }}
     </button>
-    <button class="back-btn" @click="$emit('goBack')">
-      ←
-    </button>
+    <button class="back-btn" @click="$emit('goBack')">←</button>
   </div>
 </template>
 

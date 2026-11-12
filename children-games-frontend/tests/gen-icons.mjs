@@ -31,7 +31,10 @@ for (const size of [512, 192, 180]) {
   await page.setContent(
     `<body style="margin:0"><img src="data:image/svg+xml;base64,${Buffer.from(ICON_SVG).toString('base64')}" width="${size}" height="${size}"></body>`
   );
-  await page.screenshot({ path: path.join(outDir, `icon-${size}.png`), clip: { x: 0, y: 0, width: size, height: size } });
+  await page.screenshot({
+    path: path.join(outDir, `icon-${size}.png`),
+    clip: { x: 0, y: 0, width: size, height: size },
+  });
   console.log(`✓ icon-${size}.png`);
 }
 

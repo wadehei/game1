@@ -4,17 +4,17 @@
     <GameHeader
       :items="headerItems"
       :muted="sounds.isMuted.value"
-      headerClass="fruit-header"
+      header-class="fruit-header"
       level-selectable
-      @toggleSound="sounds.toggleSound"
-      @goBack="router.back()"
-      @selectLevel="openLevelSelect"
+      @toggle-sound="sounds.toggleSound"
+      @go-back="router.back()"
+      @select-level="openLevelSelect"
     />
 
     <!-- 游戏画布 -->
     <canvas
-      ref="canvasRef"
       id="fruitCanvas"
+      ref="canvasRef"
       class="game-canvas"
       @mousemove="moveBasket"
       @touchmove="moveBasketTouch"
@@ -33,7 +33,13 @@
     />
 
     <!-- 暂停（头部为 fixed，按钮下移避开） -->
-    <PauseMenu :show="paused" :btn-top="96" @pause="pauseGame" @resume="resumeGame" @quit="quitGame" />
+    <PauseMenu
+      :show="paused"
+      :btn-top="96"
+      @pause="pauseGame"
+      @resume="resumeGame"
+      @quit="quitGame"
+    />
 
     <!-- 选关弹层 -->
     <LevelSelectModal
@@ -52,7 +58,7 @@ import { useRouter } from 'vue-router';
 import { useGameSounds } from '@/composables/useGameSounds';
 import { useGameCanvas } from '@/composables/useGameCanvas';
 import { useGameProgress } from '@/composables/useGameProgress';
-import { GAME_PAUSE_EVENT, GAME_RESUME_EVENT } from '@/utils/gameEvents';
+import { useGameLifecycle } from '@/composables/useGameLifecycle';
 import { getLevelOverride } from '@/api/game';
 import { speak, playVoice } from '@/utils/voice';
 import { useAdaptiveAssist } from '@/composables/useAdaptiveAssist';
@@ -87,9 +93,12 @@ interface Fruit {
 }
 
 interface Particle {
-  x: number; y: number;
-  radius: number; alpha: number;
-  color: string; speed: number;
+  x: number;
+  y: number;
+  radius: number;
+  alpha: number;
+  color: string;
+  speed: number;
 }
 
 const fruitTypes = [
@@ -158,8 +167,13 @@ const initGame = async () => {
   // 加载图片资源
   if (!imagesLoaded.value) {
     await fruitImages.loadAll({
-      apple: appleSvg, banana: bananaSvg, orange: orangeSvg,
-      grape: grapeSvg, bomb: bombSvg, basket: basketSvg, cloud: cloudSvg,
+      apple: appleSvg,
+      banana: bananaSvg,
+      orange: orangeSvg,
+      grape: grapeSvg,
+      bomb: bombSvg,
+      basket: basketSvg,
+      cloud: cloudSvg,
     });
     imagesLoaded.value = true;
   }
@@ -191,24 +205,15 @@ const resumeLoop = () => {
 
 const startGame = () => resumeLoop();
 
-// 切后台自动暂停，回到游戏继续
-const handleVisibilityChange = () => {
-  if (document.hidden) {
-    pauseLoop();
-  } else {
-    resumeLoop();
-  }
+const handlePause = () => {
+  pauseLoop();
 };
 
-// 护眼休息等全局层叫停/恢复
-const handleRestPause = () => {
-  if (!gameEnded) pauseLoop();
-};
-
-const handleRestResume = () => {
-  // 用户主动暂停期间不因休息结束而恢复
+const handleResume = () => {
   if (!paused.value) resumeLoop();
 };
+
+useGameLifecycle({ onPause: handlePause, onResume: handleResume });
 
 // ─── 手动暂停 ────────────────────────────────
 const pauseGame = () => {
@@ -283,7 +288,8 @@ const update = () => {
         for (let i = 0; i < 5; i++) {
           if (particles.length < 20) {
             particles.push({
-              x: fruit.x, y: fruit.y,
+              x: fruit.x,
+              y: fruit.y,
               radius: 3 + Math.random() * 5,
               alpha: 1,
               color: ['#FFD700', '#FF6B6B', '#4ECDC4'][Math.floor(Math.random() * 3)],
@@ -350,7 +356,7 @@ const render = () => {
 
   // 绘制并更新粒子
   if (particles.length > 0) {
-    particles = particles.filter(p => {
+    particles = particles.filter((p) => {
       p.radius += p.speed;
       p.alpha -= 0.03;
       if (p.alpha <= 0) return false;
@@ -533,9 +539,6 @@ onMounted(async () => {
     basketY = gameCanvas.canvasHeight.value - basketHeight - 20;
     basketX = Math.max(0, Math.min(basketX, gameCanvas.canvasWidth.value - basketWidth));
   });
-  document.addEventListener('visibilitychange', handleVisibilityChange);
-  document.addEventListener(GAME_PAUSE_EVENT, handleRestPause);
-  document.addEventListener(GAME_RESUME_EVENT, handleRestResume);
 
   // 续关：从上次通关的关卡继续
   currentLevel.value = await loadStartLevel();
@@ -545,9 +548,6 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  document.removeEventListener('visibilitychange', handleVisibilityChange);
-  document.removeEventListener(GAME_PAUSE_EVENT, handleRestPause);
-  document.removeEventListener(GAME_RESUME_EVENT, handleRestResume);
   pauseLoop();
 });
 </script>
@@ -555,7 +555,7 @@ onUnmounted(() => {
 <style scoped>
 .fruit-game {
   min-height: 100vh;
-  background: linear-gradient(180deg, #87CEEB 0%, #E0F7FA 100%);
+  background: linear-gradient(180deg, #87ceeb 0%, #e0f7fa 100%);
   position: relative;
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;

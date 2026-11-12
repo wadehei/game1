@@ -10,7 +10,12 @@
     <div v-if="micError" class="mic-error">🎤 {{ micError }}</div>
 
     <div class="line-list">
-      <div v-for="line in LINES" :key="line.key" class="line-row" :class="{ recorded: recordedKeys.has(line.key) }">
+      <div
+        v-for="line in LINES"
+        :key="line.key"
+        class="line-row"
+        :class="{ recorded: recordedKeys.has(line.key) }"
+      >
         <div class="line-head">
           <span class="line-scene">{{ line.scene }}</span>
           <span v-if="recordedKeys.has(line.key)" class="ok-badge">已配音</span>
@@ -24,28 +29,42 @@
             <button class="act-btn stop" @click="stopRecording">■ 停止</button>
           </template>
           <template v-else>
-            <button class="act-btn rec" :disabled="!!recordingKey" @click="startRecording(line.key)">● 录音</button>
+            <button
+              class="act-btn rec"
+              :disabled="!!recordingKey"
+              @click="startRecording(line.key)"
+            >
+              ● 录音
+            </button>
             <button
               v-if="pendingKey === line.key && pendingUrl"
               class="act-btn play"
               @click="playPending"
-            >▶ 试听</button>
+            >
+              ▶ 试听
+            </button>
             <button
               v-if="pendingKey === line.key && pendingUrl"
               class="act-btn save"
               :disabled="saving"
               @click="save(line.key)"
-            >{{ saving ? '保存中…' : '保存' }}</button>
+            >
+              {{ saving ? '保存中…' : '保存' }}
+            </button>
             <button
               v-if="recordedKeys.has(line.key) && pendingKey !== line.key"
               class="act-btn play"
               @click="playRecorded(line.key)"
-            >▶ 试听</button>
+            >
+              ▶ 试听
+            </button>
             <button
               v-if="recordedKeys.has(line.key)"
               class="act-btn danger"
               @click="remove(line.key)"
-            >删除</button>
+            >
+              删除
+            </button>
           </template>
         </div>
       </div>
@@ -68,6 +87,23 @@ const LINES = [
   { key: 'tank_intro', scene: '坦克大战 · 入场', text: '左右移动坦克，打败坏坦克' },
   { key: 'mole_intro', scene: '打地鼠 · 入场', text: '打地鼠咯！小兔子是好朋友，不能打哦' },
   { key: 'simon_intro', scene: '音乐记忆 · 入场', text: '记住闪光的顺序，然后跟着点' },
+  { key: 'brick_intro', scene: '打砖块 · 入场', text: '移动球拍接住小球，把砖块全部打掉吧' },
+  { key: 'match_intro', scene: '快乐连线 · 入场', text: '把左边和右边一对好朋友连起来吧！' },
+  {
+    key: 'match3_intro',
+    scene: '消消乐 · 入场',
+    text: '凑够分数就赢啦！交换相邻的两个小图，三个连成一排就能消除',
+  },
+  {
+    key: 'sudoku_intro',
+    scene: '动物数独 · 入场',
+    text: '把每行每列每宫填满，小动物不能重复哦',
+  },
+  {
+    key: 'claw_intro',
+    scene: '抓娃娃机 · 入场',
+    text: '看准小礼物，按抓抓，把它们都抓出来吧',
+  },
   { key: 'math_correct', scene: '数学 · 答对', text: '答对啦！' },
   { key: 'math_wrong', scene: '数学 · 答错', text: '再想一想哦' },
   { key: 'result_win', scene: '通用 · 通关', text: '恭喜你，通关啦！你真棒！' },
@@ -191,7 +227,12 @@ const save = async (key: string) => {
 };
 
 const remove = async (key: string) => {
-  const ok = await confirmAction({ title: '删除这条录音？', detail: '删除后该台词回退为系统语音。', danger: true, confirmText: '删除' });
+  const ok = await confirmAction({
+    title: '删除这条录音？',
+    detail: '删除后该台词回退为系统语音。',
+    danger: true,
+    confirmText: '删除',
+  });
   if (!ok) return;
   await deleteVoice(key).catch(() => {});
   recordedKeys.delete(key);
@@ -335,8 +376,13 @@ onUnmounted(() => {
 }
 
 @keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
 }
 
 .rec-time {

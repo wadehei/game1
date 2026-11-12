@@ -18,7 +18,7 @@ export const useGameStore = defineStore('game', () => {
   };
 
   const updateProgress = (gameId: string, data: Partial<GameProgress>) => {
-    const index = progressList.value.findIndex(p => p.gameId === gameId);
+    const index = progressList.value.findIndex((p) => p.gameId === gameId);
     if (index !== -1) {
       progressList.value[index] = { ...progressList.value[index], ...data };
     } else {
@@ -33,7 +33,7 @@ export const useGameStore = defineStore('game', () => {
   };
 
   const getProgress = (gameId: string): GameProgress | undefined => {
-    return progressList.value.find(p => p.gameId === gameId);
+    return progressList.value.find((p) => p.gameId === gameId);
   };
 
   return {

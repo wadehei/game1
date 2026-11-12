@@ -11,9 +11,15 @@ interface FeedbackReplyAttributes {
   updatedAt?: Date;
 }
 
-interface FeedbackReplyCreationAttributes extends Optional<FeedbackReplyAttributes, 'id' | 'userId' | 'isAdmin'> {}
+interface FeedbackReplyCreationAttributes extends Optional<
+  FeedbackReplyAttributes,
+  'id' | 'userId' | 'isAdmin'
+> {}
 
-export class FeedbackReply extends Model<FeedbackReplyAttributes, FeedbackReplyCreationAttributes> implements FeedbackReplyAttributes {
+export class FeedbackReply
+  extends Model<FeedbackReplyAttributes, FeedbackReplyCreationAttributes>
+  implements FeedbackReplyAttributes
+{
   public id!: number;
   public feedbackId!: number;
   public userId!: number | null;
@@ -59,6 +65,10 @@ FeedbackReply.init(
     indexes: [
       {
         fields: ['feedbackId'],
+      },
+      {
+        fields: ['userId'],
+        name: 'idx_fr_user',
       },
     ],
   }

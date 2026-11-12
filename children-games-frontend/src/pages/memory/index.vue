@@ -4,15 +4,21 @@
     <GameHeader
       :items="headerItems"
       :muted="sounds.isMuted.value"
-      headerClass="memory-header"
+      header-class="memory-header"
       level-selectable
-      @toggleSound="sounds.toggleSound"
-      @goBack="router.back()"
-      @selectLevel="openLevelSelect"
+      @toggle-sound="sounds.toggleSound"
+      @go-back="router.back()"
+      @select-level="openLevelSelect"
     />
 
     <!-- 游戏画布 -->
-    <div class="game-board" :style="{ gridTemplateColumns: `repeat(${gridSize}, 1fr)`, gridTemplateRows: `repeat(${Math.ceil(totalCards / gridSize)}, 1fr)` }">
+    <div
+      class="game-board"
+      :style="{
+        gridTemplateColumns: `repeat(${gridSize}, 1fr)`,
+        gridTemplateRows: `repeat(${Math.ceil(totalCards / gridSize)}, 1fr)`,
+      }"
+    >
       <div
         v-for="(card, index) in cards"
         :key="index"
@@ -63,7 +69,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useGameSounds } from '@/composables/useGameSounds';
 import { useGameProgress } from '@/composables/useGameProgress';
-import { GAME_PAUSE_EVENT, GAME_RESUME_EVENT } from '@/utils/gameEvents';
+import { useGameLifecycle } from '@/composables/useGameLifecycle';
 import { getLevelOverride } from '@/api/game';
 import { speak, playVoice } from '@/utils/voice';
 import { useAdaptiveAssist } from '@/composables/useAdaptiveAssist';
@@ -118,7 +124,24 @@ interface Card {
 }
 
 const router = useRouter();
-const emojis = ['🐶', '🐱', '🐼', '🦊', '🐸', '🐵', '🐷', '🐮', '🐔', '🐙', '🦁', '🐯', '🐻', '🐨', '🐰', '🐲'];
+const emojis = [
+  '🐶',
+  '🐱',
+  '🐼',
+  '🦊',
+  '🐸',
+  '🐵',
+  '🐷',
+  '🐮',
+  '🐔',
+  '🐙',
+  '🦁',
+  '🐯',
+  '🐻',
+  '🐨',
+  '🐰',
+  '🐲',
+];
 
 const sounds = useGameSounds();
 
@@ -137,8 +160,6 @@ const { loadStartLevel, saveProgress: saveGameProgress, recordPlay } = useGamePr
 const assist = useAdaptiveAssist('memory');
 let timer: ReturnType<typeof setInterval> | null = null;
 let gameEnded = false;
-let autoPausedByHidden = false;
-let autoPausedByRest = false;
 
 const levelConfig = ref<Record<string, any>>({
   pairs: 2,
@@ -264,33 +285,24 @@ const chooseLevel = async (level: number) => {
   initGame();
 };
 
-// 切后台自动暂停，回到游戏继续
-const handleVisibilityChange = () => {
-  if (document.hidden) {
-    if (!paused.value) {
-      autoPausedByHidden = true;
-      pauseGame();
-    }
-  } else if (autoPausedByHidden) {
-    autoPausedByHidden = false;
-    resumeGame();
-  }
-};
+// 系统自动暂停（切后台 / 护眼休息）与用户主动暂停的区分
+let autoPausedByRest = false;
 
-// 护眼休息等全局层叫停/恢复
-const handleRestPause = () => {
-  if (!gameEnded && !paused.value) {
+const handlePause = () => {
+  if (!paused.value) {
     autoPausedByRest = true;
     pauseGame();
   }
 };
 
-const handleRestResume = () => {
+const handleResume = () => {
   if (autoPausedByRest) {
     autoPausedByRest = false;
     resumeGame();
   }
 };
+
+useGameLifecycle({ onPause: handlePause, onResume: handleResume });
 
 const flipCard = (index: number) => {
   const card = cards.value[index];
@@ -328,7 +340,7 @@ const checkMatch = () => {
 };
 
 const checkWin = () => {
-  const allMatched = cards.value.every(card => card.matched);
+  const allMatched = cards.value.every((card) => card.matched);
   if (allMatched) {
     endGame(true);
   }
@@ -408,17 +420,11 @@ onMounted(async () => {
   // 续关：从上次通关的关卡继续
   currentLevel.value = await loadStartLevel();
   await applyLevelConfig(currentLevel.value);
-  document.addEventListener('visibilitychange', handleVisibilityChange);
-  document.addEventListener(GAME_PAUSE_EVENT, handleRestPause);
-  document.addEventListener(GAME_RESUME_EVENT, handleRestResume);
   initGame();
   playVoice('memory_intro', '翻一翻卡片，找出两个一样的图案');
 });
 
 onUnmounted(() => {
-  document.removeEventListener('visibilitychange', handleVisibilityChange);
-  document.removeEventListener(GAME_PAUSE_EVENT, handleRestPause);
-  document.removeEventListener(GAME_RESUME_EVENT, handleRestResume);
   stopTimer();
 });
 </script>
@@ -484,8 +490,14 @@ onUnmounted(() => {
 }
 
 @keyframes cardAppear {
-  from { transform: scale(0.8); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .card.matched {
@@ -493,9 +505,15 @@ onUnmounted(() => {
 }
 
 @keyframes matchGlow {
-  0% { box-shadow: 0 0 0 0 rgba(226, 178, 96, 0.55); }
-  50% { box-shadow: 0 0 16px 8px rgba(226, 178, 96, 0.25); }
-  100% { box-shadow: 0 0 0 0 rgba(226, 178, 96, 0); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(226, 178, 96, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 16px 8px rgba(226, 178, 96, 0.25);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(226, 178, 96, 0);
+  }
 }
 
 .card-inner {
@@ -533,7 +551,9 @@ onUnmounted(() => {
   background-image:
     radial-gradient(rgba(255, 255, 255, 0.5) 2.5px, transparent 2.5px),
     linear-gradient(135deg, #f4e3c8 0%, #ead0ab 100%);
-  background-size: 18px 18px, 100% 100%;
+  background-size:
+    18px 18px,
+    100% 100%;
   box-shadow: 0 2px 8px rgba(47, 60, 85, 0.12);
 }
 
@@ -555,5 +575,4 @@ onUnmounted(() => {
   font-size: clamp(28px, 12vmin, 56px);
   filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.25));
 }
-
 </style>

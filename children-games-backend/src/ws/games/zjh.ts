@@ -1,4 +1,4 @@
-// 三张牌比大小 handler：发 3 张闷牌（look 才私发，防客户端偷看）、闷/看双轨注码、比牌/弃牌/强制开牌
+// 比大小 handler：发 3 张闷牌（look 才私发，防客户端偷看）、闷/看双轨注码、比牌/弃牌/强制开牌
 // 积分每手实时落库；超时动作建房可选（弃牌/跟注）；特殊 235 建房开关
 import type { Room, Member } from '../roomManager';
 import { addTimer, clearRoomTimers, getRoom } from '../roomManager';
@@ -7,6 +7,20 @@ import { getRoomBus } from '../bus';
 import { applyChipDelta, writeCareerRecords } from '../../services/battleChips';
 import { cardLabel, type Card } from './blackjack/engine';
 import { buildZjhDeck, compareZjh, handRank, typeName } from './zjh/engine';
+import {
+  getSeatedPlayers,
+  clearGameTimer,
+  appendRoundLog,
+  armStateTimer,
+  betLedgerView,
+  chipsView,
+  dropRoundLog,
+  findRoundLog,
+  finishChipGame,
+  initChipSnapshots,
+  nextHandGate,
+  seatedAt,
+} from './helpers';
 
 const BET_SECONDS = Math.max(5, Number(process.env.ZJH_BET_SECONDS) || 25);
 const ANTE = 10;
@@ -55,15 +69,23 @@ interface ZjhState {
   handStartChips: Map<number, number>;
   initialChips: Map<number, number>;
   timer: NodeJS.Timeout | null;
-  ranking: Array<{ userId: number; nickname: string; chips: number; delta: number; seat: number }> | null;
+  ranking: Array<{
+    userId: number;
+    nickname: string;
+    chips: number;
+    delta: number;
+    seat: number;
+  }> | null;
   endReason: string;
   lastWinnerSeat: number | null; // winner 坐庄模式：本手赢家做下一手庄
   /** 个人下注流水（整局累计，serializeFor 只发本人）：每手一条，底注/跟注/比牌累加 betTotal，结算回填 delta/ended */
-  betLog: Map<number, Array<{ round: number; betTotal: number; delta: number | null; ended: string | null }>>;
+  betLog: Map<
+    number,
+    Array<{ round: number; betTotal: number; delta: number | null; ended: string | null }>
+  >;
   config: ZjhConfig;
 }
 
-const seatPlayers = (room: Room): Member[] => [...room.members.values()].filter((m) => m.seat >= 0).sort((a, b) => a.seat - b.seat);
 const aliveSeats = (room: Room, st: ZjhState): number[] =>
   [...st.players]
     .filter(([uid, p]) => !p.folded && room.members.has(uid))
@@ -72,19 +94,14 @@ const aliveSeats = (room: Room, st: ZjhState): number[] =>
 /** 还能行动（未弃/未 allIn/有筹码）的座位 */
 const activeSeats = (room: Room, st: ZjhState): number[] =>
   aliveSeats(room, st).filter((seat) => {
-    const m = seatPlayers(room).find((x) => x.seat === seat);
+    const m = seatedAt(room, seat);
     if (!m) return false;
     const p = st.players.get(m.userId)!;
     return !p.allIn && (st.chips.get(m.userId) || 0) > 0;
   });
 
-const clearTimer = (st: ZjhState): void => {
-  if (st.timer) clearTimeout(st.timer);
-  st.timer = null;
-};
-
 /** 本手流水条目（无则 null） */
-const handLogEntry = (st: ZjhState, uid: number) => (st.betLog.get(uid) || []).find((e) => e.round === st.round) || null;
+const handLogEntry = (st: ZjhState, uid: number) => findRoundLog(st.betLog, uid, st.round);
 
 /** 本手结算：按玩家回填每手净输赢与结束方式 */
 const markHandSettled = (st: ZjhState, winnerUid: number, winAmount: number): void => {
@@ -98,10 +115,7 @@ const markHandSettled = (st: ZjhState, winnerUid: number, winAmount: number): vo
 
 /** 移除本手流水条目（退款路径用） */
 const dropHandLog = (st: ZjhState, uid: number): void => {
-  const log = st.betLog.get(uid);
-  if (!log) return;
-  const idx = log.findIndex((e) => e.round === st.round);
-  if (idx >= 0) log.splice(idx, 1);
+  dropRoundLog(st.betLog, uid, st.round, false);
 };
 
 const phasePayload = (room: Room, st: ZjhState) => ({
@@ -131,35 +145,37 @@ const dealTo = (st: ZjhState, uid: number): Card[] => {
 };
 
 const armTurnTimer = (room: Room, st: ZjhState): void => {
-  clearTimer(st);
   st.deadline = Date.now() + BET_SECONDS * 1000;
   const seat = st.turnSeat;
-  const timer = setTimeout(() => {
-    const r = getRoom(room.id);
-    if (!r) return;
-    const s = r.game as ZjhState;
-    if (s.handPhase !== 'betting' || s.turnSeat !== seat) return;
-    const m = seatPlayers(r).find((x) => x.seat === seat);
-    if (!m) return;
-    if (s.config.timeoutFold) {
-      doFold(r, m, true);
-    } else {
-      const p = s.players.get(m.userId);
-      if (p) p.timeoutCalls += 1;
-      if (p && p.timeoutCalls >= FORCE_FOLD_AFTER_TIMEOUTS) {
-        doFold(r, m, true); // 连续超时太多次：强制弃牌，防止掉线挂机一直自动跟注放血
+  armStateTimer(
+    room,
+    st,
+    () => {
+      const r = getRoom(room.id);
+      if (!r) return;
+      const s = r.game as ZjhState;
+      if (s.handPhase !== 'betting' || s.turnSeat !== seat) return;
+      const m = seatedAt(r, seat);
+      if (!m) return;
+      if (s.config.timeoutFold) {
+        doFold(r, m, true);
       } else {
-        doCall(r, m, true);
+        const p = s.players.get(m.userId);
+        if (p) p.timeoutCalls += 1;
+        if (p && p.timeoutCalls >= FORCE_FOLD_AFTER_TIMEOUTS) {
+          doFold(r, m, true); // 连续超时太多次：强制弃牌，防止掉线挂机一直自动跟注放血
+        } else {
+          doCall(r, m, true);
+        }
       }
-    }
-  }, BET_SECONDS * 1000);
-  st.timer = timer;
-  addTimer(room, timer);
+    },
+    BET_SECONDS * 1000
+  );
 };
 
 const startHand = (room: Room): void => {
   const st = room.game as ZjhState;
-  clearTimer(st);
+  clearGameTimer(st);
   st.handPhase = 'betting';
   st.deck = buildZjhDeck();
   st.pot = 0;
@@ -168,21 +184,38 @@ const startHand = (room: Room): void => {
   st.players = new Map();
   st.handStartChips = new Map();
 
-  const players = seatPlayers(room);
+  const players = getSeatedPlayers(room);
   for (const m of players) {
     st.handStartChips.set(m.userId, st.chips.get(m.userId) || 0);
     const chips = st.chips.get(m.userId) || 0;
     if (chips < ANTE) {
       // 连底注都付不起：本手观战（保留座位）
-      st.players.set(m.userId, { cards: [], seen: false, folded: true, allIn: false, betTotal: 0, timeoutCalls: 0 });
+      st.players.set(m.userId, {
+        cards: [],
+        seen: false,
+        folded: true,
+        allIn: false,
+        betTotal: 0,
+        timeoutCalls: 0,
+      });
       continue;
     }
     st.chips.set(m.userId, chips - ANTE);
     st.pot += ANTE;
-    st.players.set(m.userId, { cards: [], seen: false, folded: false, allIn: false, betTotal: ANTE, timeoutCalls: 0 });
-    const log = st.betLog.get(m.userId) || [];
-    log.push({ round: st.round, betTotal: ANTE, delta: null, ended: null });
-    st.betLog.set(m.userId, log);
+    st.players.set(m.userId, {
+      cards: [],
+      seen: false,
+      folded: false,
+      allIn: false,
+      betTotal: ANTE,
+      timeoutCalls: 0,
+    });
+    appendRoundLog(st.betLog, m.userId, {
+      round: st.round,
+      betTotal: ANTE,
+      delta: null,
+      ended: null,
+    });
   }
   getRoomBus().broadcast(room, phasePayload(room, st));
   advanceTurn(room, st, true);
@@ -269,9 +302,18 @@ const doLook = (room: Room, member: Member): void => {
   p.seen = true;
   p.timeoutCalls = 0; // 手动看牌清零连续超时计数
   const cards = dealTo(st, member.userId);
-  getRoomBus().broadcast(room, { t: 'zjh_action', userId: member.userId, nickname: member.nickname, action: 'look' });
+  getRoomBus().broadcast(room, {
+    t: 'zjh_action',
+    userId: member.userId,
+    nickname: member.nickname,
+    action: 'look',
+  });
   // 点对点私发自己的牌（防偷看核心：未看牌者的牌不在任何广播/快照里）
-  getRoomBus().sendToUser(room, member.userId, { t: 'zjh_your_cards', cards: cards.map(cardLabel), rank: typeName(handRank(cards)) });
+  getRoomBus().sendToUser(room, member.userId, {
+    t: 'zjh_your_cards',
+    cards: cards.map(cardLabel),
+    rank: typeName(handRank(cards)),
+  });
 };
 
 const doCompare = (room: Room, me: Member, target: Member): void => {
@@ -306,8 +348,20 @@ const doCompare = (room: Room, me: Member, target: Member): void => {
     cost,
     aliveCount: aliveSeats(room, st).length,
     reveals: [
-      { userId: me.userId, nickname: me.nickname, cards: myCards.map(cardLabel), typeName: typeName(handRank(myCards)), result: win ? 'win' : 'lose' },
-      { userId: target.userId, nickname: target.nickname, cards: oppCards.map(cardLabel), typeName: typeName(handRank(oppCards)), result: win ? 'lose' : 'win' },
+      {
+        userId: me.userId,
+        nickname: me.nickname,
+        cards: myCards.map(cardLabel),
+        typeName: typeName(handRank(myCards)),
+        result: win ? 'win' : 'lose',
+      },
+      {
+        userId: target.userId,
+        nickname: target.nickname,
+        cards: oppCards.map(cardLabel),
+        typeName: typeName(handRank(oppCards)),
+        result: win ? 'lose' : 'win',
+      },
     ],
   });
   bus.sendToUser(room, me.userId, {
@@ -329,9 +383,27 @@ const doCompare = (room: Room, me: Member, target: Member): void => {
   advanceTurn(room, st, false);
 };
 
+/** 本手结算通用块：按 handStartChips 算每人 delta、实时入账并同步成员携带积分 */
+const handDeltas = (room: Room, st: ZjhState) => {
+  const deltas = [...st.chips]
+    .filter(([uid]) => st.handStartChips.has(uid))
+    .map(([uid, chips]) => ({
+      userId: uid,
+      nickname: room.members.get(uid)?.nickname || `角色${uid}`,
+      delta: chips - (st.handStartChips.get(uid) || 0),
+      chips,
+    }));
+  for (const d of deltas) {
+    if (d.delta) void applyChipDelta(d.userId, d.delta); // 每手实时入账
+    const m = room.members.get(d.userId);
+    if (m) m.chips = d.chips;
+  }
+  return deltas;
+};
+
 const winByFold = (room: Room, seat: number | undefined): void => {
   const st = room.game as ZjhState;
-  clearTimer(st);
+  clearGameTimer(st);
   st.handPhase = 'settle';
   if (seat === undefined) {
     // 没有存活玩家（极端：全员弃/掉线）——池子按投入退回
@@ -341,25 +413,13 @@ const winByFold = (room: Room, seat: number | undefined): void => {
     }
     st.pot = 0;
   } else {
-    const m = seatPlayers(room).find((x) => x.seat === seat)!;
+    const m = seatedAt(room, seat)!;
     const winAmount = st.pot;
     st.chips.set(m.userId, (st.chips.get(m.userId) || 0) + winAmount);
     st.pot = 0;
     st.lastWinnerSeat = seat;
     markHandSettled(st, m.userId, winAmount);
-    const deltas = [...st.chips]
-      .filter(([uid]) => st.handStartChips.has(uid))
-      .map(([uid, chips]) => ({
-        userId: uid,
-        nickname: room.members.get(uid)?.nickname || `角色${uid}`,
-        delta: chips - (st.handStartChips.get(uid) || 0),
-        chips,
-      }));
-    for (const d of deltas) {
-      if (d.delta) void applyChipDelta(d.userId, d.delta);
-      const mm = room.members.get(d.userId);
-      if (mm) mm.chips = d.chips;
-    }
+    const deltas = handDeltas(room, st);
     getRoomBus().broadcast(room, {
       t: 'zjh_settle',
       round: st.round,
@@ -378,22 +438,27 @@ const winByFold = (room: Room, seat: number | undefined): void => {
 
 const showdown = (room: Room): void => {
   const st = room.game as ZjhState;
-  clearTimer(st);
+  clearGameTimer(st);
   st.handPhase = 'showdown';
   const alive = aliveSeats(room, st);
   const reveals = alive.map((seat) => {
-    const m = seatPlayers(room).find((x) => x.seat === seat)!;
+    const m = seatedAt(room, seat)!;
     const cards = dealTo(st, m.userId);
-    return { userId: m.userId, nickname: m.nickname, cards: cards.map(cardLabel), typeName: typeName(handRank(cards)) };
+    return {
+      userId: m.userId,
+      nickname: m.nickname,
+      cards: cards.map(cardLabel),
+      typeName: typeName(handRank(cards)),
+    };
   });
   let winnerSeat = alive[0];
   for (let i = 1; i < alive.length; i += 1) {
-    const a = st.players.get(seatPlayers(room).find((x) => x.seat === winnerSeat)!.userId)!;
-    const b = st.players.get(seatPlayers(room).find((x) => x.seat === alive[i])!.userId)!;
+    const a = st.players.get(seatedAt(room, winnerSeat)!.userId)!;
+    const b = st.players.get(seatedAt(room, alive[i])!.userId)!;
     if (compareZjh(b.cards, a.cards, st.config.special235) > 0) winnerSeat = alive[i];
   }
   getRoomBus().broadcast(room, { t: 'zjh_showdown', reveals });
-  const wm = seatPlayers(room).find((x) => x.seat === winnerSeat)!;
+  const wm = seatedAt(room, winnerSeat)!;
   settleHand(room, wm, 'showdown', reveals);
 };
 
@@ -413,19 +478,7 @@ const settleHand = (
   const wm = room.members.get(winner.userId);
   if (wm) wm.chips = st.chips.get(winner.userId) || 0;
 
-  const deltas = [...st.chips]
-    .filter(([uid]) => st.handStartChips.has(uid))
-    .map(([uid, chips]) => ({
-      userId: uid,
-      nickname: room.members.get(uid)?.nickname || `角色${uid}`,
-      delta: chips - (st.handStartChips.get(uid) || 0),
-      chips,
-    }));
-  for (const d of deltas) {
-    if (d.delta) void applyChipDelta(d.userId, d.delta); // 每手实时入账
-    const m = room.members.get(d.userId);
-    if (m) m.chips = d.chips;
-  }
+  const deltas = handDeltas(room, st);
   getRoomBus().broadcast(room, {
     t: 'zjh_settle',
     round: st.round,
@@ -447,15 +500,21 @@ const nextHand = (room: Room, expectRound: number): void => {
   if (!r || r.phase !== 'playing') return;
   const st = r.game as ZjhState;
   if (st.round !== expectRound) return;
-  clearTimer(st);
-  const funded = seatPlayers(r).filter((m) => (st.chips.get(m.userId) || 0) >= ANTE);
-  if (st.round >= st.totalRounds || funded.length <= 1) {
-    finish(r, funded.length <= 1 ? '其他玩家积分已耗尽' : '手数已打满');
+  clearGameTimer(st);
+  const gate = nextHandGate(r, st, (m) => (st.chips.get(m.userId) || 0) >= ANTE);
+  if (gate.finish) {
+    finish(r, gate.reason);
     return;
   }
   st.round += 1;
-  const seats: number[] = funded.map((m) => m.seat);
-  if (st.config.bankerMode === 'winner' && st.lastWinnerSeat !== null && seats.includes(st.lastWinnerSeat)) {
+  const seats: number[] = getSeatedPlayers(r)
+    .filter((m) => (st.chips.get(m.userId) || 0) >= ANTE)
+    .map((m) => m.seat);
+  if (
+    st.config.bankerMode === 'winner' &&
+    st.lastWinnerSeat !== null &&
+    seats.includes(st.lastWinnerSeat)
+  ) {
     st.dealerSeat = st.lastWinnerSeat; // 赢家坐庄
   } else {
     const idx = seats.indexOf(st.dealerSeat);
@@ -466,41 +525,22 @@ const nextHand = (room: Room, expectRound: number): void => {
 
 const finish = (room: Room, reason: string): void => {
   const st = room.game as ZjhState;
-  clearTimer(st);
   st.handPhase = 'settle';
-  room.phase = 'ended';
-  const ranking = seatPlayers(room)
-    .map((m) => ({
-      userId: m.userId,
-      nickname: m.nickname,
-      chips: st.chips.get(m.userId) || 0,
-      delta: (st.chips.get(m.userId) || 0) - (st.initialChips.get(m.userId) || 0),
-      seat: m.seat,
-    }))
-    .sort((a, b) => b.chips - a.chips);
-  st.ranking = ranking;
-  const bus = getRoomBus();
-  bus.broadcast(room, { t: 'zjh_final', ranking, reason });
-  bus.broadcast(room, { t: 'game_over', winnerSeat: ranking[0]?.seat ?? -1, reason });
-  if (st.config.career) {
-    void writeCareerRecords(
-      'zjh',
-      ranking.map((r2, i) => ({ userId: r2.userId, result: `rank:${i + 1}`, chipsDelta: r2.delta, chipsAfter: r2.chips }))
-    );
-  }
+  finishChipGame(room, st, 'zjh', 'zjh_final', reason);
 };
 
 export const zjhHandler: GameHandler<ZjhState> = {
   type: 'zjh',
-  title: '三张牌比大小',
+  title: '比大小',
   emoji: '♠️',
   desc: '闷看加注比牌，积分随账号永久跟随',
   minPlayers: 2,
   maxPlayers: 6,
   allowSpectators: true,
   rematchSwapSeats: false,
+  validActions: new Set(['zjh_look', 'zjh_call', 'zjh_fold', 'zjh_raise', 'zjh_compare']),
 
-  normalizeConfig(config: any): any {
+  normalizeConfig(config: Record<string, unknown>): Record<string, unknown> {
     return {
       special235: config?.special235 !== false,
       timeoutFold: config?.timeoutFold !== false,
@@ -536,21 +576,23 @@ export const zjhHandler: GameHandler<ZjhState> = {
       endReason: '',
       lastWinnerSeat: null,
       betLog: new Map(),
-      config: { special235: true, timeoutFold: true, roundLimit: DEFAULT_ROUNDS, career: true, bankerMode: 'rotate', mustBlindRounds: 0 },
+      config: {
+        special235: true,
+        timeoutFold: true,
+        roundLimit: DEFAULT_ROUNDS,
+        career: true,
+        bankerMode: 'rotate',
+        mustBlindRounds: 0,
+      },
     };
   },
 
   start(room): void {
     const st = room.game as ZjhState;
-    st.config = zjhHandler.normalizeConfig!(room.config);
+    st.config = zjhHandler.normalizeConfig!(room.config) as ZjhConfig;
     st.totalRounds = st.config.roundLimit;
-    const players = seatPlayers(room);
-    st.chips = new Map();
-    st.initialChips = new Map();
-    for (const m of players) {
-      st.chips.set(m.userId, m.chips);
-      st.initialChips.set(m.userId, m.chips);
-    }
+    const players = getSeatedPlayers(room);
+    initChipSnapshots(st, players);
     const funded = players.filter((m) => (st.chips.get(m.userId) || 0) >= ANTE);
     st.dealerSeat = funded[0]?.seat ?? 0; // 首手庄=第一个有积分的座位，之后轮庄
     st.round = 1;
@@ -574,7 +616,7 @@ export const zjhHandler: GameHandler<ZjhState> = {
       quitEntry.ended = 'fold';
     }
     st.players.delete(member.userId);
-    const remaining = seatPlayers(room);
+    const remaining = getSeatedPlayers(room);
     if (remaining.length < 2 && room.phase === 'playing') {
       finish(room, '人数不足，提前结束');
       return { ended: { winnerSeat: st.ranking?.[0]?.seat ?? -1, reason: '人数不足，提前结束' } };
@@ -586,9 +628,15 @@ export const zjhHandler: GameHandler<ZjhState> = {
     return undefined;
   },
 
-  onAction(room: Room, member: Member, action: string, payload: any): ActionResult {
+  onAction(
+    room: Room,
+    member: Member,
+    action: string,
+    payload: Record<string, unknown>
+  ): ActionResult {
     const st = room.game as ZjhState;
-    if (room.phase !== 'playing' || st.handPhase !== 'betting') return { error: '当前不是下注阶段' };
+    if (room.phase !== 'playing' || st.handPhase !== 'betting')
+      return { error: '当前不是下注阶段' };
     const p = st.players.get(member.userId);
     if (!p) return { error: '你不在本手牌局中' };
     if (p.folded) return { error: '你已弃牌' };
@@ -627,7 +675,7 @@ export const zjhHandler: GameHandler<ZjhState> = {
     if (action === 'zjh_compare') {
       if (st.roundNo < COMPARE_MIN_ROUND) return { error: `第 ${COMPARE_MIN_ROUND} 轮起才能比牌` };
       const targetSeat = Number(payload?.target);
-      const target = seatPlayers(room).find((x) => x.seat === targetSeat);
+      const target = getSeatedPlayers(room).find((x) => x.seat === targetSeat);
       if (!target || target.userId === member.userId) return { error: '无效的比牌对象' };
       const tp = st.players.get(target.userId);
       if (!tp || tp.folded) return { error: '对方已弃牌' };
@@ -678,12 +726,16 @@ export const zjhHandler: GameHandler<ZjhState> = {
       myAllIn: mine?.allIn || false,
       myBetTotal: mine?.betTotal || 0,
       others,
-      chips: st.chips.size ? [...st.chips].map(([userId, chips]) => ({ userId, chips })) : [...room.members.values()].filter((m) => m.seat >= 0).map((m) => ({ userId: m.userId, chips: m.chips })),
+      chips: st.chips.size
+        ? [...st.chips].map(([userId, chips]) => ({ userId, chips }))
+        : [...room.members.values()]
+            .filter((m) => m.seat >= 0)
+            .map((m) => ({ userId: m.userId, chips: m.chips })),
       raiseSteps: RAISE_STEPS,
       stakeCap: STAKE_CAP,
       special235: st.config.special235,
       // 投注明细全员可见：每手的投入（底注/跟注/加注/比牌）与输赢
-      betLedger: [...st.betLog].flatMap(([uid, entries]) => entries.map((e) => ({ ...e, userId: uid }))),
+      betLedger: betLedgerView(st.betLog),
       ended: st.ranking ? { ranking: st.ranking, reason: st.endReason } : null,
     };
   },

@@ -1,6 +1,10 @@
 import axios from 'axios';
+import { API_ORIGIN } from './apiOrigin';
+import { storage } from '@/utils/storage';
 
-const BASE_URL = '/api';
+export { API_ORIGIN };
+
+const BASE_URL = `${API_ORIGIN}/api`;
 
 const instance = axios.create({
   baseURL: BASE_URL,
@@ -9,14 +13,48 @@ const instance = axios.create({
 
 // 请求拦截器：附加登录 token（家庭角色登录后存在 localStorage）
 instance.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  const token = storage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-// 响应拦截器：统一解包 { code, message, data }，401 时清除失效凭证
+// ─── 401 静默刷新（single-flight：并发 401 共享同一次刷新） ────────────────────
+let refreshing: Promise<string> | null = null;
+
+const tryRefresh = async (): Promise<string> => {
+  if (!refreshing) {
+    refreshing = (async () => {
+      const refreshToken = storage.getItem('refresh_token');
+      if (!refreshToken) throw new Error('无 refreshToken');
+      // 独立 axios 调用，避免再次进入本实例的 401 拦截逻辑
+      const resp = await axios.post(
+        `${BASE_URL}/user/refresh`,
+        { refreshToken },
+        { timeout: 10000 }
+      );
+      const envelope = resp.data as {
+        code?: number;
+        data?: { accessToken?: string; refreshToken?: string };
+      };
+      const newToken = envelope?.data?.accessToken;
+      if (envelope?.code !== 200 || !newToken) throw new Error('刷新失败');
+
+      // 通过 store 更新 token，保持响应式状态同步
+      const { useUserStore } = await import('@/store/user');
+      const userStore = useUserStore();
+      userStore.setTokens(newToken, envelope.data?.refreshToken || refreshToken);
+
+      return newToken;
+    })().finally(() => {
+      refreshing = null;
+    });
+  }
+  return refreshing;
+};
+
+// 响应拦截器：统一解包 { code, message, data }；401 时先静默刷新重试一次，失败才清除凭证
 instance.interceptors.response.use(
   (response) => {
     const data = response.data;
@@ -25,10 +63,28 @@ instance.interceptors.response.use(
     }
     throw new Error(data.message || '请求失败');
   },
-  (error) => {
-    if (error?.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('userInfo');
+  async (error) => {
+    const status = error?.response?.status;
+    const original = error?.config ?? {};
+    const isRefreshCall = String(original?.url || '').includes('/user/refresh');
+
+    if (status === 401 && !original._retried && !isRefreshCall) {
+      try {
+        const newToken = await tryRefresh();
+        original._retried = true;
+        original.headers = original.headers ?? {};
+        original.headers.Authorization = `Bearer ${newToken}`;
+        return instance.request(original);
+      } catch {
+        // 刷新失败 → 走下方清理逻辑
+      }
+    }
+
+    if (status === 401) {
+      // 通过 store 清除凭证，保持响应式状态同步
+      const { useUserStore } = await import('@/store/user');
+      const userStore = useUserStore();
+      userStore.logout();
     }
     throw error;
   }
@@ -36,8 +92,10 @@ instance.interceptors.response.use(
 
 export const api = {
   // 响应拦截器已解包为 res.data.data，这里将类型对齐为直接返回业务数据
-  get: <T = any>(url: string, params?: any) => instance.get(url, { params }) as Promise<T>,
-  post: <T = any>(url: string, data?: any) => instance.post(url, data) as Promise<T>,
-  put: <T = any>(url: string, data?: any) => instance.put(url, data) as Promise<T>,
-  delete: <T = any>(url: string, data?: any) => instance.delete(url, { data }) as Promise<T>,
+  get: <T = unknown>(url: string, params?: Record<string, unknown>) =>
+    instance.get(url, { params }) as Promise<T>,
+  post: <T = unknown>(url: string, data?: unknown) => instance.post(url, data) as Promise<T>,
+  put: <T = unknown>(url: string, data?: unknown) => instance.put(url, data) as Promise<T>,
+  delete: <T = unknown>(url: string, data?: unknown) =>
+    instance.delete(url, { data }) as Promise<T>,
 };

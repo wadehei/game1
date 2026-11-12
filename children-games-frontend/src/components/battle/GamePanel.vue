@@ -1,16 +1,16 @@
 <template>
   <GomokuBoard
     v-if="gameType === 'gomoku'"
-    :state="gameState"
+    :state="gameState as GomokuGameState"
     :phase="phase"
     :my-seat="mySeat"
     @action="emit('action', $event)"
   />
   <QuizGame
     v-else-if="gameType === 'quiz'"
-    :question="events.question"
-    :result="events.result"
-    :final="events.final || gameState?.ended || null"
+    :question="events.question ?? null"
+    :result="events.result ?? null"
+    :final="events.final || (gameState as QuizGameState).ended || null"
     :members="members"
     :phase="phase"
     :my-seat="mySeat"
@@ -18,7 +18,7 @@
   />
   <DrawGame
     v-else-if="gameType === 'draw'"
-    :state="gameState"
+    :state="gameState as DrawGameState"
     :events="events"
     :members="members"
     :phase="phase"
@@ -27,7 +27,7 @@
   />
   <SpyGame
     v-else-if="gameType === 'spy'"
-    :state="gameState"
+    :state="gameState as SpyGameState"
     :events="events"
     :members="members"
     :phase="phase"
@@ -36,7 +36,7 @@
   />
   <UnoGame
     v-else-if="gameType === 'uno'"
-    :state="gameState"
+    :state="gameState as UnoGameState"
     :events="events"
     :members="members"
     :phase="phase"
@@ -45,7 +45,7 @@
   />
   <BlackjackGame
     v-else-if="gameType === 'blackjack'"
-    :state="gameState"
+    :state="gameState as BlackjackGameState"
     :events="events"
     :members="members"
     :phase="phase"
@@ -54,7 +54,25 @@
   />
   <ZjhGame
     v-else-if="gameType === 'zjh'"
+    :state="gameState as ZjhGameState"
+    :events="events"
+    :members="members"
+    :phase="phase"
+    :my-seat="mySeat"
+    @action="emit('action', $event)"
+  />
+  <TankGame
+    v-else-if="gameType === 'tank'"
     :state="gameState"
+    :events="events"
+    :members="members"
+    :phase="phase"
+    :my-seat="mySeat"
+    @action="emit('action', $event)"
+  />
+  <DdzGame
+    v-else-if="gameType === 'ddz'"
+    :state="gameState as DdzGameState"
     :events="events"
     :members="members"
     :phase="phase"
@@ -73,14 +91,36 @@ import SpyGame from './SpyGame.vue';
 import UnoGame from './UnoGame.vue';
 import BlackjackGame from './BlackjackGame.vue';
 import ZjhGame from './ZjhGame.vue';
+import TankGame from './TankGame.vue';
+import DdzGame from './DdzGame.vue';
+import type {
+  GameState,
+  GameEvents,
+  GomokuGameState,
+  QuizGameState,
+  DrawGameState,
+  SpyGameState,
+  UnoGameState,
+  BlackjackGameState,
+  ZjhGameState,
+  DdzGameState,
+} from '@/composables/wsTypes';
 
+// gameState/events 由 room.vue 按 gameType 填充，模板内按分支窄化为对应游戏的形状
 defineProps<{
   gameType: string;
-  gameState: any;
+  gameState: GameState;
   phase: string;
   mySeat: number;
-  members: Array<{ userId: number; nickname: string; avatar: string; seat: number; ready: boolean; online: boolean }>;
-  events: Record<string, any>;
+  members: Array<{
+    userId: number;
+    nickname: string;
+    avatar: string;
+    seat: number;
+    ready: boolean;
+    online: boolean;
+  }>;
+  events: Partial<GameEvents>;
 }>();
 
 const emit = defineEmits<{ (e: 'action', action: Record<string, unknown>): void }>();

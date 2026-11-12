@@ -5,15 +5,30 @@ import puppeteer from 'puppeteer';
 
 const BASE = process.env.BASE_URL || 'http://localhost:8080';
 const routes = [
-  { hash: '#/', name: '首页', expect: (d) => d.gameCards >= 8, expectText: '大厅应有 8 张游戏卡片' },
+  {
+    hash: '#/',
+    name: '首页',
+    expect: (d) => d.gameCards >= 8,
+    expectText: '大厅应有 8 张游戏卡片',
+  },
   { hash: '#/memory', name: '记忆翻牌', expect: (d) => d.cards >= 4, expectText: '应有翻牌卡片' },
   { hash: '#/fruit', name: '接水果', expect: (d) => d.canvas, expectText: '应有画布' },
   { hash: '#/puzzle', name: '拼图', expect: (d) => d.pieces === 9, expectText: '应有 3×3 拼图块' },
   { hash: '#/balloon', name: '打气球', expect: (d) => d.canvas, expectText: '应有画布' },
-  { hash: '#/tank', name: '坦克大战', expect: (d) => d.canvas && d.buttons === 3, expectText: '应有画布和 3 个控制按钮' },
+  {
+    hash: '#/tank',
+    name: '坦克大战',
+    expect: (d) => d.canvas && d.buttons === 3,
+    expectText: '应有画布和 3 个控制按钮',
+  },
   { hash: '#/mole', name: '打地鼠', expect: (d) => d.holes === 9, expectText: '应有 9 个地洞' },
   { hash: '#/simon', name: '音乐记忆', expect: (d) => d.pads === 4, expectText: '应有 4 个音块' },
-  { hash: '#/math', name: '数学小怪兽', expect: (d) => d.optionBtns === 3, expectText: '应有 3 个选项按钮' },
+  {
+    hash: '#/math',
+    name: '数学小怪兽',
+    expect: (d) => d.optionBtns === 3,
+    expectText: '应有 3 个选项按钮',
+  },
 ];
 
 const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'] });
@@ -25,7 +40,9 @@ page.on('pageerror', (err) => pageErrors.push(err.message));
 
 // 角色路由守卫会拦截无 token 访问：在线则真登录，离线用占位 token 通过守卫（页面走离线兜底）
 // 在线时复用已有"冒烟测试"角色，避免每次运行都新建账号污染成员列表
-await page.goto(`${BASE}/#/profiles`, { waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {});
+await page
+  .goto(`${BASE}/#/profiles`, { waitUntil: 'networkidle2', timeout: 30000 })
+  .catch(() => {});
 await new Promise((resolve) => setTimeout(resolve, 800));
 await page.evaluate(async () => {
   if (localStorage.getItem('token')) return;
@@ -53,14 +70,18 @@ await page.evaluate(async () => {
 
 // 后端未启动时的网络报错属于预期噪音
 const isNetworkNoise = (e) =>
-  /NetworkError|Failed to fetch|Network request failed|ERR_CONNECTION|404|500|502|503|504|Request failed|AxiosError/i.test(e);
+  /NetworkError|Failed to fetch|Network request failed|ERR_CONNECTION|404|500|502|503|504|Request failed|AxiosError/i.test(
+    e
+  );
 
 let passed = 0;
 let failed = 0;
 
 for (const r of routes) {
   pageErrors = [];
-  await page.goto(`${BASE}/${r.hash}`, { waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {});
+  await page
+    .goto(`${BASE}/${r.hash}`, { waitUntil: 'networkidle2', timeout: 30000 })
+    .catch(() => {});
   await new Promise((resolve) => setTimeout(resolve, 1200));
 
   const info = await page.evaluate(() => ({
@@ -90,7 +111,8 @@ for (const r of routes) {
     console.log(`✅ ${r.name}`);
   } else {
     failed++;
-    const reason = realErrors.length > 0 ? `页面异常: ${realErrors.join(' | ')}` : `不满足条件: ${r.expectText}`;
+    const reason =
+      realErrors.length > 0 ? `页面异常: ${realErrors.join(' | ')}` : `不满足条件: ${r.expectText}`;
     console.log(`❌ ${r.name} — ${reason}（${JSON.stringify(info)}）`);
   }
 }

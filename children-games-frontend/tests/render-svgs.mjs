@@ -36,6 +36,9 @@ const rows = Math.ceil(svgs.length / cols);
 await page.setViewport({ width: cols * 130 + 20, height: rows * 150 + 20 });
 await page.setContent(html);
 await new Promise((r) => setTimeout(r, 800));
-await page.screenshot({ path: path.join(__dirname, '..', 'test-results', 'svg-contact-sheet.png'), fullPage: true });
+await page.screenshot({
+  path: path.join(__dirname, '..', 'test-results', 'svg-contact-sheet.png'),
+  fullPage: true,
+});
 console.log(`共 ${svgs.length} 个 SVG，已输出 test-results/svg-contact-sheet.png`);
 await browser.close();

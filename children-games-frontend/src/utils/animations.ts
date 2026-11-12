@@ -3,7 +3,8 @@
  */
 export function createParticleBurst(
   container: HTMLElement,
-  x: number, y: number,
+  x: number,
+  y: number,
   options?: { color?: string; count?: number; duration?: number }
 ): void {
   const { color, count = 12, duration = 600 } = options || {};
@@ -93,7 +94,8 @@ export function createStarRain(container: HTMLElement, duration = 2000): void {
  */
 export function animateNumber(
   element: HTMLElement,
-  from: number, to: number,
+  from: number,
+  to: number,
   duration = 300
 ): void {
   const startTime = performance.now();
@@ -123,7 +125,8 @@ export function bounceIn(element: HTMLElement, delay = 0): void {
   element.style.transform = 'scale(0.3)';
 
   setTimeout(() => {
-    element.style.transition = 'transform 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity 0.3s ease';
+    element.style.transition =
+      'transform 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity 0.3s ease';
     element.style.transform = 'scale(1)';
     element.style.opacity = '1';
 

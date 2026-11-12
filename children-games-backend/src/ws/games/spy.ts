@@ -6,6 +6,7 @@ import { addTimer, clearRoomTimers } from '../roomManager';
 import type { ActionResult, GameHandler } from './types';
 import { getRoomBus } from '../bus';
 import { getRoom } from '../roomManager';
+import { secureShuffle, securePickOne } from '../../utils/secureRandom';
 
 // 时长可通过环境变量缩短（测试/演示用）：SPY_TALK_SECONDS / SPY_VOTE_SECONDS
 const TALK_SECONDS = Math.max(5, Number(process.env.SPY_TALK_SECONDS) || 90);
@@ -19,14 +20,7 @@ interface WordPair {
 
 const PAIRS = pairsJson as unknown as WordPair[];
 
-const shuffle = <T>(arr: T[]): T[] => {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-};
+const shuffle = <T>(arr: T[]): T[] => secureShuffle(arr);
 
 interface RoleInfo {
   role: 'civilian' | 'spy';
@@ -43,13 +37,15 @@ interface SpyState {
   isRevote: boolean;
   revotePool: number[] | null;
   pair: WordPair;
-  finalSummary: { winner: string; spyUserIds: number[]; words: { civilian: string; spy: string } } | null;
+  finalSummary: {
+    winner: string;
+    spyUserIds: number[];
+    words: { civilian: string; spy: string };
+  } | null;
 }
 
 const aliveIds = (room: Room): number[] =>
-  [...(room.game as SpyState).roles]
-    .filter(([, r]) => r.alive)
-    .map(([userId]) => userId);
+  [...(room.game as SpyState).roles].filter(([, r]) => r.alive).map(([userId]) => userId);
 
 const aliveSpies = (room: Room): number =>
   [...(room.game as SpyState).roles].filter(([, r]) => r.role === 'spy' && r.alive).length;
@@ -212,6 +208,7 @@ export const spyHandler: GameHandler<SpyState> = {
   maxPlayers: 12,
   allowSpectators: false,
   rematchSwapSeats: false,
+  validActions: new Set(['spy_vote']),
 
   create(): SpyState {
     return {
@@ -231,7 +228,7 @@ export const spyHandler: GameHandler<SpyState> = {
   start(room): ActionResult | void {
     const st = room.game as SpyState;
     const players = [...room.members.values()].filter((m) => m.seat >= 0);
-    st.pair = PAIRS[Math.floor(Math.random() * PAIRS.length)];
+    st.pair = securePickOne(PAIRS);
     st.deadline = Date.now() + TALK_SECONDS * 1000; // 快照要带开局倒计时（否则描述阶段显示剩 0s）
 
     const spyCount = players.length >= 7 ? 2 : 1;
@@ -297,7 +294,12 @@ export const spyHandler: GameHandler<SpyState> = {
     return undefined;
   },
 
-  onAction(room: Room, member: Member, action: string, payload: any): ActionResult {
+  onAction(
+    room: Room,
+    member: Member,
+    action: string,
+    payload: Record<string, unknown>
+  ): ActionResult {
     if (action !== 'spy_vote') return { error: '未知的游戏操作' };
     const st = room.game as SpyState;
     if (room.phase !== 'playing' || st.phase !== 'vote') return { error: '当前不是投票阶段' };
@@ -309,7 +311,8 @@ export const spyHandler: GameHandler<SpyState> = {
       if (!Number.isInteger(target)) return { error: '无效的投票目标' };
       const targetRole = st.roles.get(target);
       if (!targetRole?.alive) return { error: '投票目标已出局' };
-      if (st.revotePool && !st.revotePool.includes(target)) return { error: '本轮只能投给平票候选人' };
+      if (st.revotePool && !st.revotePool.includes(target))
+        return { error: '本轮只能投给平票候选人' };
       if (target === member.userId && !st.isRevote) return { error: '不能投自己' };
     }
 

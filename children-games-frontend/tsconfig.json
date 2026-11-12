@@ -13,7 +13,9 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@children-games/shared": ["../packages/shared/src/index.ts"],
+      "@children-games/shared/*": ["../packages/shared/src/*"]
     },
     "lib": ["ESNext", "DOM"]
   },

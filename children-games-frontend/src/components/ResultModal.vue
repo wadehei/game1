@@ -12,8 +12,25 @@
         <span class="cancel-hint">点击这里取消</span>
       </div>
       <div class="result-buttons">
-        <button class="btn-retry" @click="cancelAuto(); $emit('retry')">再玩一次</button>
-        <button v-if="won" class="btn-next" @click="cancelAuto(); $emit('next')">下一关</button>
+        <button
+          class="btn-retry"
+          @click="
+            cancelAuto();
+            $emit('retry');
+          "
+        >
+          再玩一次
+        </button>
+        <button
+          v-if="won"
+          class="btn-next"
+          @click="
+            cancelAuto();
+            $emit('next');
+          "
+        >
+          下一关
+        </button>
       </div>
     </div>
   </div>
@@ -34,10 +51,8 @@ const props = withDefaults(
     info?: string;
     autoNext?: boolean; // 通关后倒计时自动进入下一关（默认开启）
   }>(),
-  { autoNext: true },
+  { autoNext: true }
 );
-
-
 
 const contentRef = ref<HTMLElement | null>(null);
 
@@ -78,22 +93,25 @@ watch(
 );
 
 // 弹出时语音鼓励；赢了来一场星星雨
-watch(() => props.show, (visible) => {
-  if (!visible) {
-    stopSpeaking();
-    return;
-  }
-  nextTick(() => {
-    if (props.won) {
-      playVoice('result_win', '恭喜你，通关啦！你真棒！');
-      if (contentRef.value) {
-        createStarRain(contentRef.value);
-      }
-    } else {
-      playVoice('result_lose', '没关系，再试一次，你可以的！');
+watch(
+  () => props.show,
+  (visible) => {
+    if (!visible) {
+      stopSpeaking();
+      return;
     }
-  });
-});
+    nextTick(() => {
+      if (props.won) {
+        playVoice('result_win', '恭喜你，通关啦！你真棒！');
+        if (contentRef.value) {
+          createStarRain(contentRef.value);
+        }
+      } else {
+        playVoice('result_lose', '没关系，再试一次，你可以的！');
+      }
+    });
+  }
+);
 </script>
 
 <style scoped>
@@ -128,8 +146,12 @@ watch(() => props.show, (visible) => {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .result-content {
@@ -146,8 +168,14 @@ watch(() => props.show, (visible) => {
 }
 
 @keyframes bounceIn {
-  from { transform: scale(0.3); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .result-icon {
@@ -182,13 +210,25 @@ watch(() => props.show, (visible) => {
   animation: starAppear 0.4s ease backwards;
 }
 
-.result-stars .star:nth-child(1) { animation-delay: 0.2s; }
-.result-stars .star:nth-child(2) { animation-delay: 0.4s; }
-.result-stars .star:nth-child(3) { animation-delay: 0.6s; }
+.result-stars .star:nth-child(1) {
+  animation-delay: 0.2s;
+}
+.result-stars .star:nth-child(2) {
+  animation-delay: 0.4s;
+}
+.result-stars .star:nth-child(3) {
+  animation-delay: 0.6s;
+}
 
 @keyframes starAppear {
-  from { transform: scale(0) rotate(-180deg); opacity: 0; }
-  to { transform: scale(1) rotate(0); opacity: 1; }
+  from {
+    transform: scale(0) rotate(-180deg);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) rotate(0);
+    opacity: 1;
+  }
 }
 
 .result-info {

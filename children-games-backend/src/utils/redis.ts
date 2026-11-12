@@ -1,0 +1,219 @@
+import { createClient, RedisClientType } from 'redis';
+import { config } from '../config';
+import { logError, logInfo } from './logger';
+import { redisMonitor } from '../services/redisMonitor';
+
+let redisClient: RedisClientType | null = null;
+let isConnected = false;
+
+/**
+ * 初始化 Redis 连接
+ */
+export const initRedis = async (): Promise<RedisClientType | null> => {
+  // 如果 Redis 未配置（host 为空），返回 null
+  if (!config.redis.host || config.redis.host === '') {
+    logInfo('redis', '⚠️  Redis 未配置，将使用内存缓存');
+    return null;
+  }
+
+  try {
+    redisClient = createClient({
+      socket: {
+        host: config.redis.host,
+        port: config.redis.port,
+      },
+      password: config.redis.password || undefined,
+    });
+
+    redisClient.on('error', (err) => {
+      logError('redis', 'Redis 连接错误', err instanceof Error ? err.stack : String(err));
+      isConnected = false;
+    });
+
+    redisClient.on('connect', () => {
+      logInfo('redis', '✅ Redis 已连接');
+      isConnected = true;
+    });
+
+    redisClient.on('end', () => {
+      logInfo('redis', '🔌 Redis 连接已关闭');
+      isConnected = false;
+    });
+
+    // connect() 在服务端握手失败时会随重连策略无限挂起（如老版本 Redis 不支持 HELLO），
+    // 这里限时 3s，超时按失败处理降级为无缓存，保证"失败不影响启动"的承诺
+    await Promise.race([
+      redisClient.connect(),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Redis 连接超时(3s)')), 3000).unref()
+      ),
+    ]);
+    return redisClient;
+  } catch (error) {
+    logError(
+      'redis',
+      'Redis 连接失败，将使用内存缓存',
+      error instanceof Error ? error.stack : String(error)
+    );
+    redisClient = null;
+    isConnected = false;
+    return null;
+  }
+};
+
+/**
+ * 关闭 Redis 连接
+ */
+export const closeRedis = async (): Promise<void> => {
+  if (redisClient && isConnected) {
+    await redisClient.quit();
+    redisClient = null;
+    isConnected = false;
+  }
+};
+
+/**
+ * 获取 Redis 客户端
+ */
+export const getRedis = (): RedisClientType | null => {
+  return redisClient;
+};
+
+/**
+ * 检查 Redis 是否可用
+ */
+export const isRedisAvailable = (): boolean => {
+  return redisClient !== null && isConnected;
+};
+
+// ─── 缓存操作封装 ───────────────────────────────────────
+
+/**
+ * 设置缓存
+ */
+export const cacheSet = async (
+  key: string,
+  value: string,
+  ttlSeconds?: number
+): Promise<boolean> => {
+  if (!redisClient || !isConnected) return false;
+
+  const start = Date.now();
+  try {
+    if (ttlSeconds) {
+      await redisClient.set(key, value, { EX: ttlSeconds });
+    } else {
+      await redisClient.set(key, value);
+    }
+    redisMonitor.recordHit(Date.now() - start);
+    return true;
+  } catch (error) {
+    logError('redis', `缓存设置失败: ${key}`, error instanceof Error ? error.stack : String(error));
+    redisMonitor.recordMiss(Date.now() - start);
+    return false;
+  }
+};
+
+/**
+ * 获取缓存
+ */
+export const cacheGet = async (key: string): Promise<string | null> => {
+  if (!redisClient || !isConnected) return null;
+
+  const start = Date.now();
+  try {
+    const result = await redisClient.get(key);
+    if (result !== null) {
+      redisMonitor.recordHit(Date.now() - start);
+    } else {
+      redisMonitor.recordMiss(Date.now() - start);
+    }
+    return result;
+  } catch (error) {
+    logError('redis', `缓存获取失败: ${key}`, error instanceof Error ? error.stack : String(error));
+    redisMonitor.recordMiss(Date.now() - start);
+    return null;
+  }
+};
+
+/**
+ * 删除缓存
+ */
+export const cacheDel = async (key: string): Promise<boolean> => {
+  if (!redisClient || !isConnected) return false;
+
+  const start = Date.now();
+  try {
+    await redisClient.del(key);
+    redisMonitor.recordHit(Date.now() - start);
+    return true;
+  } catch (error) {
+    logError('redis', `缓存删除失败: ${key}`, error instanceof Error ? error.stack : String(error));
+    redisMonitor.recordMiss(Date.now() - start);
+    return false;
+  }
+};
+
+/**
+ * 递增计数器（用于限流）
+ * 使用 Lua 脚本将 INCR + EXPIRE 合并为原子操作，
+ * 避免进程崩溃后 key 永不过期导致限流/PIN 锁定永远不释放
+ */
+export const cacheIncr = async (key: string, ttlSeconds?: number): Promise<number | null> => {
+  if (!redisClient || !isConnected) return null;
+
+  const start = Date.now();
+  try {
+    if (ttlSeconds) {
+      // Lua 原子操作：INCR + EXPIRE 在一次 EVAL 中完成
+      const luaScript = `
+        local c = redis.call('incr', KEYS[1])
+        if c == 1 then redis.call('expire', KEYS[1], ARGV[1]) end
+        return c
+      `;
+      const count = await redisClient.eval(luaScript, {
+        keys: [key],
+        arguments: [String(ttlSeconds)],
+      });
+      redisMonitor.recordHit(Date.now() - start);
+      return count as number;
+    }
+    const count = await redisClient.incr(key);
+    redisMonitor.recordHit(Date.now() - start);
+    return count;
+  } catch (error) {
+    logError(
+      'redis',
+      `计数器递增失败: ${key}`,
+      error instanceof Error ? error.stack : String(error)
+    );
+    redisMonitor.recordMiss(Date.now() - start);
+    return null;
+  }
+};
+
+/**
+ * 检查键是否存在
+ */
+export const cacheExists = async (key: string): Promise<boolean> => {
+  if (!redisClient || !isConnected) return false;
+
+  const start = Date.now();
+  try {
+    const exists = await redisClient.exists(key);
+    if (exists === 1) {
+      redisMonitor.recordHit(Date.now() - start);
+    } else {
+      redisMonitor.recordMiss(Date.now() - start);
+    }
+    return exists === 1;
+  } catch (error) {
+    logError(
+      'redis',
+      `键存在性检查失败: ${key}`,
+      error instanceof Error ? error.stack : String(error)
+    );
+    redisMonitor.recordMiss(Date.now() - start);
+    return false;
+  }
+};

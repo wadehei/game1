@@ -5,3 +5,52 @@ database/*.sql
 
 # 部署脚本（含服务器账号，公开仓库不入库；重建方法见 COMMANDS.md）
 deploy.sh
+
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+*.log
+
+# Coverage
+coverage/
+*.lcov
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Testing
+.nyc_output/
+
+# Temporary files
+*.tmp
+*.bak
+*.cache
+
+# TypeScript compiled JS files in source directories
+**/src/**/*.js
+**/src/**/*.js.map
+!**/src/**/*.config.js
+
+# deploy.sh 拉回的生产备份（异地容灾副本）
+backups-prod/

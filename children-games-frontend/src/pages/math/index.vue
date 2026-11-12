@@ -2,43 +2,52 @@
   <div class="math-game">
     <!-- 游戏头部 -->
     <GameHeader
-      :items="headerItems"
-      :muted="sounds.isMuted.value"
-      headerClass="math-header"
+      :items="engine.headerItems.value"
+      :muted="engine.sounds.isMuted.value"
+      header-class="math-header"
       level-selectable
-      @toggleSound="sounds.toggleSound"
-      @goBack="router.back()"
-      @selectLevel="openLevelSelect"
+      @toggle-sound="engine.sounds.toggleSound"
+      @go-back="router.back()"
+      @select-level="engine.openLevelSelect"
     />
 
     <!-- 计时展示 -->
-    <div class="timer-bar">⏱️ {{ timeCost }} 秒</div>
+    <div class="timer-bar">⏱️ {{ engine.timeCost.value }} 秒</div>
 
     <!-- 小怪兽 + 题目 -->
     <div class="monster-area">
-      <div class="monster" :class="monsterState">👾</div>
-      <div class="bubble">{{ hintText }}</div>
+      <div class="monster" :class="engine.monsterState.value">👾</div>
+      <div class="bubble">{{ engine.hintText.value }}</div>
     </div>
 
     <!-- 苹果演示区 -->
     <div class="visual-area">
-      <template v-if="question.mode === 'count'">
+      <template v-if="engine.question.value.mode === 'count'">
         <div class="apple-group">
-          <span v-for="n in question.countA" :key="n" class="apple">{{ question.icon }}</span>
+          <span v-for="n in engine.question.value.countA" :key="n" class="apple">{{
+            engine.question.value.icon
+          }}</span>
         </div>
       </template>
       <template v-else>
         <div class="apple-group">
-          <span v-for="n in question.countA" :key="'a' + n" class="apple">{{ question.icon }}</span>
+          <span v-for="n in engine.question.value.countA" :key="'a' + n" class="apple">{{
+            engine.question.value.icon
+          }}</span>
         </div>
-        <span class="math-sign">{{ question.subtract ? '-' : '+' }}</span>
+        <span class="math-sign">{{ engine.question.value.subtract ? '-' : '+' }}</span>
         <div class="apple-group">
           <span
-            v-for="n in question.countB"
+            v-for="n in engine.question.value.countB"
             :key="'b' + n"
             class="apple"
-            :style="question.subtract && n <= question.countB ? 'opacity:0.25' : ''"
-          >{{ question.icon }}</span>
+            :style="
+              engine.question.value.subtract && n <= engine.question.value.countB
+                ? 'opacity:0.25'
+                : ''
+            "
+            >{{ engine.question.value.icon }}</span
+          >
         </div>
       </template>
     </div>
@@ -46,10 +55,10 @@
     <!-- 选项 -->
     <div class="options">
       <button
-        v-for="option in question.options"
+        v-for="option in engine.question.value.options"
         :key="option"
         class="option-btn"
-        @click="answerQuestion(option)"
+        @click="engine.answerQuestion(option)"
       >
         {{ option }}
       </button>
@@ -57,365 +66,60 @@
 
     <!-- 游戏结果弹窗 -->
     <ResultModal
-      :show="showResult"
+      :show="engine.showResult.value"
       :won="true"
-      :stars="stars"
+      :stars="engine.stars.value"
       icon="🎉"
       title="小怪兽吃饱啦！"
-      :info="`答对 ${correctCount} 题 · 用时 ${finalSeconds} 秒`"
-      @retry="restartGame"
-      @next="nextLevel"
+      :info="`答对 ${engine.correctCount.value} 题 · 用时 ${engine.finalSeconds.value} 秒`"
+      @retry="engine.restartGame"
+      @next="engine.nextLevel"
     />
 
     <!-- 暂停 -->
-    <PauseMenu :show="paused" @pause="pauseGame" @resume="resumeGame" @quit="quitGame" />
+    <PauseMenu
+      :show="engine.paused.value"
+      @pause="engine.pauseGame"
+      @resume="engine.resumeGame"
+      @quit="engine.quitGame"
+    />
 
     <!-- 选关弹层 -->
     <LevelSelectModal
-      :show="showLevelSelect"
-      :max-level="currentLevel"
-      :current="currentLevel"
-      @select="chooseLevel"
-      @close="showLevelSelect = false"
+      :show="engine.showLevelSelect.value"
+      :max-level="engine.currentLevel.value"
+      :current="engine.currentLevel.value"
+      @select="engine.chooseLevel"
+      @close="engine.showLevelSelect.value = false"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { useGameSounds } from '@/composables/useGameSounds';
-import { useGameProgress } from '@/composables/useGameProgress';
-import { getLevelOverride } from '@/api/game';
-import { speak, stopSpeaking, playVoice } from '@/utils/voice';
-import { defaultLevelConfig } from '@/utils/levelDefaults';
+import { useMathEngine } from '@/composables/useMathEngine';
 import GameHeader from '@/components/GameHeader.vue';
 import ResultModal from '@/components/ResultModal.vue';
 import LevelSelectModal from '@/components/LevelSelectModal.vue';
 import PauseMenu from '@/components/PauseMenu.vue';
 
-interface MathQuestion {
-  mode: 'count' | 'add';
-  countA: number;
-  countB: number;
-  answer: number;
-  options: number[];
-  subtract?: boolean;
-  icon?: string;
-}
-
 const router = useRouter();
-const sounds = useGameSounds();
-const { loadStartLevel, saveProgress: saveGameProgress } = useGameProgress('math');
-
-const currentLevel = ref(1);
-const correctCount = ref(0);
-const wrongCount = ref(0);
-const monsterState = ref<'idle' | 'happy' | 'shake'>('idle');
-const showResult = ref(false);
-const stars = ref(0);
-const showLevelSelect = ref(false);
-const paused = ref(false);
-// 计时统计：通关用时是成绩（秒），进排行榜比快慢
-const timeCost = ref(0);
-const finalSeconds = ref(0);
-let levelStartTs = 0;
-let timeTicker: ReturnType<typeof setInterval> | null = null;
-
-const levelConfig = ref<Record<string, any>>({ targetCorrect: 8, forceMode: 0, countMax: 0, addMax: 0 });
-const question = ref<MathQuestion>({ mode: 'count', countA: 1, countB: 0, answer: 1, options: [1, 2, 3] });
-
-let gameEnded = false;
-let hintTimer: ReturnType<typeof setTimeout> | null = null;
-let transitionTimer: ReturnType<typeof setTimeout> | null = null;
-let pausedAt = 0;
-
-const headerItems = computed(() => [
-  { label: '关卡', value: currentLevel.value },
-  { label: '答对', value: `${correctCount.value}/${levelConfig.value.targetCorrect}` },
-  { label: '用时', value: `${timeCost.value}s`, valueClass: 'math-timer' },
-  { label: '想一想', value: wrongCount.value },
-]);
-
-const hintText = computed(() => {
-  const q = question.value;
-  const info = iconInfo(q.icon);
-  if (q.mode === 'count') {
-    return `一共有几${info.mw}${info.name}呀？`;
-  }
-  return q.subtract ? '拿走了一部分，还剩几个呀？' : '两盘合起来是多少呀？';
-});
-
-const applyLevelConfig = async (level: number) => {
-  levelConfig.value = {
-    ...defaultLevelConfig('math', level),
-  };
-  // 后台难度覆盖优先（离线/未配置时用内置公式）
-  const override = await getLevelOverride('math', level);
-  if (override && currentLevel.value === level) {
-    levelConfig.value = { ...levelConfig.value, ...override };
-  }
-};
-
-// 数数用的演示物件：每题随机一种（不再是只有苹果）
-const COUNT_ICONS = ['🍎', '🍌', '🍇', '🍊', '🍓', '🌟', '🎈', '🐥', '🐟', '🧁'];
-
-// 按关卡出题：数数(1-5) → 数数(4-10) → 5以内加法 → 10以内加法 → 15以内加法 → 20以内加减混合
-// 后台可强制题目模式（forceMode）并指定数数/加法上限
-const generateQuestion = (): MathQuestion => {
-  const level = currentLevel.value;
-  const { forceMode = 0, countMax = 0, addMax = 0 } = levelConfig.value;
-  let mode: 'count' | 'add';
-  let countA: number;
-  let countB = 0;
-  let subtract = false; // 高关卡引入减法
-
-  if (forceMode === 1) {
-    mode = 'count';
-    const max = countMax > 0 ? countMax : 5;
-    countA = Math.max(1, max - 4) + Math.floor(Math.random() * (max - Math.max(1, max - 4) + 1));
-  } else if (forceMode === 2) {
-    mode = 'add';
-    const max = addMax > 0 ? addMax : 10;
-    countA = 1 + Math.floor(Math.random() * (max - 1));
-    countB = 1 + Math.floor(Math.random() * (max - countA));
-  } else if (level <= 3) {
-    mode = 'count';
-    countA = 1 + Math.floor(Math.random() * 5);
-  } else if (level <= 6) {
-    mode = 'count';
-    countA = 4 + Math.floor(Math.random() * 7);
-  } else if (level <= 10) {
-    mode = 'add';
-    countA = 1 + Math.floor(Math.random() * 4);
-    countB = 1 + Math.floor(Math.random() * (5 - countA));
-  } else if (level <= 14) {
-    // 10~15 以内加法
-    mode = 'add';
-    const max = 10 + Math.min(5, level - 10);
-    countA = 1 + Math.floor(Math.random() * (max - 2));
-    countB = 1 + Math.floor(Math.random() * (max - countA));
-  } else {
-    // 20 以内加减混合：一半加法一半减法
-    mode = 'add';
-    subtract = Math.random() < 0.5;
-    const max = 20;
-    countA = 2 + Math.floor(Math.random() * (max - 3));
-    if (subtract) {
-      countB = 1 + Math.floor(Math.random() * (countA - 1));
-    } else {
-      countB = 1 + Math.floor(Math.random() * (max - countA));
-    }
-  }
-
-  const answer = mode === 'count' ? countA : subtract ? countA - countB : countA + countB;
-
-  // 三个选项：正确答案 + 邻近数（范围随答案放大到 20）
-  const optMax = Math.max(12, answer + 3);
-  const options = new Set<number>([answer]);
-  while (options.size < 3) {
-    const candidate = answer + Math.floor(Math.random() * 7) - 3;
-    if (candidate >= 1 && candidate <= optMax) {
-      options.add(candidate);
-    }
-  }
-  const optionList = [...options];
-  for (let i = optionList.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [optionList[i], optionList[j]] = [optionList[j], optionList[i]];
-  }
-
-  return { mode, countA, countB, answer, options: optionList, subtract, icon: COUNT_ICONS[Math.floor(Math.random() * COUNT_ICONS.length)] };
-};
-
-// 数字读成中文（数学题语音读题）
-const CN_NUM = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
-
-// 物件中文名 + 量词（语音读题和提示用）
-const ICON_NAMES: Record<string, { name: string; mw: string }> = {
-  '🍎': { name: '苹果', mw: '个' },
-  '🍌': { name: '香蕉', mw: '根' },
-  '🍇': { name: '葡萄', mw: '颗' },
-  '🍊': { name: '橘子', mw: '个' },
-  '🍓': { name: '草莓', mw: '颗' },
-  '🌟': { name: '星星', mw: '颗' },
-  '🎈': { name: '气球', mw: '个' },
-  '🐥': { name: '小鸡', mw: '只' },
-  '🐟': { name: '小鱼', mw: '条' },
-  '🧁': { name: '蛋糕', mw: '个' },
-};
-const iconInfo = (icon?: string) => ICON_NAMES[icon || '🍎'] || { name: '苹果', mw: '个' };
-
-const nextQuestion = () => {
-  question.value = generateQuestion();
-  const q = question.value;
-  const info = iconInfo(q.icon);
-  if (q.mode === 'count') {
-    speak(`一共有几${info.mw}${info.name}呀？`);
-  } else if ((q as any).subtract) {
-    speak(`${CN_NUM[q.countA]} 减 ${CN_NUM[q.countB]}，等于几？`);
-  } else {
-    speak(`${CN_NUM[q.countA]} 加 ${CN_NUM[q.countB]}，等于几？`);
-  }
-};
-
-const clearTimers = () => {
-  if (hintTimer) {
-    clearTimeout(hintTimer);
-    hintTimer = null;
-  }
-  if (transitionTimer) {
-    clearTimeout(transitionTimer);
-    transitionTimer = null;
-  }
-};
-
-const answerQuestion = (value: number) => {
-  if (gameEnded || paused.value || monsterState.value !== 'idle') return;
-
-  if (value === question.value.answer) {
-    correctCount.value++;
-    monsterState.value = 'happy';
-    sounds.play('collect');
-    playVoice('math_correct', '答对啦！');
-
-    transitionTimer = setTimeout(() => {
-      monsterState.value = 'idle';
-      if (correctCount.value >= levelConfig.value.targetCorrect) {
-        endGame();
-      } else {
-        nextQuestion();
-      }
-    }, 1000);
-  } else {
-    // 答错不惩罚，怪兽想一想，同一题再试
-    wrongCount.value++;
-    monsterState.value = 'shake';
-    sounds.play('bounce');
-    playVoice('math_wrong', '再想一想哦');
-
-    hintTimer = setTimeout(() => {
-      monsterState.value = 'idle';
-    }, 550);
-  }
-};
-
-// ─── 手动暂停：冻结计时（成绩=用时，暂停不计数），禁止答题 ──────────────
-const pauseGame = () => {
-  if (gameEnded || paused.value) return;
-  paused.value = true;
-  pausedAt = Date.now();
-  if (timeTicker) {
-    clearInterval(timeTicker);
-    timeTicker = null;
-  }
-  stopSpeaking();
-};
-
-const resumeGame = () => {
-  if (gameEnded || !paused.value) return;
-  paused.value = false;
-  // 把暂停时长从计时里剔除
-  levelStartTs += Date.now() - pausedAt;
-  timeTicker = setInterval(() => {
-    if (!gameEnded && !paused.value) {
-      timeCost.value = Math.floor((Date.now() - levelStartTs) / 1000);
-    }
-  }, 1000);
-};
-
-const quitGame = () => {
-  router.back();
-};
-
-const initGame = () => {
-  gameEnded = false;
-  correctCount.value = 0;
-  wrongCount.value = 0;
-  monsterState.value = 'idle';
-  showResult.value = false;
-  stars.value = 0;
-  timeCost.value = 0;
-  finalSeconds.value = 0;
-  levelStartTs = Date.now();
-  clearTimers();
-  timeTicker = setInterval(() => {
-    if (!gameEnded) {
-      timeCost.value = Math.floor((Date.now() - levelStartTs) / 1000);
-    }
-  }, 1000);
-  nextQuestion();
-};
-
-const endGame = () => {
-  if (gameEnded) return;
-  gameEnded = true;
-
-  finalSeconds.value = Math.max(1, Math.round((Date.now() - levelStartTs) / 1000));
-  if (timeTicker) {
-    clearInterval(timeTicker);
-    timeTicker = null;
-  }
-  sounds.play('success');
-  // 错得越少星星越多：0 次失误 3 星，≤2 次 2 星
-  stars.value = wrongCount.value === 0 ? 3 : wrongCount.value <= 2 ? 2 : 1;
-  saveProgress();
-  showResult.value = true;
-};
-
-const saveProgress = () => {
-  saveGameProgress({
-    level: currentLevel.value,
-    score: finalSeconds.value,
-    stars: stars.value,
-  });
-};
-
-const restartGame = () => {
-  initGame();
-};
-
-// ─── 选关（无计时，弹层打开时无需暂停） ──────────────
-const openLevelSelect = () => {
-  showLevelSelect.value = true;
-};
-
-const chooseLevel = async (level: number) => {
-  showLevelSelect.value = false;
-  currentLevel.value = level;
-  await applyLevelConfig(level);
-  initGame();
-};
-
-const nextLevel = async () => {
-  currentLevel.value++;
-  sounds.play('levelUp');
-  await applyLevelConfig(currentLevel.value);
-  initGame();
-};
+const engine = useMathEngine();
 
 onMounted(async () => {
-  sounds.init();
-
-  // 续关：从上次通关的关卡继续
-  currentLevel.value = await loadStartLevel();
-  await applyLevelConfig(currentLevel.value);
-  initGame();
+  await engine.onMountedSetup();
 });
 
 onUnmounted(() => {
-  clearTimers();
-  if (timeTicker) {
-    clearInterval(timeTicker);
-    timeTicker = null;
-  }
+  engine.onUnmountedCleanup();
 });
 </script>
 
 <style scoped>
 .math-game {
   min-height: 100vh;
-  background: linear-gradient(180deg, #43C59E 0%, #2d9d7a 100%);
+  background: linear-gradient(180deg, #43c59e 0%, #2d9d7a 100%);
   padding: 20px;
   position: relative;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -482,22 +186,45 @@ onUnmounted(() => {
 }
 
 @keyframes monsterFloat {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
 }
 
 @keyframes monsterHappy {
-  0%, 100% { transform: translateY(0) scale(1); }
-  30% { transform: translateY(-16px) scale(1.15) rotate(-6deg); }
-  60% { transform: translateY(-4px) scale(1.08) rotate(5deg); }
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  30% {
+    transform: translateY(-16px) scale(1.15) rotate(-6deg);
+  }
+  60% {
+    transform: translateY(-4px) scale(1.08) rotate(5deg);
+  }
 }
 
 @keyframes monsterShake {
-  0%, 100% { transform: translateX(0); }
-  20% { transform: translateX(-9px) rotate(-4deg); }
-  40% { transform: translateX(9px) rotate(4deg); }
-  60% { transform: translateX(-6px); }
-  80% { transform: translateX(6px); }
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-9px) rotate(-4deg);
+  }
+  40% {
+    transform: translateX(9px) rotate(4deg);
+  }
+  60% {
+    transform: translateX(-6px);
+  }
+  80% {
+    transform: translateX(6px);
+  }
 }
 
 .bubble {
@@ -553,8 +280,14 @@ onUnmounted(() => {
 }
 
 @keyframes appleIn {
-  from { transform: scale(0); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .math-sign {
@@ -581,15 +314,23 @@ onUnmounted(() => {
   border: none;
   border-radius: 20px;
   cursor: pointer;
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
   box-shadow: 0 6px 0 rgba(0, 0, 0, 0.18);
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
 
-.option-btn:nth-child(1) { background: linear-gradient(135deg, #FF6B6B 0%, #ee5253 100%); }
-.option-btn:nth-child(2) { background: linear-gradient(135deg, #FF9F43 0%, #feca57 100%); }
-.option-btn:nth-child(3) { background: linear-gradient(135deg, #54a0ff 0%, #2e86de 100%); }
+.option-btn:nth-child(1) {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5253 100%);
+}
+.option-btn:nth-child(2) {
+  background: linear-gradient(135deg, #ff9f43 0%, #feca57 100%);
+}
+.option-btn:nth-child(3) {
+  background: linear-gradient(135deg, #54a0ff 0%, #2e86de 100%);
+}
 
 .option-btn:active {
   transform: translateY(4px);

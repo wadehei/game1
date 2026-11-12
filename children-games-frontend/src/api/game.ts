@@ -38,19 +38,43 @@ export const getGameProgress = async (gameId: string): Promise<GameProgress> => 
 export const updateGameProgress = async (
   gameId: string,
   data: { level: number; score?: number; stars?: number; achievements?: string[] }
-): Promise<GameProgress & { totalStars: number; level: number; newAchievements?: AchievementMeta[] }> => {
+): Promise<
+  GameProgress & { totalStars: number; level: number; newAchievements?: AchievementMeta[] }
+> => {
   const gameStore = useGameStore();
-  const result = await api.post<GameProgress & { totalStars: number; level: number; newAchievements?: AchievementMeta[] }>(
-    `/game/progress/${gameId}`,
-    data
-  );
+  const result = await api.post<
+    GameProgress & { totalStars: number; level: number; newAchievements?: AchievementMeta[] }
+  >(`/game/progress/${gameId}`, data);
   gameStore.updateProgress(gameId, result);
   return result;
 };
 
 // 获取排行榜
 export const getLeaderboard = async (gameId: string, limit = 50) => {
-  return api.get(`/game/leaderboard/${gameId}`, { limit });
+  return api.get<
+    Array<{
+      rank: number;
+      userId: number;
+      nickname: string;
+      avatar: string;
+      highScore: number;
+      level: number;
+    }>
+  >(`/game/leaderboard/${gameId}`, { limit });
+};
+
+export interface StarsLeaderboardRow {
+  rank: number;
+  userId: number;
+  nickname: string;
+  avatar: string;
+  totalStars: number;
+  level: number;
+}
+
+/** 家庭总星榜：家庭成员按累计星星排序 */
+export const getStarsLeaderboard = async (limit = 20): Promise<StarsLeaderboardRow[]> => {
+  return api.get<StarsLeaderboardRow[]>('/game/leaderboard/stars', { limit });
 };
 
 // 获取今日任务进度
@@ -71,7 +95,10 @@ type LevelOverride = Record<string, number | boolean>;
 
 /** 读取某关卡的云端难度覆盖；失败/无覆盖返回 null（前端回退内置公式）。
  *  每次进关卡实时拉取（请求极小），保证后台改动重进即生效 */
-export const getLevelOverride = async (gameId: string, level: number): Promise<LevelOverride | null> => {
+export const getLevelOverride = async (
+  gameId: string,
+  level: number
+): Promise<LevelOverride | null> => {
   try {
     const result = await api.get<{ override: LevelOverride | null }>(`/level/${gameId}/${level}`);
     return result?.override || null;

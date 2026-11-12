@@ -5,6 +5,7 @@ import { getRoom, type Room, type Member, type ChatMsg } from '../roomManager';
 import { addTimer, clearRoomTimers, addChat } from '../roomManager';
 import type { ActionResult, GameHandler } from './types';
 import { getRoomBus } from '../bus';
+import { secureShuffle, securePickOne } from '../../utils/secureRandom';
 
 const PICK_SECONDS = 10;
 const DRAW_SECONDS = Math.max(10, Number(process.env.DRAW_SECONDS) || 90);
@@ -17,18 +18,22 @@ interface WordItem {
   difficulty: number;
 }
 
+interface Stroke {
+  seq: number;
+  points: unknown[];
+  color: string;
+  width: number;
+}
+
 const WORDS = wordsJson as unknown as WordItem[];
 
-const shuffle = <T>(arr: T[]): T[] => {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-};
+const shuffle = <T>(arr: T[]): T[] => secureShuffle(arr);
 
-const normalize = (s: string): string => String(s || '').trim().toLowerCase().replace(/\s+/g, '');
+const normalize = (s: string): string =>
+  String(s || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '');
 
 const players = (room: Room): Member[] => [...room.members.values()].filter((m) => m.seat >= 0);
 
@@ -44,7 +49,7 @@ interface DrawState {
   candidates: string[];
   word: string | null;
   category: string;
-  strokes: any[];
+  strokes: Stroke[];
   guessed: Set<number>; // 已猜对的 userId
   scores: Map<number, number>;
   deadline: number;
@@ -66,6 +71,8 @@ const endRound = (room: Room, reason: string): void => {
     category: st.category,
     reason,
     scores: [...st.scores].map(([userId, total]) => ({ userId, total })),
+    // 回放数据：本回合全部笔迹（此刻尚未清空，下一回合 start 才清）
+    strokes: st.strokes,
   });
 
   // 判断是否全部回合完成
@@ -85,8 +92,13 @@ const endRound = (room: Room, reason: string): void => {
   }
 
   // 下一回合：按座位顺序找下一位画家（优先在线玩家，避免掉线成员霸着画家位卡满回合时长）
-  const seats = players(room).map((m) => m.seat).sort((a, b) => a - b);
-  const onlineSeats = players(room).filter((m) => m.online).map((m) => m.seat).sort((a, b) => a - b);
+  const seats = players(room)
+    .map((m) => m.seat)
+    .sort((a, b) => a - b);
+  const onlineSeats = players(room)
+    .filter((m) => m.online)
+    .map((m) => m.seat)
+    .sort((a, b) => a - b);
   const pool = onlineSeats.length ? onlineSeats : seats;
   let next = st.drawerSeat;
   for (const s2 of pool) {
@@ -106,18 +118,30 @@ const endRound = (room: Room, reason: string): void => {
   st.word = null;
   st.strokes = [];
   st.guessed = new Set();
-  st.candidates = shuffle(WORDS).slice(0, 3).map((w) => w.word);
-  bus.broadcast(room, { t: 'draw_round', drawerSeat: st.drawerSeat, round: st.round, totalRounds: st.totalRounds, phase: 'picking' });
+  st.candidates = shuffle(WORDS)
+    .slice(0, 3)
+    .map((w) => w.word);
+  bus.broadcast(room, {
+    t: 'draw_round',
+    drawerSeat: st.drawerSeat,
+    round: st.round,
+    totalRounds: st.totalRounds,
+    phase: 'picking',
+  });
 
   const drawer = players(room).find((m) => m.seat === st.drawerSeat);
   if (drawer) bus.sendToUser(room, drawer.userId, { t: 'draw_candidates', words: st.candidates });
 
   const timer = setTimeout(() => {
     const r = getRoom(room.id);
-    if (r && (r.game as DrawState).phase === 'picking' && (r.game as DrawState).round === st.round) {
+    if (
+      r &&
+      (r.game as DrawState).phase === 'picking' &&
+      (r.game as DrawState).round === st.round
+    ) {
       // 超时未选词：随机选一个
       const s = r.game as DrawState;
-      beginDrawing(r, s.candidates[Math.floor(Math.random() * s.candidates.length)]);
+      beginDrawing(r, securePickOne(s.candidates));
     }
   }, PICK_SECONDS * 1000);
   st.roundTimer = timer;
@@ -152,7 +176,11 @@ const beginDrawing = (room: Room, word: string): void => {
 
   const timer = setTimeout(() => {
     const r = getRoom(room.id);
-    if (r && (r.game as DrawState).phase === 'drawing' && (r.game as DrawState).round === st.round) {
+    if (
+      r &&
+      (r.game as DrawState).phase === 'drawing' &&
+      (r.game as DrawState).round === st.round
+    ) {
       endRound(r, '时间到');
     }
   }, DRAW_SECONDS * 1000);
@@ -179,6 +207,14 @@ export const drawHandler: GameHandler<DrawState> = {
   maxPlayers: 8,
   allowSpectators: true,
   rematchSwapSeats: false,
+  validActions: new Set([
+    'draw_pick',
+    'draw_stroke',
+    'draw_undo',
+    'draw_clear',
+    'draw_skip',
+    'guess',
+  ]),
 
   create(): DrawState {
     return {
@@ -218,7 +254,9 @@ export const drawHandler: GameHandler<DrawState> = {
     st.word = null;
     st.strokes = [];
     st.guessed = new Set();
-    st.candidates = shuffle(WORDS).slice(0, 3).map((w) => w.word);
+    st.candidates = shuffle(WORDS)
+      .slice(0, 3)
+      .map((w) => w.word);
 
     const bus = getRoomBus();
     bus.broadcast(room, {
@@ -234,7 +272,7 @@ export const drawHandler: GameHandler<DrawState> = {
       const r = getRoom(room.id);
       if (r && (r.game as DrawState).phase === 'picking' && (r.game as DrawState).round === 1) {
         const s = r.game as DrawState;
-        beginDrawing(r, s.candidates[Math.floor(Math.random() * s.candidates.length)]);
+        beginDrawing(r, securePickOne(s.candidates));
       }
     }, PICK_SECONDS * 1000);
     st.roundTimer = timer;
@@ -257,7 +295,12 @@ export const drawHandler: GameHandler<DrawState> = {
       st.ranking = ranking;
       room.game = { ...st };
       getRoomBus().broadcast(room, { t: 'draw_final', ranking, reason: '人数不足，提前结束' });
-      return { ended: { winnerSeat: ranking[0] ? (room.members.get(ranking[0].userId)?.seat ?? -1) : -1, reason: '人数不足，提前结束' } };
+      return {
+        ended: {
+          winnerSeat: ranking[0] ? (room.members.get(ranking[0].userId)?.seat ?? -1) : -1,
+          reason: '人数不足，提前结束',
+        },
+      };
     }
     // 画家退出：立即结束当前回合
     if (member.seat === st.drawerSeat && room.phase !== 'ended') {
@@ -279,24 +322,31 @@ export const drawHandler: GameHandler<DrawState> = {
     }
   },
 
-  onAction(room: Room, member: Member, action: string, payload: any): ActionResult {
+  onAction(
+    room: Room,
+    member: Member,
+    action: string,
+    payload: Record<string, unknown>
+  ): ActionResult {
     const st = room.game as DrawState;
     const isDrawer = member.seat === st.drawerSeat;
     const bus = getRoomBus();
 
     if (action === 'draw_pick') {
-      if (room.phase !== 'playing' || st.phase !== 'picking' || !isDrawer) return { error: '现在不是你选词的时候' };
+      if (room.phase !== 'playing' || st.phase !== 'picking' || !isDrawer)
+        return { error: '现在不是你选词的时候' };
       const word = st.candidates[Number(payload?.index)] || st.candidates[0];
       beginDrawing(room, word);
       return {};
     }
 
     if (action === 'draw_stroke') {
-      if (room.phase !== 'playing' || st.phase !== 'drawing' || !isDrawer) return { error: '只有画家能画画' };
+      if (room.phase !== 'playing' || st.phase !== 'drawing' || !isDrawer)
+        return { error: '只有画家能画画' };
       // 不做服务端节流：客户端已按 10Hz 批量发送，静默丢包会造成其他端笔迹断层
-      const stroke = {
+      const stroke: Stroke = {
         seq: ++st.drawSeq,
-        points: payload?.points || [],
+        points: (payload?.points as unknown[]) || [],
         color: String(payload?.color || '#333'),
         width: Number(payload?.width) || 4,
       };
@@ -308,30 +358,36 @@ export const drawHandler: GameHandler<DrawState> = {
     }
 
     if (action === 'draw_undo') {
-      if (room.phase !== 'playing' || st.phase !== 'drawing' || !isDrawer) return { error: '只有画家能撤销' };
+      if (room.phase !== 'playing' || st.phase !== 'drawing' || !isDrawer)
+        return { error: '只有画家能撤销' };
       st.strokes.pop();
       bus.broadcast(room, { t: 'draw_undo' });
       return {};
     }
 
     if (action === 'draw_clear') {
-      if (room.phase !== 'playing' || st.phase !== 'drawing' || !isDrawer) return { error: '只有画家能清空' };
+      if (room.phase !== 'playing' || st.phase !== 'drawing' || !isDrawer)
+        return { error: '只有画家能清空' };
       st.strokes = [];
       bus.broadcast(room, { t: 'draw_clear' });
       return {};
     }
 
     if (action === 'draw_skip') {
-      if (room.phase !== 'playing' || st.phase !== 'drawing' || !isDrawer) return { error: '只有画家能跳过' };
+      if (room.phase !== 'playing' || st.phase !== 'drawing' || !isDrawer)
+        return { error: '只有画家能跳过' };
       st.scores.set(member.userId, Math.max(0, (st.scores.get(member.userId) || 0) - 2));
       endRound(room, '画家跳过了');
       return {};
     }
 
     if (action === 'guess') {
-      if (room.phase !== 'playing' || st.phase !== 'drawing') return { error: '当前没有进行中的猜词' };
+      if (room.phase !== 'playing' || st.phase !== 'drawing')
+        return { error: '当前没有进行中的猜词' };
       if (isDrawer) return { error: '画家不能猜词' };
-      const raw = String(payload?.content || '').trim().slice(0, 50);
+      const raw = String(payload?.content || '')
+        .trim()
+        .slice(0, 50);
       if (!raw) return { error: '请输入猜词内容' };
 
       // 已经猜对的人不再参与判定与广播（防剧透）
@@ -345,9 +401,20 @@ export const drawHandler: GameHandler<DrawState> = {
         st.scores.set(member.userId, (st.scores.get(member.userId) || 0) + gained);
         const drawerUserId = players(room).find((m) => m.seat === st.drawerSeat)?.userId;
         if (drawerUserId) st.scores.set(drawerUserId, (st.scores.get(drawerUserId) || 0) + 3);
-        bus.broadcast(room, { t: 'guess_result', userId: member.userId, nickname: member.nickname, correct: true });
+        bus.broadcast(room, {
+          t: 'guess_result',
+          userId: member.userId,
+          nickname: member.nickname,
+          correct: true,
+        });
         // 猜对消息入聊天记录（重连/刷新不丢）
-        const sysMsg: ChatMsg = { userId: 0, nickname: '系统', kind: 'text', content: `${member.nickname} 猜对了！`, ts: Date.now() };
+        const sysMsg: ChatMsg = {
+          userId: 0,
+          nickname: '系统',
+          kind: 'text',
+          content: `${member.nickname} 猜对了！`,
+          ts: Date.now(),
+        };
         addChat(room, sysMsg);
         bus.broadcast(room, { t: 'chat', ...sysMsg });
 
@@ -359,7 +426,13 @@ export const drawHandler: GameHandler<DrawState> = {
       }
 
       // 未猜对：作为普通聊天下转（入聊天记录）
-      const wrongMsg: ChatMsg = { userId: member.userId, nickname: member.nickname, kind: 'text', content: raw, ts: Date.now() };
+      const wrongMsg: ChatMsg = {
+        userId: member.userId,
+        nickname: member.nickname,
+        kind: 'text',
+        content: raw,
+        ts: Date.now(),
+      };
       addChat(room, wrongMsg);
       bus.broadcast(room, { t: 'chat', ...wrongMsg });
       return {};

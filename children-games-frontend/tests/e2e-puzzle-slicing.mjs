@@ -48,7 +48,10 @@ const info = await page.evaluate(() => {
 });
 
 console.log(JSON.stringify(info, null, 2));
-check(`图片宽 ${info.imgW.toFixed(1)}px ≈ 格宽 ${info.cellW.toFixed(1)}px × ${info.gridSize}`, Math.abs(info.imgW - info.cellW * info.gridSize) < 2);
+check(
+  `图片宽 ${info.imgW.toFixed(1)}px ≈ 格宽 ${info.cellW.toFixed(1)}px × ${info.gridSize}`,
+  Math.abs(info.imgW - info.cellW * info.gridSize) < 2
+);
 check(`样式使用百分比（width=${info.styleWidth}）`, info.styleWidth === `${info.gridSize * 100}%`);
 
 // 核心不变量：每块切片的窗口位移必须是格宽/格高的整数倍（相邻切片才能无缝对接）
@@ -69,7 +72,10 @@ const aligned = await page.evaluate(() => {
   }
   return { allAligned, detail: detail.join(' ') };
 });
-check(`全部 ${aligned.detail.split(' ').length} 块窗口对齐格边界（位移=格宽整数倍）`, aligned.allAligned);
+check(
+  `全部 ${aligned.detail.split(' ').length} 块窗口对齐格边界（位移=格宽整数倍）`,
+  aligned.allAligned
+);
 console.log(`  位移倍数: ${aligned.detail}`);
 
 await page.screenshot({ path: 'test-results/puzzle-slicing.png' });

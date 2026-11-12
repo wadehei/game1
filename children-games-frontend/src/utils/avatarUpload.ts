@@ -2,6 +2,8 @@
  * 照片头像上传：客户端裁成正方形并压缩到 256px（webp，Safari 退 jpeg）
  * 返回可直接存入 avatar 字段的相对 URL
  */
+import { API_ORIGIN } from './apiOrigin';
+
 export const uploadPhotoAvatar = async (file: File): Promise<string> => {
   const bitmap = await createImageBitmap(file);
 
@@ -20,7 +22,9 @@ export const uploadPhotoAvatar = async (file: File): Promise<string> => {
   ctx.drawImage(bitmap, (SIZE - w) / 2, (SIZE - h) / 2, w, h);
   bitmap.close?.();
 
-  let blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/webp', 0.85));
+  let blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, 'image/webp', 0.85)
+  );
   if (!blob) {
     blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
   }
@@ -28,7 +32,7 @@ export const uploadPhotoAvatar = async (file: File): Promise<string> => {
     throw new Error('压缩失败');
   }
 
-  const res = await fetch('/api/upload/avatar', {
+  const res = await fetch(`${API_ORIGIN}/api/upload/avatar`, {
     method: 'POST',
     headers: { 'Content-Type': blob.type },
     body: blob,

@@ -18,7 +18,8 @@
             :class="{ active: activeTab === tab.key }"
             @click="activeTab = tab.key"
           >
-            <span class="nav-icon">{{ tab.icon }}</span>{{ tab.label }}
+            <span class="nav-icon">{{ tab.icon }}</span
+            >{{ tab.label }}
           </button>
         </nav>
         <button class="logout-btn" @click="logout">退出登录</button>
@@ -33,7 +34,8 @@
           :class="{ active: activeTab === tab.key }"
           @click="activeTab = tab.key"
         >
-          <span>{{ tab.icon }}</span>{{ tab.label }}
+          <span>{{ tab.icon }}</span
+          >{{ tab.label }}
         </button>
       </nav>
 
@@ -54,8 +56,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { adminLogout } from '@/api/admin';
 import DashboardPanel from '@/components/admin/DashboardPanel.vue';
 import MembersPanel from '@/components/admin/MembersPanel.vue';
@@ -68,7 +70,16 @@ import LogsPanel from '@/components/admin/LogsPanel.vue';
 import VoicePanel from '@/components/admin/VoicePanel.vue';
 
 const router = useRouter();
+const route = useRoute();
 const activeTab = ref('dashboard');
+
+// 支持 ?tab=logs 这类深链/面板内联动切换（如看板告警横幅跳错误日志）
+watch(
+  () => route.query.tab,
+  (t) => {
+    if (typeof t === 'string' && TABS.some((x) => x.key === t)) activeTab.value = t;
+  }
+);
 
 const TABS = [
   { key: 'dashboard', label: '数据看板', icon: '📊' },

@@ -14,7 +14,10 @@ interface QuizQuestionAttributes {
 
 interface QuizQuestionCreationAttributes extends Optional<QuizQuestionAttributes, 'id'> {}
 
-export class QuizQuestion extends Model<QuizQuestionAttributes, QuizQuestionCreationAttributes> implements QuizQuestionAttributes {
+export class QuizQuestion
+  extends Model<QuizQuestionAttributes, QuizQuestionCreationAttributes>
+  implements QuizQuestionAttributes
+{
   public id!: number;
   public category!: string;
   public difficulty!: number;
@@ -67,6 +70,10 @@ QuizQuestion.init(
     indexes: [
       {
         fields: ['category'],
+      },
+      // 按难度筛选题目
+      {
+        fields: ['difficulty'],
       },
     ],
   }

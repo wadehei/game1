@@ -1,11 +1,12 @@
 import { ref } from 'vue';
 import { soundManager } from '@/utils/sound';
+import { storage } from '@/utils/storage';
 
 const MUTE_STORAGE_KEY = 'games_sound_muted';
 
 function readStoredMute(): boolean {
   try {
-    return localStorage.getItem(MUTE_STORAGE_KEY) === '1';
+    return storage.getItem(MUTE_STORAGE_KEY) === '1';
   } catch {
     return false;
   }
@@ -22,14 +23,24 @@ export function useGameSounds() {
     isMuted.value = !isMuted.value;
     soundManager.setMuted(isMuted.value);
     try {
-      localStorage.setItem(MUTE_STORAGE_KEY, isMuted.value ? '1' : '0');
+      storage.setItem(MUTE_STORAGE_KEY, isMuted.value ? '1' : '0');
     } catch {
       // localStorage 不可用时忽略
     }
   };
 
   const play = (
-    name: 'click' | 'success' | 'fail' | 'match' | 'pop' | 'shoot' | 'explosion' | 'levelUp' | 'bounce' | 'collect',
+    name:
+      | 'click'
+      | 'success'
+      | 'fail'
+      | 'match'
+      | 'pop'
+      | 'shoot'
+      | 'explosion'
+      | 'levelUp'
+      | 'bounce'
+      | 'collect',
     options?: { pitch?: number }
   ) => {
     if (isMuted.value) return;
@@ -38,7 +49,8 @@ export function useGameSounds() {
       soundManager.playMatch(options.pitch);
       return;
     }
-    const method = `play${name.charAt(0).toUpperCase() + name.slice(1)}` as keyof typeof soundManager;
+    const method =
+      `play${name.charAt(0).toUpperCase() + name.slice(1)}` as keyof typeof soundManager;
     (soundManager[method] as () => void)();
   };
 

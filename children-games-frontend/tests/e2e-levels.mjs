@@ -8,7 +8,7 @@ const page = await browser.newPage();
 await page.setViewport({ width: 1280, height: 800 });
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-let pageErrors = [];
+const pageErrors = [];
 page.on('pageerror', (err) => pageErrors.push(err.message));
 const check = (label, cond) => console.log(`${cond ? '✅' : '❌'} ${label}`);
 
@@ -17,17 +17,21 @@ await page.goto(`${BASE}/#/`, { waitUntil: 'networkidle2', timeout: 30000 }).cat
 await sleep(800);
 
 // API 便捷封装（带 admin token）
-const adminApi = (method, path, body) => page.evaluate(async ({ method, path, body }) => {
-  const res = await fetch(`/api/admin${path}`, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${localStorage.getItem('admin_token')}`,
+const adminApi = (method, path, body) =>
+  page.evaluate(
+    async ({ method, path, body }) => {
+      const res = await fetch(`/api/admin${path}`, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('admin_token')}`,
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      return { status: res.status, data: await res.json() };
     },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  return { status: res.status, data: await res.json() };
-}, { method, path, body });
+    { method, path, body }
+  );
 
 // ═══ 0. 管理员登录（走 UI，覆盖登录流程） ═══
 await page.goto(`${BASE}/#/admin/login`, { waitUntil: 'networkidle2' });
@@ -51,10 +55,16 @@ await page.goto(`${BASE}/#/memory`, { waitUntil: 'networkidle2' });
 await sleep(1800);
 {
   const state = await page.evaluate(() => ({
-    time: parseInt(document.querySelectorAll('.header-item')[1]?.querySelector('.value')?.textContent || '0', 10),
+    time: parseInt(
+      document.querySelectorAll('.header-item')[1]?.querySelector('.value')?.textContent || '0',
+      10
+    ),
     cards: document.querySelectorAll('.game-board .card').length,
   }));
-  check(`时限覆盖生效：显示 ${state.time}s（期望 129~130）`, state.time >= 128 && state.time <= 130);
+  check(
+    `时限覆盖生效：显示 ${state.time}s（期望 129~130）`,
+    state.time >= 128 && state.time <= 130
+  );
   check(`对数覆盖生效：${state.cards} 张牌（期望 6 = 3 对）`, state.cards === 6);
   await page.screenshot({ path: 'test-results/levels-override-active.png' });
 }
@@ -63,7 +73,9 @@ await sleep(1800);
 await page.goto(`${BASE}/#/admin`, { waitUntil: 'networkidle2' });
 await sleep(1000);
 await page.evaluate(() => {
-  [...document.querySelectorAll('.mobile-tab, .nav-item')].find((t) => t.textContent.includes('难度配置'))?.click();
+  [...document.querySelectorAll('.mobile-tab, .nav-item')]
+    .find((t) => t.textContent.includes('难度配置'))
+    ?.click();
 });
 await sleep(1200);
 await page.evaluate(() => {
@@ -71,12 +83,19 @@ await page.evaluate(() => {
 });
 await sleep(800);
 {
-  const rows = await page.evaluate(() => [...document.querySelectorAll('.level-row')].map((r) => r.textContent.trim().replace(/\s+/g, ' ')));
+  const rows = await page.evaluate(() =>
+    [...document.querySelectorAll('.level-row')].map((r) =>
+      r.textContent.trim().replace(/\s+/g, ' ')
+    )
+  );
   // 新面板列出全部关卡（1~totalLevels），自定义的第 1 关应带「自定义」标记和覆盖值
   const customRow = rows.find((r) => r.includes('第 1 关'));
   check(
     `面板列出 ${rows.length} 关，第 1 关带覆盖值和自定义标记`,
-    rows.length >= 20 && !!customRow && customRow.includes('时限 130') && customRow.includes('自定义')
+    rows.length >= 20 &&
+      !!customRow &&
+      customRow.includes('时限 130') &&
+      customRow.includes('自定义')
   );
   await page.screenshot({ path: 'test-results/admin-levels-panel.png' });
 }
@@ -91,12 +110,17 @@ await page.goto(`${BASE}/#/memory`, { waitUntil: 'networkidle2' });
 await sleep(1800);
 {
   const state = await page.evaluate(() => ({
-    time: parseInt(document.querySelectorAll('.header-item')[1]?.querySelector('.value')?.textContent || '0', 10),
+    time: parseInt(
+      document.querySelectorAll('.header-item')[1]?.querySelector('.value')?.textContent || '0',
+      10
+    ),
     cards: document.querySelectorAll('.game-board .card').length,
   }));
   check(`恢复默认：显示 ${state.time}s（期望 89~90）`, state.time >= 88 && state.time <= 90);
   check(`恢复默认：${state.cards} 张牌（期望 4 = 2 对）`, state.cards === 4);
 }
 
-console.log(`\n页面异常：${pageErrors.length}${pageErrors.length ? ' → ' + pageErrors.join(' | ') : ' ✅ 无'}`);
+console.log(
+  `\n页面异常：${pageErrors.length}${pageErrors.length ? ' → ' + pageErrors.join(' | ') : ' ✅ 无'}`
+);
 await browser.close();

@@ -56,7 +56,12 @@ export const placeStone = (g: GomokuState, player: number, x: number, y: number)
 };
 
 /** 从落子点向四个方向数连子，返回包含落子点的连线坐标 */
-const findWinLine = (board: number[][], x: number, y: number, player: number): [number, number][] => {
+const findWinLine = (
+  board: number[][],
+  x: number,
+  y: number,
+  player: number
+): [number, number][] => {
   for (const [dx, dy] of DIRS) {
     const line: [number, number][] = [[x, y]];
     for (const sign of [1, -1]) {

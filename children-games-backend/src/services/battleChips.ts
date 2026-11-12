@@ -1,28 +1,35 @@
 // 好友对战积分（账号资产）：结算、发放、生涯聚合
 // 红线：仅站内娱乐资产，无充值/提现/兑换；牌类每手实时落库（防中途解散丢账），竞技游戏局终按排名发放
-import { fn, col, literal } from 'sequelize';
+import { fn, col, literal, Op } from 'sequelize';
 import { User, BattleRecord } from '../models';
+import { logError } from '../utils/logger';
+import { withTransaction } from '../utils/transaction';
+import { formatDate } from '../utils/date';
+import { CHIPS_RELIEF_THRESHOLD, CHIPS_RELIEF_AMOUNT } from '../config/constants';
 
 export const CHIP_RANK_REWARDS = [30, 15, 5]; // 第1/2/3名奖励，第3名之后与第3名相同
 export const CHIP_DRAW_REWARD = 10;
-export const CHIPS_JOIN_MIN = 100; // 进房救济线：低于此值触发救济检查
-export const CHIPS_JOIN_REFILL = 1000;
+export const CHIPS_JOIN_MIN = CHIPS_RELIEF_THRESHOLD; // 进房救济线：低于此值触发救济检查
+export const CHIPS_JOIN_REFILL = CHIPS_RELIEF_AMOUNT;
 
-const localYmd = (): string => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
+const localYmd = (): string => formatDate();
 
 /** 每日救济：积分低于救济线时补足到 1000，同一自然日只补一次（市面救济金模式，防无限刷分） */
 export const grantDailyRelief = async (userId: number): Promise<number> => {
   const today = localYmd();
-  const user = await User.findByPk(userId, { attributes: ['chipsReliefDate'] });
-  if (user?.chipsReliefDate === today) {
-    const cur = await User.findByPk(userId, { attributes: ['battleChips'] });
-    return cur?.battleChips ?? 0;
-  }
-  await User.update({ chipsReliefDate: today, battleChips: CHIPS_JOIN_REFILL }, { where: { id: userId } });
-  return CHIPS_JOIN_REFILL;
+  // 条件更新原子判定"今日是否已救济"，并发登录不会双读双写
+  const [affected] = await User.update(
+    { chipsReliefDate: today, battleChips: CHIPS_JOIN_REFILL },
+    {
+      where: {
+        id: userId,
+        [Op.or]: [{ chipsReliefDate: null }, { chipsReliefDate: { [Op.ne]: today } }],
+      },
+    }
+  );
+  if (affected) return CHIPS_JOIN_REFILL;
+  const cur = await User.findByPk(userId, { attributes: ['battleChips'] });
+  return cur?.battleChips ?? 0;
 };
 
 /** 竞技游戏（非牌类）的排名分发放：wsServer.game_over 拦截统一调用 */
@@ -33,7 +40,8 @@ export const settleRankingChips = async (
 ): Promise<void> => {
   try {
     for (let i = 0; i < entries.length; i += 1) {
-      const delta = i === 0 ? CHIP_RANK_REWARDS[0] : i === 1 ? CHIP_RANK_REWARDS[1] : CHIP_RANK_REWARDS[2];
+      const delta =
+        i === 0 ? CHIP_RANK_REWARDS[0] : i === 1 ? CHIP_RANK_REWARDS[1] : CHIP_RANK_REWARDS[2];
       await applyChipDelta(entries[i].userId, delta);
       if (recordCareer) {
         await writeRecord(entries[i].userId, gameType, i === 0 ? 'win' : `rank:${i + 1}`, delta);
@@ -41,7 +49,52 @@ export const settleRankingChips = async (
     }
   } catch (err) {
     // 积分结算失败不影响对局广播
-    console.error('[chips] 排名积分结算失败:', err instanceof Error ? err.message : err);
+    logError('chips', '排名积分结算失败', err instanceof Error ? err.stack : String(err));
+  }
+};
+
+/** 批量排名积分结算：单事务处理所有玩家，减少数据库往返和锁竞争
+ *  性能优化：相比 settleRankingChips 的 N 次独立事务，这里只用 1 次事务
+ *  死锁预防：按 userId 排序后加锁，确保并发事务以相同顺序获取锁 */
+export const settleRankingChipsBatch = async (
+  gameType: string,
+  entries: Array<{ userId: number; nickname?: string }>,
+  recordCareer: boolean
+): Promise<void> => {
+  try {
+    // sort by userId to prevent deadlock when multiple games end concurrently
+    const sorted = [...entries].sort((a, b) => a.userId - b.userId);
+    await withTransaction(async (t) => {
+      for (let i = 0; i < sorted.length; i += 1) {
+        const entry = sorted[i];
+        const user = await User.findByPk(entry.userId, {
+          attributes: ['id', 'battleChips'],
+          transaction: t,
+          lock: t.LOCK.UPDATE,
+        });
+        if (!user) continue;
+
+        const delta =
+          i === 0 ? CHIP_RANK_REWARDS[0] : i === 1 ? CHIP_RANK_REWARDS[1] : CHIP_RANK_REWARDS[2];
+        user.battleChips = Math.max(0, user.battleChips + delta);
+        await user.save({ transaction: t });
+
+        if (recordCareer) {
+          await BattleRecord.create(
+            {
+              userId: entry.userId,
+              gameType,
+              result: i === 0 ? 'win' : `rank:${i + 1}`,
+              chipsDelta: delta,
+              chipsAfter: user.battleChips,
+            },
+            { transaction: t }
+          );
+        }
+      }
+    }, 'settleRankingChipsBatch');
+  } catch (err) {
+    logError('chips', '批量排名积分结算失败', err instanceof Error ? err.stack : String(err));
   }
 };
 
@@ -56,34 +109,74 @@ export const writeCareerRecords = async (
       // chipsAfter 由 writeRecord 按当前值快照，这里不需要再覆盖
     }
   } catch (err) {
-    console.error('[chips] 牌类生涯记录失败:', err instanceof Error ? err.message : err);
+    logError('chips', '牌类生涯记录失败', err instanceof Error ? err.stack : String(err));
   }
 };
 
-/** 单人积分变动（原子 +delta，下限 0）；返回新值，用户不存在返回 null */
+/** 单人积分变动（事务 + 行锁 +delta，下限 0）；返回新值，用户不存在返回 null。
+ *  内置 3 次退避重试——DB 抖动不再静默丢账，最终失败落盘告警（桌面分与账号分的差异可凭日志核对） */
 export const applyChipDelta = async (userId: number, delta: number): Promise<number | null> => {
-  const [affected] = await User.update(
-    { battleChips: literal(`GREATEST(0, battleChips + ${Math.trunc(delta)})`) },
-    { where: { id: userId } }
+  const n = Math.trunc(delta);
+  if (!Number.isFinite(n)) return null; // 防御非数字输入
+  let lastErr: unknown = null;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      // 行锁读-改-写：并发结算互斥，返回值即为本次落库后的真实余额
+      // 注意 attributes 必须含主键 id，否则 save() 会拒绝（视为全局更新）
+      return await withTransaction(async (t) => {
+        const user = await User.findByPk(userId, {
+          attributes: ['id', 'battleChips'],
+          transaction: t,
+          lock: t.LOCK.UPDATE,
+        });
+        if (!user) return null; // 用户不存在，重试无意义
+        user.battleChips = Math.max(0, user.battleChips + n);
+        await user.save({ transaction: t });
+        return user.battleChips;
+      }, 'applyChipDelta');
+    } catch (err) {
+      lastErr = err;
+      if (attempt < 3) await new Promise((r) => setTimeout(r, 200 * attempt));
+    }
+  }
+  logError(
+    'chips',
+    `积分入账重试 3 次仍失败: userId=${userId} delta=${n}（该笔变动未落库，需人工核对）`,
+    lastErr instanceof Error ? lastErr.stack : String(lastErr)
   );
-  if (!affected) return null;
-  const user = await User.findByPk(userId, { attributes: ['battleChips'] });
-  return user?.battleChips ?? null;
+  return null;
 };
 
-const writeRecord = async (userId: number, gameType: string, result: string, chipsDelta: number): Promise<void> => {
+const writeRecord = async (
+  userId: number,
+  gameType: string,
+  result: string,
+  chipsDelta: number
+): Promise<void> => {
   try {
     const user = await User.findByPk(userId, { attributes: ['battleChips'] });
-    await BattleRecord.create({ userId, gameType, result, chipsDelta, chipsAfter: user?.battleChips || 0 });
+    await BattleRecord.create({
+      userId,
+      gameType,
+      result,
+      chipsDelta,
+      chipsAfter: user?.battleChips || 0,
+    });
   } catch (err) {
-    console.error('[chips] 写生涯记录失败:', err instanceof Error ? err.message : err);
+    logError('chips', '写生涯记录失败', err instanceof Error ? err.stack : String(err));
   }
 };
 
 /** 后台手动发放/调整积分；set 优先于 delta。返回新值 */
-export const adminAdjustChips = async (userId: number, opts: { delta?: number; set?: number }): Promise<number | null> => {
+export const adminAdjustChips = async (
+  userId: number,
+  opts: { delta?: number; set?: number }
+): Promise<number | null> => {
   if (typeof opts.set === 'number') {
-    await User.update({ battleChips: Math.max(0, Math.trunc(opts.set)) }, { where: { id: userId } });
+    await User.update(
+      { battleChips: Math.max(0, Math.trunc(opts.set)) },
+      { where: { id: userId } }
+    );
   } else if (typeof opts.delta === 'number' && opts.delta !== 0) {
     await applyChipDelta(userId, opts.delta);
   } else {
@@ -96,26 +189,45 @@ export const adminAdjustChips = async (userId: number, opts: { delta?: number; s
 export interface CareerSummary {
   chips: number;
   games: Array<{ gameType: string; total: number; wins: number }>;
-  recent: Array<{ gameType: string; result: string; chipsDelta: number; chipsAfter: number; createdAt: Date }>;
+  recent: Array<{
+    gameType: string;
+    result: string;
+    chipsDelta: number;
+    chipsAfter: number;
+    createdAt: Date;
+  }>;
 }
 
 /** 个人中心生涯：当前积分 + 分游戏统计 + 最近 20 条流水 */
 export const getCareer = async (userId: number): Promise<CareerSummary> => {
-  const user = await User.findByPk(userId, { attributes: ['battleChips'] });
-  const grouped = await BattleRecord.findAll({
-    attributes: ['gameType', [fn('COUNT', col('id')), 'total'], [fn("SUM", literal("CASE WHEN result = 'win' THEN 1 ELSE 0 END")), 'wins']],
-    where: { userId },
-    group: ['gameType'],
-    raw: true,
-  });
-  const recent = await BattleRecord.findAll({
-    where: { userId },
-    order: [['createdAt', 'DESC']],
-    limit: 20,
-  });
+  interface GroupedGame {
+    gameType: string;
+    total: number | string;
+    wins: number | string | null;
+  }
+
+  // 三条独立查询并行执行
+  const [user, grouped, recent] = await Promise.all([
+    User.findByPk(userId, { attributes: ['battleChips'] }),
+    BattleRecord.findAll({
+      attributes: [
+        'gameType',
+        [fn('COUNT', col('id')), 'total'],
+        [fn('SUM', literal("CASE WHEN result = 'win' THEN 1 ELSE 0 END")), 'wins'],
+      ],
+      where: { userId },
+      group: ['gameType'],
+      raw: true,
+    }),
+    BattleRecord.findAll({
+      where: { userId },
+      order: [['createdAt', 'DESC']],
+      limit: 20,
+    }),
+  ]);
   return {
     chips: user?.battleChips ?? 0,
-    games: (grouped as any[]).map((g) => ({
+    games: (grouped as unknown as GroupedGame[]).map((g) => ({
       gameType: g.gameType,
       total: Number(g.total),
       wins: Number(g.wins || 0),

@@ -5,6 +5,7 @@ import { addTimer, clearRoomTimers } from '../roomManager';
 import type { ActionResult, GameHandler } from './types';
 import { getRoomBus } from '../bus';
 import { QuizQuestion } from '../../models';
+import { sequelize } from '../../config/database';
 
 const QUESTION_SECONDS = 15;
 const REVEAL_SECONDS = 3;
@@ -31,16 +32,8 @@ interface QuizState {
 
 const QUESTION_COUNT = 10;
 
-const shuffle = <T>(arr: T[]): T[] => {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-};
-
-const playingUsers = (room: Room): Member[] => [...room.members.values()].filter((m) => m.seat >= 0);
+const playingUsers = (room: Room): Member[] =>
+  [...room.members.values()].filter((m) => m.seat >= 0);
 
 const clearQuizTimers = (state: QuizState): void => {
   if (state.revealTimer) clearTimeout(state.revealTimer);
@@ -58,6 +51,7 @@ export const quizHandler: GameHandler<QuizState> = {
   maxPlayers: 8,
   allowSpectators: true,
   rematchSwapSeats: false,
+  validActions: new Set(['quiz_answer']),
 
   create(): QuizState {
     return {
@@ -75,18 +69,23 @@ export const quizHandler: GameHandler<QuizState> = {
 
   // 开局：随机抽取题目，稍后开始第一题
   start(room): void {
-    clearQuizTimers(room.game);
+    clearQuizTimers(room.game as QuizState);
     clearRoomTimers(room);
     void (async () => {
       try {
-        const rows = await QuizQuestion.findAll();
+        // 性能优化：使用 SQL ORDER BY RAND() + LIMIT 替代全表查询 + JS shuffle
+        // 避免加载全部题目到内存（题库大时效果显著）
+        // TODO: 题库超过 500 题时考虑改用随机偏移方案（RAND() * MAX(id)）优化性能
+        const rows = await QuizQuestion.findAll({
+          order: sequelize.random(),
+          limit: QUESTION_COUNT,
+        });
         if (rows.length === 0) {
           getRoomBus().broadcast(room, { t: 'error', message: '题库为空，请联系管理员导入题目' });
           return;
         }
-        const picked = shuffle(rows).slice(0, Math.min(QUESTION_COUNT, rows.length));
         const st = room.game as QuizState;
-        st.questions = picked.map((r) => ({
+        st.questions = rows.map((r) => ({
           qid: r.id,
           text: r.text,
           options: (r.options as string[]) || [],
@@ -117,7 +116,7 @@ export const quizHandler: GameHandler<QuizState> = {
   },
 
   onPlayerQuit(room: Room, member: Member): ActionResult | void {
-    room.game.scores.delete(member.userId);
+    (room.game as QuizState).scores.delete(member.userId);
     // 人走光了由房间层解散；有存活玩家则对局继续，不强制终局
     const players = [...room.members.values()].filter((m) => m.seat >= 0);
     if (players.length === 0) {
@@ -130,7 +129,12 @@ export const quizHandler: GameHandler<QuizState> = {
     return undefined;
   },
 
-  onAction(room: Room, member: Member, action: string, payload: any): ActionResult {
+  onAction(
+    room: Room,
+    member: Member,
+    action: string,
+    payload: Record<string, unknown>
+  ): ActionResult {
     if (action !== 'quiz_answer') return { error: '未知的游戏操作' };
     if (room.phase !== 'playing' || member.seat < 0) return { error: '当前不能作答' };
 
@@ -284,11 +288,13 @@ function finish(room: Room): void {
   const bus = getRoomBus();
   bus.broadcast(room, { t: 'quiz_final', ranking });
 
-  const topSeat = ranking.length
-    ? room.members.get(ranking[0].userId)?.seat ?? -1
-    : -1;
+  const topSeat = ranking.length ? (room.members.get(ranking[0].userId)?.seat ?? -1) : -1;
   // 通过 bus 广播 game_over（ended 由 handler 返回通道不便在定时器里使用）
-  bus.broadcast(room, { t: 'game_over', winnerSeat: topSeat >= 0 ? topSeat : -1, reason: '竞答结束' });
+  bus.broadcast(room, {
+    t: 'game_over',
+    winnerSeat: topSeat >= 0 ? topSeat : -1,
+    reason: '竞答结束',
+  });
   room.phase = 'ended';
   clearRoomTimers(room);
 }

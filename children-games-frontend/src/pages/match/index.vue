@@ -4,11 +4,11 @@
     <GameHeader
       :items="headerItems"
       :muted="sounds.isMuted.value"
-      headerClass="match-header"
+      header-class="match-header"
       level-selectable
-      @toggleSound="sounds.toggleSound"
-      @goBack="router.back()"
-      @selectLevel="openLevelSelect"
+      @toggle-sound="sounds.toggleSound"
+      @go-back="router.back()"
+      @select-level="openLevelSelect"
     />
 
     <!-- 状态提示 -->
@@ -22,7 +22,10 @@
         <line
           v-for="(line, i) in lines"
           :key="i"
-          :x1="line.x1" :y1="line.y1" :x2="line.x2" :y2="line.y2"
+          :x1="line.x1"
+          :y1="line.y1"
+          :x2="line.x2"
+          :y2="line.y2"
           :class="['match-line', { wrong: line.wrong }]"
         />
       </svg>
@@ -95,9 +98,9 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { useGameSounds } from '@/composables/useGameSounds';
 import { useGameProgress } from '@/composables/useGameProgress';
-import { GAME_PAUSE_EVENT, GAME_RESUME_EVENT } from '@/utils/gameEvents';
+import { useGameLifecycle } from '@/composables/useGameLifecycle';
 import { getLevelOverride } from '@/api/game';
-import { speak } from '@/utils/voice';
+import { speak, playVoice } from '@/utils/voice';
 import { defaultLevelConfig } from '@/utils/levelDefaults';
 import GameHeader from '@/components/GameHeader.vue';
 import ResultModal from '@/components/ResultModal.vue';
@@ -138,14 +141,25 @@ let tickTimer: ReturnType<typeof setInterval> | null = null;
 // ── 内容池（三种类型按关卡轮换） ──
 const COUNT_POOL = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 const ANIMAL_PAIRS: [string, string][] = [
-  ['🐰', '🥕'], ['🐼', '🎋'], ['🐱', '🐟'], ['🐭', '🧀'],
-  ['🐶', '🦴'], ['🐒', '🍌'], ['🐘', '🍉'], ['🐿️', '🌰'],
+  ['🐰', '🥕'],
+  ['🐼', '🎋'],
+  ['🐱', '🐟'],
+  ['🐭', '🧀'],
+  ['🐶', '🦴'],
+  ['🐒', '🍌'],
+  ['🐘', '🍉'],
+  ['🐿️', '🌰'],
 ];
 const COLOR_PAIRS: [string, string][] = [
-  ['🔴', '红'], ['🟡', '黄'], ['🟢', '绿'], ['🔵', '蓝'], ['🟣', '紫'], ['🟠', '橙'],
+  ['🔴', '红'],
+  ['🟡', '黄'],
+  ['🟢', '绿'],
+  ['🔵', '蓝'],
+  ['🟣', '紫'],
+  ['🟠', '橙'],
 ];
 
-const shuffle = <T>(arr: T[]): T[] => {
+const shuffle = <T,>(arr: T[]): T[] => {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -206,13 +220,21 @@ const statusText = computed(() => {
 const svgHeight = computed(() => Math.max(leftItems.value.length, rightItems.value.length) * 20);
 const lines = computed(() => {
   const lines: Array<{ x1: number; y1: number; x2: number; y2: number; wrong?: boolean }> = [];
-  const li = leftItems.value.findIndex((it) => matchedIds.value.has(it.id) || (wrongPair.value && wrongPair.value.left === it.id));
+  const li = leftItems.value.findIndex(
+    (it) => matchedIds.value.has(it.id) || (wrongPair.value && wrongPair.value.left === it.id)
+  );
   if (li === -1) return lines;
   const leftY = li * 20 + 10;
-  const rightIdx = rightItems.value.findIndex((it) => it.id === (wrongPair.value ? selectedPairRightId.value : li >= 0 ? leftItems.value[li]?.id : ''));
+  const rightIdx = rightItems.value.findIndex(
+    (it) =>
+      it.id ===
+      (wrongPair.value ? selectedPairRightId.value : li >= 0 ? leftItems.value[li]?.id : '')
+  );
   lines.push({
-    x1: 28, y1: leftY,
-    x2: 72, y2: rightIdx * 20 + 10,
+    x1: 28,
+    y1: leftY,
+    x2: 72,
+    y2: rightIdx * 20 + 10,
     wrong: !!wrongPair.value,
   });
   return lines;
@@ -222,7 +244,10 @@ const selectedPairRightId = ref('');
 const itemClass = (item: Item, side: 'left' | 'right') => ({
   selected: selected.value?.side === side && selected.value.item.id === item.id,
   matched: matchedIds.value.has(item.id),
-  wrong: !!wrongPair.value && ((side === 'left' && wrongPair.value.left === item.id) || (side === 'right' && wrongPair.value.right === item.id)),
+  wrong:
+    !!wrongPair.value &&
+    ((side === 'left' && wrongPair.value.left === item.id) ||
+      (side === 'right' && wrongPair.value.right === item.id)),
 });
 
 // ── 交互 ──
@@ -277,7 +302,7 @@ const initGame = () => {
   timeLeft.value = levelConfig.value.timeLimit;
   buildRound(currentLevel.value, levelConfig.value.pairs);
   sounds.play('click');
-  speak('把左边和右边一对好朋友连起来吧！');
+  playVoice('match_intro', '把左边和右边一对好朋友连起来吧！');
   if (tickTimer) clearInterval(tickTimer);
   tickTimer = setInterval(tick, 1000);
   nextTick(() => renderFonts());
@@ -294,11 +319,12 @@ const endGame = (won: boolean) => {
     sounds.play('match');
     const ratio = timeLeft.value / levelConfig.value.timeLimit;
     stars.value = ratio >= 0.5 ? 3 : ratio >= 0.25 ? 2 : 1;
+    // 胜局计入场次与胜场（保存进度）；失败局由 else 分支记一局游玩
     saveGameProgress({ level: currentLevel.value + 1, score: timeLeft.value, stars: stars.value });
   } else {
     sounds.play('fail');
+    recordPlay();
   }
-  recordPlay();
   showResult.value = true;
 };
 
@@ -324,12 +350,15 @@ const applyLevelConfig = async (level: number) => {
 const pauseGame = () => (paused.value = true);
 const resumeGame = () => (paused.value = false);
 
-const handleRestPause = () => {
+const handlePause = () => {
   paused.value = true;
 };
-const handleRestResume = () => {
+
+const handleResume = () => {
   paused.value = false;
 };
+
+useGameLifecycle({ onPause: handlePause, onResume: handleResume });
 
 const openLevelSelect = () => {
   if (!gameEnded) paused.value = true;
@@ -350,8 +379,6 @@ const quitGame = () => {
 
 onMounted(async () => {
   sounds.init();
-  document.addEventListener(GAME_PAUSE_EVENT, handleRestPause);
-  document.addEventListener(GAME_RESUME_EVENT, handleRestResume);
 
   currentLevel.value = await loadStartLevel();
   await applyLevelConfig(currentLevel.value);
@@ -360,8 +387,6 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (tickTimer) clearInterval(tickTimer);
-  document.removeEventListener(GAME_PAUSE_EVENT, handleRestPause);
-  document.removeEventListener(GAME_RESUME_EVENT, handleRestResume);
 });
 </script>
 
@@ -458,9 +483,16 @@ onUnmounted(() => {
 }
 
 @keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-5px); }
-  75% { transform: translateX(5px); }
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
 }
 
 .item-emoji {

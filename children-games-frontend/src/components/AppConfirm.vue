@@ -4,8 +4,14 @@
       <div class="c-title">{{ pendingConfirm.title }}</div>
       <div v-if="pendingConfirm.detail" class="c-detail">{{ pendingConfirm.detail }}</div>
       <div class="c-actions">
-        <button class="c-btn cancel" @click="settleConfirm(false)">{{ pendingConfirm.cancelText || '取消' }}</button>
-        <button class="c-btn ok" :class="{ danger: pendingConfirm.danger }" @click="settleConfirm(true)">
+        <button class="c-btn cancel" @click="settleConfirm(false)">
+          {{ pendingConfirm.cancelText || '取消' }}
+        </button>
+        <button
+          class="c-btn ok"
+          :class="{ danger: pendingConfirm.danger }"
+          @click="settleConfirm(true)"
+        >
           {{ pendingConfirm.confirmText || '确定' }}
         </button>
       </div>

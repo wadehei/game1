@@ -76,7 +76,7 @@ class Client {
 const uids = [2, 4, 6, 12];
 const tokens = [];
 for (const uid of uids) {
-  tokens.push((await http('POST', '/api/user/login/family', { uid })).json.data.token);
+  tokens.push((await http('POST', '/api/user/login/family', { uid })).json.data.accessToken);
 }
 check('4 角色登录', tokens.every(Boolean));
 

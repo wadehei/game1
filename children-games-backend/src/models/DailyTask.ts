@@ -11,9 +11,15 @@ interface DailyTaskAttributes {
   updatedAt?: Date;
 }
 
-interface DailyTaskCreationAttributes extends Optional<DailyTaskAttributes, 'id' | 'completedGames' | 'taskReward'> {}
+interface DailyTaskCreationAttributes extends Optional<
+  DailyTaskAttributes,
+  'id' | 'completedGames' | 'taskReward'
+> {}
 
-export class DailyTask extends Model<DailyTaskAttributes, DailyTaskCreationAttributes> implements DailyTaskAttributes {
+export class DailyTask
+  extends Model<DailyTaskAttributes, DailyTaskCreationAttributes>
+  implements DailyTaskAttributes
+{
   public id!: number;
   public userId!: number;
   public date!: string;

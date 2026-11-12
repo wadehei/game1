@@ -1,2 +1,13 @@
+# 文本文件按平台规范化换行（repo 内统一 LF，Windows 检出行为由 core.autocrlf 决定）
+* text=auto
+
 # shell 脚本保持 LF 换行（Windows autocrlf 会转 CRLF 导致 Git Bash 执行报错）
 *.sh text eol=lf
+*.png binary
+*.jpg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.mp3 binary
+*.woff binary
+*.woff2 binary

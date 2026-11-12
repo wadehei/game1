@@ -4,9 +4,16 @@
     <template v-if="phase === 'ended' && final">
       <div class="uno-final">
         <div class="uf-title">🏁 UNO 结束（{{ final.reason }}）</div>
-        <div v-for="(r, i) in final.ranking" :key="r.userId" class="uf-row" :class="{ me: r.userId === myId, top: i === 0 }">
+        <div
+          v-for="(r, i) in final.ranking"
+          :key="r.userId"
+          class="uf-row"
+          :class="{ me: r.userId === myId, top: i === 0 }"
+        >
           <span class="uf-rank">{{ ['🥇', '🥈', '🥉'][i] || `${i + 1}.` }}</span>
-          <span class="uf-name">{{ r.nickname }}<template v-if="r.userId === myId">（我）</template></span>
+          <span class="uf-name"
+            >{{ r.nickname }}<template v-if="r.userId === myId">（我）</template></span
+          >
           <span class="uf-score">{{ i === 0 ? '获胜 🎉' : `剩 ${r.penalty} 分` }}</span>
         </div>
         <div class="uf-tip">等待房主发起「再来一局」</div>
@@ -31,7 +38,12 @@
           <span class="pile-card" :style="{ color: textColor(top) }">{{ cardLabel(top) }}</span>
         </div>
         <div class="counts">
-          <div v-for="c in counts" :key="c.userId" class="count-row" :class="{ active: c.userId === turnSeat, me: c.userId === myId }">
+          <div
+            v-for="c in counts"
+            :key="c.userId"
+            class="count-row"
+            :class="{ active: c.userId === turnSeat, me: c.userId === myId }"
+          >
             {{ nameOf(c.userId) }}：{{ c.count }} 张
           </div>
         </div>
@@ -41,7 +53,13 @@
       <div v-if="pickingColor" class="color-picker">
         <div class="cp-title">选择颜色</div>
         <div class="cp-colors">
-          <button v-for="c in UNO_COLORS" :key="c" class="cp-color" :class="c" @click="confirmColor(c)" />
+          <button
+            v-for="c in UNO_COLORS"
+            :key="c"
+            class="cp-color"
+            :class="c"
+            @click="confirmColor(c)"
+          />
         </div>
       </div>
 
@@ -61,9 +79,21 @@
         <div v-if="myHand.length === 0" class="hand-empty">你的手牌出完了</div>
       </div>
       <div class="hand-tip">
-        {{ myTurn ? (drawnThisTurn ? '已摸牌：能出就出，不能出点「跳过」' : '轮到你了：出牌或点「摸牌」') : '等待其他玩家…' }}
+        {{
+          myTurn
+            ? drawnThisTurn
+              ? '已摸牌：能出就出，不能出点「跳过」'
+              : '轮到你了：出牌或点「摸牌」'
+            : '等待其他玩家…'
+        }}
       </div>
-      <button v-if="myTurn && drawnThisTurn" class="pass-btn" @click="emit('action', { t: 'uno_pass' })">跳过</button>
+      <button
+        v-if="myTurn && drawnThisTurn"
+        class="pass-btn"
+        @click="emit('action', { t: 'uno_pass' })"
+      >
+        跳过
+      </button>
     </template>
   </div>
 </template>
@@ -71,6 +101,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useUserStore } from '@/store/user';
+import type { UnoGameState, GameEvents } from '@/composables/wsTypes';
 
 const UNO_COLORS = ['red', 'yellow', 'green', 'blue'];
 
@@ -81,8 +112,8 @@ interface Card {
 }
 
 const props = defineProps<{
-  state: any; // serializeFor
-  events: Record<string, any>;
+  state: UnoGameState; // serializeFor
+  events: Partial<GameEvents>;
   members: Array<{ userId: number; nickname: string; seat: number }>;
   phase: string;
   mySeat: number;
@@ -94,7 +125,7 @@ const userStore = useUserStore();
 const myId = computed(() => userStore.userInfo?.id || 0);
 
 const myHand = computed<Card[]>(() => {
-  const fromEvent = props.events?.uno_hand?.cards;
+  const fromEvent = (props.events?.uno_hand as { cards?: Card[] } | undefined)?.cards;
   if (Array.isArray(fromEvent) && fromEvent.length) return fromEvent;
   return props.state?.myHand || [];
 });
@@ -102,16 +133,22 @@ const top = computed<Card | null>(() => props.state?.top || null);
 const currentColor = computed(() => props.state?.currentColor || 'red');
 const direction = computed(() => props.state?.direction || 1);
 const turnSeat = computed(() => props.state?.turnSeat ?? -1);
-const counts = computed<any[]>(() => props.state?.counts || []);
+const counts = computed<Array<{ userId: number; count: number }>>(
+  () => (props.state?.counts as Array<{ userId: number; count: number }>) || []
+);
 const drawnThisTurn = computed(() => {
   // 以最近一次 uno_drew/uno_turn 事件判断（简化：uno_turn 重置，uno_drew 标记）
-  const drew = props.events.drew as any;
-  const turn = props.events.turn as any;
-  if (turn && drew && Number(drew.seq) >= Number(turn.seq)) return true;
+  const drew = props.events.drew;
+  const turn = props.events.turn;
+  if (turn && drew && drew.seq >= turn.seq) return true;
   return drawnLocal.value;
 });
 const drawnLocal = ref(false);
-const myTurn = computed(() => props.phase === 'playing' && turnSeat.value === (props.members.find((m) => m.userId === myId.value)?.seat ?? -1));
+const myTurn = computed(
+  () =>
+    props.phase === 'playing' &&
+    turnSeat.value === (props.members.find((m) => m.userId === myId.value)?.seat ?? -1)
+);
 // 终局：优先实时事件，兜底快照里的 ended 摘要（刷新/重连后事件已丢）
 const final = computed<any | null>(() => props.events.final || props.state?.ended || null);
 const pickingColor = ref(false);
@@ -122,7 +159,10 @@ const nameOf = (userId: number): string => {
   return props.members?.find((m) => m.userId === userId)?.nickname || `角色${userId}`;
 };
 
-const colorCss = (color: string): string => ({ red: '#e74c3c', yellow: '#f1c40f', green: '#27ae60', blue: '#2980b9', wild: '#667eea' }[color] || '#999');
+const colorCss = (color: string): string =>
+  ({ red: '#e74c3c', yellow: '#f1c40f', green: '#27ae60', blue: '#2980b9', wild: '#667eea' })[
+    color
+  ] || '#999';
 const textColor = (card: Card | null): string => {
   if (!card) return '#999';
   if (card.color === 'wild') return '#667eea';
@@ -131,11 +171,22 @@ const textColor = (card: Card | null): string => {
 };
 const cardLabel = (card: Card | null): string => {
   if (!card) return '—';
-  const labels: Record<string, string> = { skip: '⊘ 跳过', reverse: '⇄ 反转', draw2: '+2', wild: '万能', wild4: '万能+4' };
+  const labels: Record<string, string> = {
+    skip: '⊘ 跳过',
+    reverse: '⇄ 反转',
+    draw2: '+2',
+    wild: '万能',
+    wild4: '万能+4',
+  };
   return labels[card.kind] || card.kind;
 };
 const currentColorLabel = computed(() => {
-  const map: Record<string, string> = { red: '🔴 红色', yellow: '🟡 黄色', green: '🟢 绿色', blue: '🔵 蓝色' };
+  const map: Record<string, string> = {
+    red: '🔴 红色',
+    yellow: '🟡 黄色',
+    green: '🟢 绿色',
+    blue: '🔵 蓝色',
+  };
   return map[currentColor.value] || '';
 });
 
@@ -215,10 +266,18 @@ const nameOfBySeat = (seat: number): string => {
   border: 2px solid #ddd;
 }
 
-.color-lamp.red { background: #e74c3c; }
-.color-lamp.yellow { background: #f1c40f; }
-.color-lamp.green { background: #27ae60; }
-.color-lamp.blue { background: #2980b9; }
+.color-lamp.red {
+  background: #e74c3c;
+}
+.color-lamp.yellow {
+  background: #f1c40f;
+}
+.color-lamp.green {
+  background: #27ae60;
+}
+.color-lamp.blue {
+  background: #2980b9;
+}
 
 .turn {
   font-weight: bold;
@@ -321,10 +380,18 @@ const nameOfBySeat = (seat: number): string => {
   cursor: pointer;
 }
 
-.cp-color.red { background: #e74c3c; }
-.cp-color.yellow { background: #f1c40f; }
-.cp-color.green { background: #27ae60; }
-.cp-color.blue { background: #2980b9; }
+.cp-color.red {
+  background: #e74c3c;
+}
+.cp-color.yellow {
+  background: #f1c40f;
+}
+.cp-color.green {
+  background: #27ae60;
+}
+.cp-color.blue {
+  background: #2980b9;
+}
 
 .hand {
   display: flex;
