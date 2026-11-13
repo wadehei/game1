@@ -45,7 +45,7 @@ describe('achievementService', () => {
 
   describe('ACHIEVEMENTS', () => {
     it('should have all achievements defined', () => {
-      expect(ACHIEVEMENTS.length).toBe(9);
+      expect(ACHIEVEMENTS.length).toBe(15);
     });
 
     it('should have unique IDs', () => {

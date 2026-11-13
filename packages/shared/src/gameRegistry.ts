@@ -31,6 +31,7 @@ export const SINGLE_PLAYER_GAMES: readonly SinglePlayerGameMeta[] = [
   { id: 'brick', title: '打砖块', lowerScoreIsBetter: false },
   { id: 'sudoku', title: '动物数独', lowerScoreIsBetter: true },
   { id: 'claw', title: '抓娃娃机', lowerScoreIsBetter: false },
+  { id: 'doudizhu', title: '斗地主', lowerScoreIsBetter: false },
 ];
 
 export const SINGLE_PLAYER_GAME_IDS: readonly string[] = SINGLE_PLAYER_GAMES.map((g) => g.id);
