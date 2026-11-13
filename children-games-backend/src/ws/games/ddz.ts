@@ -371,7 +371,8 @@ const settleHand = (room: Room, winner: Member, reason: 'done' | 'quit'): void =
   if (landlordWin) {
     const farmersIdle = [...st.players].every(([uid, p]) => p.isLandlord || p.playedHands === 0);
     if (farmersIdle && st.players.size === 3) spring = 'spring';
-  } else if (lmUid !== undefined && st.players.get(lmUid)!.playedHands <= 1) {
+  } else if (lmUid !== undefined && st.players.get(lmUid)!.playedHands === 1) {
+    // 反春天：地主只出过1手牌就输了
     spring = 'anti';
   }
   if (spring) st.multiplier *= 2;
@@ -418,7 +419,17 @@ const settleHand = (room: Room, winner: Member, reason: 'done' | 'quit'): void =
     };
   });
   for (const d of deltas) {
-    if (d.delta) void applyChipDelta(d.userId, d.delta); // 每局实时入账
+    applyChipDelta(d.userId, d.delta).catch((err) => {
+      // 积分变更失败时记录并通知用户，但不回滚牌局状态
+      console.error(`[ddz] applyChipDelta failed for userId=${d.userId}, delta=${d.delta}`, err);
+      const m = room.members.get(d.userId);
+      if (m) {
+        getRoomBus().sendToUser(room, d.userId, {
+          t: 'ddz_error',
+          error: '积分入账失败，请联系客服',
+        });
+      }
+    });
     const m = room.members.get(d.userId);
     if (m) m.chips = d.chips;
   }
@@ -547,7 +558,34 @@ export const ddzHandler: GameHandler<DdzState> = {
   onPlayerQuit(room: Room, member: Member): ActionResult | void {
     const st = room.game as DdzState;
     st.players.delete(member.userId);
+
     if (room.phase === 'playing') {
+      if (st.handPhase === 'bidding') {
+        // 叫分阶段退出：清除定时器，剩余≥2人时继续叫分
+        clearGameTimer(st);
+        const remaining = getSeatedPlayers(room);
+        if (remaining.length >= 2) {
+          // 推进到下一个仍在的玩家
+          st.turnSeat = nextSeatOf(room, member.seat);
+          st.bidCount += 1; // 视同此人不叫
+          // 如果剩余人都已叫过，直接定地主或重发
+          if (st.bidCount >= remaining.length) {
+            if (st.bidBestSeat !== null) decideLandlord(room);
+            else {
+              st.bidStartOffset += 1;
+              getRoomBus().broadcast(room, { t: 'ddz_redeal', round: st.round });
+              startHand(room);
+            }
+          } else {
+            armBidTimer(room, st);
+          }
+          return;
+        }
+        // 人数不足，直接终局
+        finish(room, '人数不足，提前结束');
+        return { ended: { winnerSeat: st.ranking?.[0]?.seat ?? -1, reason: '人数不足，提前结束' } };
+      }
+
       finish(room, '人数不足，提前结束');
       return { ended: { winnerSeat: st.ranking?.[0]?.seat ?? -1, reason: '人数不足，提前结束' } };
     }
@@ -578,8 +616,11 @@ export const ddzHandler: GameHandler<DdzState> = {
     if (st.turnSeat !== member.seat) return { error: '还没轮到你出牌' };
 
     if (action === 'ddz_play') {
-      const cards = Array.isArray(payload?.cards) ? payload.cards.map((c) => String(c)) : [];
+      if (!payload?.cards || !Array.isArray(payload.cards)) return { error: '请选择要出的牌' };
+      const cards = payload.cards.map((c) => String(c));
       if (!cards.length || cards.length > 20) return { error: '请选择要出的牌' };
+      // 验证每张牌格式（非空字符串）
+      if (cards.some((c) => !c || typeof c !== 'string')) return { error: '无效的牌面数据' };
       doPlay(room, member, cards);
       return {};
     }

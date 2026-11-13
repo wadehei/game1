@@ -112,6 +112,16 @@ const routes = [
     name: 'Claw',
     component: () => import('@/pages/claw/index.vue'),
   },
+  {
+    path: '/doudizhu',
+    name: 'Doudizhu',
+    component: () => import('@/pages/doudizhu/index.vue'),
+  },
+  {
+    path: '/doudizhu-3d',
+    name: 'Doudizhu3D',
+    component: () => import('@/pages/doudizhu/index3d.vue'),
+  },
 ];
 
 const router = createRouter({

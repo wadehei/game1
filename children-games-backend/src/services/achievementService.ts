@@ -15,6 +15,10 @@ export interface AchievementDef {
     levels: Record<string, number>;
     distinctGames: number;
     dailyRewardClaimed: boolean;
+    // 扩展上下文：每个游戏的胜场和最高分
+    winCounts: Record<string, number>;
+    highScores: Record<string, number>;
+    playCounts: Record<string, number>;
   }) => boolean;
 }
 
@@ -39,6 +43,8 @@ export const GAME_RULES: Record<string, { lowerScoreIsBetter: boolean }> = {
   sudoku: { lowerScoreIsBetter: true },
   // 抓娃娃机的成绩是抓到只数，越多越好
   claw: { lowerScoreIsBetter: false },
+  // 斗地主的成绩是通关倍数，越高越好
+  doudizhu: { lowerScoreIsBetter: false },
 };
 
 export const ACHIEVEMENTS: AchievementDef[] = [
@@ -92,6 +98,48 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     check: (c) => (c.levels.math || 0) >= 10,
   },
   {
+    id: 'card_master',
+    name: '斗地主高手',
+    icon: '🃏',
+    desc: '斗地主通关第 10 关',
+    check: (c) => (c.levels.doudizhu || 0) >= 10,
+  },
+  {
+    id: 'doudizhu_first_win',
+    name: '初出茅庐',
+    icon: '🌱',
+    desc: '赢得第一场斗地主',
+    check: (c) => (c.winCounts.doudizhu || 0) >= 1,
+  },
+  {
+    id: 'doudizhu_win_10',
+    name: '常胜将军',
+    icon: '🏆',
+    desc: '累计赢得 10 场斗地主',
+    check: (c) => (c.winCounts.doudizhu || 0) >= 10,
+  },
+  {
+    id: 'doudizhu_win_50',
+    name: '斗地主传奇',
+    icon: '👑',
+    desc: '累计赢得 50 场斗地主',
+    check: (c) => (c.winCounts.doudizhu || 0) >= 50,
+  },
+  {
+    id: 'doudizhu_bomb_master',
+    name: '炸弹大师',
+    icon: '💣',
+    desc: '斗地主单局获得 8 倍以上',
+    check: (c) => (c.highScores.doudizhu || 0) >= 8,
+  },
+  {
+    id: 'doudizhu_all_clear',
+    name: '通关达人',
+    icon: '🎖️',
+    desc: '斗地主通关全部 30 关',
+    check: (c) => (c.levels.doudizhu || 0) >= 30,
+  },
+  {
     id: 'all_rounder',
     name: '全能玩家',
     icon: '🏅',
@@ -125,14 +173,29 @@ export const evaluateAchievements = async (
   ]);
 
   const levels: Record<string, number> = {};
+  const winCounts: Record<string, number> = {};
+  const highScores: Record<string, number> = {};
+  const playCounts: Record<string, number> = {};
+
   allProgress.forEach((p) => {
     levels[p.gameId] = Math.max(levels[p.gameId] || 0, p.currentLevel);
+    winCounts[p.gameId] = Math.max(winCounts[p.gameId] || 0, p.winCount || 0);
+    highScores[p.gameId] = Math.max(highScores[p.gameId] || 0, p.highScore || 0);
+    playCounts[p.gameId] = Math.max(playCounts[p.gameId] || 0, p.playCount || 0);
   });
 
   const dailyRewardClaimed =
     (parseInt((rewardRows[0] as unknown as RewardTotalRow)?.rewardTotal as string, 10) || 0) > 0;
   const totalStars = user?.totalStars || 0;
-  const ctx = { totalStars, levels, distinctGames: allProgress.length, dailyRewardClaimed };
+  const ctx = {
+    totalStars,
+    levels,
+    distinctGames: allProgress.length,
+    dailyRewardClaimed,
+    winCounts,
+    highScores,
+    playCounts,
+  };
 
   return ACHIEVEMENTS.filter((def) => def.check(ctx));
 };

@@ -92,6 +92,31 @@ async function seedLevelConfigs() {
       });
     }
 
+    // 斗地主关卡（AI难度递增）
+    for (let i = 1; i <= 30; i++) {
+      // 难度梯度：easy(1-10) -> normal(11-20) -> hard(21-30)
+      let aiDifficulty: 'easy' | 'normal' | 'hard' = 'easy';
+      if (i > 20) aiDifficulty = 'hard';
+      else if (i > 10) aiDifficulty = 'normal';
+
+      await LevelConfig.findOrCreate({
+        where: { gameId: 'doudizhu', level: i },
+        defaults: {
+          gameId: 'doudizhu',
+          level: i,
+          config: JSON.stringify({
+            aiDifficulty,
+            // 是否允许玩家先手叫地主
+            playerFirstBid: i <= 5,
+            // AI思考时间（毫秒，越低越强）
+            aiThinkTime: Math.max(2000 - i * 50, 500),
+            // 目标倍数（通关条件）
+            targetMultiplier: Math.min(2 + Math.floor(i / 5), 8),
+          }),
+        },
+      });
+    }
+
     console.log('✅ 关卡配置初始化完成');
     process.exit(0);
   } catch (error) {

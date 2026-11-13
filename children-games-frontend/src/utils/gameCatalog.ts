@@ -11,6 +11,7 @@ import iconMatch3Svg from '@/static/images/games/lobby/icon-match3.svg';
 import iconBrickSvg from '@/static/images/games/lobby/icon-brick.svg';
 import iconSudokuSvg from '@/static/images/games/lobby/icon-sudoku.svg';
 import iconClawSvg from '@/static/images/games/lobby/icon-claw.svg';
+import iconDoudizhuSvg from '@/static/images/games/lobby/icon-doudizhu.svg';
 
 export interface GameCatalogItem {
   id: string;
@@ -111,5 +112,12 @@ export const games: readonly GameCatalogItem[] = [
     totalLevels: 20,
     icon: iconClawSvg,
     bgColor: 'linear-gradient(135deg, #f66d9b 0%, #c2429c 100%)',
+  },
+  {
+    id: 'doudizhu',
+    name: '斗地主',
+    totalLevels: 30,
+    icon: iconDoudizhuSvg,
+    bgColor: 'linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%)',
   },
 ];
