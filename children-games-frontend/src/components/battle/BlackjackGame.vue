@@ -171,6 +171,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useUserStore } from '@/store/user';
 import { soundManager } from '@/utils/sound';
+import { useBattleHelpers } from '@/composables/useBattleHelpers';
 import BattleResultPanel from './BattleResultPanel.vue';
 import BetLedger from './BetLedger.vue';
 import type { BlackjackGameState, GameEvents } from '@/composables/wsTypes';
@@ -187,6 +188,12 @@ const emit = defineEmits<{ (e: 'action', action: Record<string, unknown>): void 
 
 const userStore = useUserStore();
 const myId = computed(() => userStore.userInfo?.id || 0);
+
+// 提取通用辅助函数
+const { nameOfUser, nameOfSeat, seatOfUser } = useBattleHelpers({
+  members: computed(() => props.members),
+  myId,
+});
 
 const final = computed(
   () =>
@@ -321,18 +328,6 @@ const idleText = computed(() => {
   return '等待开局…';
 });
 
-const nameOfSeat = (seat: number): string => {
-  const m = props.members?.find((x) => x.seat === seat);
-  if (!m) return `座位${seat + 1}`;
-  return m.userId === myId.value ? `${m.nickname}（我）` : m.nickname;
-};
-const nameOfUser = (userId: number): string => {
-  const m = props.members?.find((x) => x.userId === userId);
-  if (!m) return `角色${userId}`;
-  return m.userId === myId.value ? `${m.nickname}（我）` : m.nickname;
-};
-const seatOfUser = (userId: number): number =>
-  props.members?.find((x) => x.userId === userId)?.seat ?? -1;
 const isRed = (card: string): boolean => card.includes('♥') || card.includes('♦');
 const outcomeText = (o: string): string =>
   ({ win: '赢', lose: '输', push: '平', bust: '爆牌', blackjack: 'Blackjack' })[o] || o;

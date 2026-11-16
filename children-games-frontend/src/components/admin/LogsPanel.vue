@@ -37,6 +37,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { getErrorLogs, clearErrorLogs, type AdminErrorLog } from '@/api/admin';
 import { confirmAction } from '@/utils/confirmBus';
+import { showToast } from '@/utils/toastBus';
 
 const logs = ref<AdminErrorLog[]>([]);
 const loading = ref(true);
@@ -69,7 +70,12 @@ const clearAll = async () => {
     confirmText: '清空',
   });
   if (!ok) return;
-  await clearErrorLogs().catch(() => {});
+  try {
+    await clearErrorLogs();
+    showToast('日志已清空');
+  } catch {
+    showToast('清空失败，请重试', 'error');
+  }
   await load();
 };
 

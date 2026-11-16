@@ -122,6 +122,7 @@ describe('useRoomEvents — common events', () => {
     it.each(['game_start', 'game_restart'])(
       '%s: 重置 phase/board/game 并清空 gameEvents',
       (event) => {
+        ctx.gameType.value = 'gomoku';
         ctx.phase.value = 'waiting';
         ctx.gameEvents.question = { t: 'quiz_question' } as any;
         ws.emit(event as any, { phase: 'playing' });
@@ -132,9 +133,22 @@ describe('useRoomEvents — common events', () => {
         expect(ctx.gameEvents.question).toBeNull();
       }
     );
+
+    it('gomoku 时 game.value.board 与 board.value 必须同引用（脱钩=落子写进无人渲染的数组）', () => {
+      ctx.gameType.value = 'gomoku';
+      ws.emit('game_start' as any, { phase: 'playing' });
+      expect((ctx.game.value as any).board).toBe(ctx.board.value);
+    });
+
+    it('非 gomoku 游戏不动 game.value（保留 joined 快照的初始态）', () => {
+      ctx.gameType.value = 'quiz';
+      ctx.game.value = { round: 3 } as any;
+      ws.emit('game_start' as any, { phase: 'playing' });
+      expect((ctx.game.value as any).round).toBe(3);
+    });
   });
 
-  // ── game_over ─────────────────────────────────────
+  // ── game_over ─────────────────────
   describe('game_over', () => {
     it('设置 phase=ended 和 overReason', () => {
       ws.emit('game_over', { reason: 'all_ready' });

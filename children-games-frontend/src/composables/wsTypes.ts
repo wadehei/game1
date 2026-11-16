@@ -295,11 +295,174 @@ export interface DdzGameState {
 }
 
 /**
- * 游戏事件类型
- * 注：quiz 事件按后端实际广播形状声明（shared 包类型滞后，勿照抄 shared）：
- * 后端 quiz.ts → quiz_question {index,total,qid,text,options,deadline}、
- * quiz_result {qid,answer,delta:[{userId,gained,total}]}、quiz_final {ranking:[{userId,nickname,total}]}
+ * 游戏事件载荷类型（gameEvents 各字段的精确形状）
  */
+
+/** 你画我猜：round 事件 + 客户端 ts */
+export interface DrawRoundPayload {
+  t: 'draw_round';
+  phase: string;
+  drawerSeat: number;
+  round: number;
+  totalRounds: number;
+  deadline?: number;
+  wordLen?: number;
+  category?: string;
+  ts: number;
+}
+
+/** 你画我猜：stroke 事件（后端包装为 { stroke: {...} }） */
+export interface DrawStrokePayload {
+  stroke: {
+    seq: number;
+    points: number[][];
+    color: string;
+    width: number;
+  };
+}
+
+/** 你画我猜：hint 事件 */
+export interface DrawHintPayload {
+  t: 'draw_hint';
+  char: string;
+}
+
+/** 你画我猜：guess_result */
+export interface DrawGuessResultPayload {
+  t: 'guess_result';
+  userId: number;
+  correct: boolean;
+}
+
+/** 你画我猜：round_end 事件 */
+export interface DrawRoundEndPayload {
+  t: 'draw_round_end';
+  word: string;
+  category?: string;
+  reason?: string;
+  scores?: Array<{ userId: number; total: number }>;
+  ranking?: Array<{ userId: number; nickname: string; total: number }>;
+}
+
+/** 坦克对决事件类型 */
+export interface TankPlayerView {
+  userId: number;
+  seat: number;
+  x: number;
+  y: number;
+  dir: number;
+  hp: number;
+  alive: boolean;
+  kills: number;
+  shield?: boolean;
+}
+
+export interface TankBulletView {
+  id: number;
+  ownerId: number;
+  x: number;
+  y: number;
+  dir: number;
+}
+
+export interface TankPowerupView {
+  id: number;
+  kind: 'heal' | 'rapid' | 'shield';
+  x: number;
+  y: number;
+}
+
+export interface TankStartPayload {
+  arena: { w: number; h: number };
+  walls?: Array<{ x: number; y: number; w: number; h: number }>;
+  players: TankPlayerView[];
+}
+
+export interface TankTickPayload {
+  players: TankPlayerView[];
+  bullets: TankBulletView[];
+  powerups?: TankPowerupView[];
+  remainMs: number;
+}
+
+export interface TankHitPayload {
+  targetId: number;
+  attackerId: number;
+  damage: number;
+}
+
+export interface TankBoomPayload {
+  x: number;
+  y: number;
+  radius: number;
+}
+
+export interface TankPickupPayload {
+  playerId: number;
+  powerupId: number;
+  kind: 'heal' | 'rapid' | 'shield';
+}
+
+export interface TankFinalPayload {
+  reason: string;
+  ranking: Array<{ userId: number; total: number }>;
+}
+
+/** 卧底：spy_phase 事件 */
+export interface SpyPhasePayload {
+  t: 'spy_phase';
+  phase: string;
+  deadline: number;
+  alive: number[];
+  isRevote?: boolean;
+  revotePool?: number[] | null;
+}
+
+/** 卧底：spy_deal 事件 */
+export interface SpyDealPayload {
+  t: 'spy_deal';
+  role: string;
+  word: string;
+}
+
+/** 卧底：spy_vote_update 事件 */
+export interface SpyVoteUpdatePayload {
+  t: 'spy_vote_update';
+  votedCount: number;
+  total: number;
+}
+
+/** 卧底：spy_eliminated 事件 */
+export interface SpyEliminatedPayload {
+  t: 'spy_eliminated';
+  userId: number;
+  role: string;
+}
+
+/** UNO：uno_hand 事件 */
+export interface UnoHandPayload {
+  t: 'uno_hand';
+  cards: Array<{ id: string; color: string; kind: string }>;
+}
+
+/** 斗地主相关事件（简化，实际来自 S2CDdzEvent） */
+export type DdzPhasePayload = Extract<S2CDdzEvent, { t: 'ddz_phase' }>;
+export type DdzYourCardsPayload = Extract<S2CDdzEvent, { t: 'ddz_your_cards' }>;
+export type DdzBidPayload = Extract<S2CDdzEvent, { t: 'ddz_bid' }>;
+export type DdzRedealPayload = Extract<S2CDdzEvent, { t: 'ddz_redeal' }>;
+export type DdzBottomPayload = Extract<S2CDdzEvent, { t: 'ddz_bottom' }>;
+export type DdzPlayPayload = Extract<S2CDdzEvent, { t: 'ddz_play' }>;
+export type DdzPassPayload = Extract<S2CDdzEvent, { t: 'ddz_pass' }>;
+export type DdzSettlePayload = Extract<S2CDdzEvent, { t: 'ddz_settle' }>;
+export type DdzErrorPayload = Extract<S2CDdzEvent, { t: 'ddz_error' }>;
+
+/** 炸金花相关事件 */
+export type ZjhComparePayload = Extract<S2CZjhEvent, { t: 'zjh_compare' }>;
+export type ZjhCompareCardsPayload = Extract<S2CZjhEvent, { t: 'zjh_compare_cards' }>;
+export type ZjhShowdownPayload = Extract<S2CZjhEvent, { t: 'zjh_showdown' }>;
+export type ZjhSettlePayload = Extract<S2CZjhEvent, { t: 'zjh_settle' }>;
+
+/** 答题事件（后端实际广播形状，shared 包类型滞后） */
 export interface QuizQuestionEvent {
   t: 'quiz_question';
   index: number;
@@ -321,6 +484,89 @@ export interface QuizFinalEvent {
   t: 'quiz_final';
   ranking: Array<{ userId: number; nickname: string; total: number }>;
 }
+
+/**
+ * 游戏事件类型（精确版）
+ * 注：quiz 事件按后端实际广播形状声明（shared 包类型滞后，勿照抄 shared）：
+ * 后端 quiz.ts → quiz_question {index,total,qid,text,options,deadline}、
+ * quiz_result {qid,answer,delta:[{userId,gained,total}]}、quiz_final {ranking:[{userId,nickname,total}]}
+ */
+export type GameEvents = {
+  // 答题
+  question: QuizQuestionEvent | null;
+  result: QuizResultEvent | null;
+  // 各游戏 *_final 事件的联合（后端实际广播形状，见各游戏 handler）
+  final: TotalRankingFinal | UnoFinalEvent | ChipsRankingFinal | SpyFinalEvent | null;
+  // 你画我猜
+  round: DrawRoundPayload | null;
+  stroke: DrawStrokePayload | null;
+  hint: DrawHintPayload | null;
+  guessResult: DrawGuessResultPayload[] | null;
+  candidates: string[];
+  undo: { ts: number } | null;
+  clear: { ts: number } | null;
+  roundEnd: DrawRoundEndPayload | null;
+  // 坦克对决
+  tankStart: TankStartPayload | null;
+  tankTick: TankTickPayload | null;
+  tankHit: TankHitPayload | null;
+  tankBoom: TankBoomPayload | null;
+  tankPickup: TankPickupPayload | null;
+  // 卧底
+  phase: SpyPhasePayload | null;
+  deal: SpyDealPayload | null;
+  voteUpdate: SpyVoteUpdatePayload | null;
+  voteResult: SpyVoteResultEvent | null;
+  eliminated: SpyEliminatedPayload | null;
+  // UNO
+  uno_state: UnoStateEvent | null;
+  /** uno_turn 事件 + 客户端追加的 seq（用于 drew/turn 先后判断） */
+  turn: { seat: number; deadline?: number; seq: number } | null;
+  uno_played: UnoPlayedEvent | null;
+  uno_hand: UnoHandPayload | null;
+  /** uno_drew 事件 + 客户端追加的 seq */
+  drew: { userId: number; seq: number } | null;
+  // 21 点
+  blackjack_phase: BlackjackPhaseEvent | null;
+  blackjack_deal: Extract<S2CBlackjackEvent, { t: 'blackjack_deal' }> | null;
+  blackjack_your_banker: Extract<S2CBlackjackEvent, { t: 'blackjack_your_banker' }> | null;
+  blackjack_action: BlackjackActionEvent | null;
+  blackjack_settle: Extract<S2CBlackjackEvent, { t: 'blackjack_settle' }> | null;
+  handsView: Array<{
+    userId: number;
+    seat?: number;
+    nickname?: string;
+    cards?: string[];
+    stake?: number;
+    done?: boolean;
+    busted?: boolean;
+    natural?: boolean;
+  }> | null;
+  doubled: { userId: number; stake: number; seq: number } | null;
+  // 炸金花
+  zjh_phase: ZjhPhaseEvent | null;
+  zjh_your_cards: ZjhYourCardsEvent | null;
+  zjh_action: Extract<S2CZjhEvent, { t: 'zjh_action' }> | null;
+  zjh_compare: ZjhComparePayload | null;
+  compareCards: ZjhCompareCardsPayload | null;
+  zjh_compare_cards: ZjhCompareCardsPayload | null;
+  zjh_showdown: ZjhShowdownPayload | null;
+  zjh_settle: ZjhSettlePayload | null;
+  yanpai: { from: number; to: number; seq: number } | null;
+  compare: ZjhComparePayload | null;
+  showdown: ZjhShowdownPayload | null;
+  settle: ZjhSettlePayload | null;
+  // 斗地主
+  ddz_phase: DdzPhasePayload | null;
+  ddz_your_cards: DdzYourCardsPayload | null;
+  ddz_bid: DdzBidPayload | null;
+  ddz_redeal: DdzRedealPayload | null;
+  ddz_bottom: DdzBottomPayload | null;
+  ddz_play: DdzPlayPayload | null;
+  ddz_pass: DdzPassPayload | null;
+  ddz_settle: DdzSettlePayload | null;
+  ddz_error: DdzErrorPayload | null;
+};
 
 // ─── 后端实际广播的事件形状（shared 包类型滞后处，按各游戏 handler 逐字段核对） ──────────
 
@@ -442,94 +688,16 @@ export type SpyFinalEvent = {
   spies: number[];
 };
 
-/** 用 type alias 而非 interface：保留隐式索引签名，便于赋给 Record<string, unknown> 形参 */
-export type GameEvents = {
-  // 答题
-  question: QuizQuestionEvent | null;
-  result: QuizResultEvent | null;
-  // 各游戏 *_final 事件的联合（后端实际广播形状，见各游戏 handler）
-  final: TotalRankingFinal | UnoFinalEvent | ChipsRankingFinal | SpyFinalEvent | null;
-  // 你画我猜
-  round: unknown;
-  stroke: unknown;
-  hint: unknown;
-  guessResult: unknown[] | null;
-  candidates: string[];
-  undo: { ts: number } | null;
-  clear: { ts: number } | null;
-  roundEnd: unknown;
-  // 坦克对决
-  tankStart: unknown;
-  tankTick: unknown;
-  tankHit: unknown;
-  tankBoom: unknown;
-  tankPickup: unknown;
-  // 卧底
-  phase: unknown;
-  deal: unknown;
-  voteUpdate: unknown;
-  voteResult: SpyVoteResultEvent | null;
-  eliminated: unknown;
-  // UNO
-  uno_state: unknown;
-  /** uno_turn 事件 + 客户端追加的 seq（用于 drew/turn 先后判断） */
-  turn: { seat: number; deadline?: number; seq: number } | null;
-  uno_played: unknown;
-  uno_hand: unknown;
-  /** uno_drew 事件 + 客户端追加的 seq */
-  drew: { userId: number; seq: number } | null;
-  // 21 点
-  blackjack_phase: unknown;
-  blackjack_deal: unknown;
-  blackjack_your_banker: unknown;
-  blackjack_action: unknown;
-  blackjack_settle: unknown;
-  handsView: Array<{
-    userId: number;
-    seat?: number;
-    nickname?: string;
-    cards?: string[];
-    stake?: number;
-    done?: boolean;
-    busted?: boolean;
-    natural?: boolean;
-  }> | null;
-  doubled: { userId: number; stake: number; seq: number } | null;
-  // 炸金花
-  zjh_phase: unknown;
-  zjh_your_cards: unknown;
-  zjh_action: unknown;
-  zjh_compare: unknown;
-  compareCards: unknown;
-  zjh_compare_cards: unknown;
-  zjh_showdown: unknown;
-  zjh_settle: unknown;
-  yanpai: { from: number; to: number; seq: number } | null;
-  compare: unknown;
-  showdown: unknown;
-  settle: unknown;
-  // 斗地主
-  ddz_phase: unknown;
-  ddz_your_cards: unknown;
-  ddz_bid: unknown;
-  ddz_redeal: unknown;
-  ddz_bottom: unknown;
-  ddz_play: unknown;
-  ddz_pass: unknown;
-  ddz_settle: unknown;
-  ddz_error: unknown;
-};
-
 /**
  * WebSocket 事件映射
  */
 export interface WsEventMap {
-  tank_start: unknown;
-  tank_tick: unknown;
-  tank_hit: unknown;
-  tank_boom: unknown;
-  tank_pickup: unknown;
-  tank_final: unknown;
+  tank_start: TankStartPayload;
+  tank_tick: TankTickPayload;
+  tank_hit: TankHitPayload;
+  tank_boom: TankBoomPayload;
+  tank_pickup: TankPickupPayload;
+  tank_final: TankFinalPayload;
   joined: S2CJoined;
   snapshot: S2CSnapshot;
   member_update: S2CMemberUpdate;

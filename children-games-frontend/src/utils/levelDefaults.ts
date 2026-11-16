@@ -201,6 +201,13 @@ const FORMULAS: Record<string, Formula> = {
     targetGrabs: 8 + Math.floor((level - 1) / 2),
     timeLimit: Math.max(75 - (level - 1) * 3, 45),
   }),
+  // 斗地主：AI 难度随关卡提升，思考时间逐渐缩短，目标倍数递增
+  doudizhu: (level) => ({
+    aiDifficulty: level <= 10 ? 0 : level <= 20 ? 1 : 2, // 0=easy, 1=normal, 2=hard
+    playerFirstBid: level <= 5,
+    aiThinkTime: Math.max(2000 - (level - 1) * 50, 500),
+    targetMultiplier: Math.min(2 + Math.floor((level - 1) / 5), 8),
+  }),
 };
 
 /** 某游戏某关的内置默认配置（调用方按需取用；字面量 gameId 获得精确类型） */
@@ -299,6 +306,12 @@ export const LEVEL_FIELD_DEFS: Record<string, FieldDef[]> = {
     { key: 'clawSpeed', label: '爪速（像素/秒，越大越难）' },
     { key: 'targetGrabs', label: '目标抓取数' },
     { key: 'timeLimit', label: '时限（秒）' },
+  ],
+  doudizhu: [
+    { key: 'aiDifficulty', label: 'AI 难度（0容易 1普通 2困难）' },
+    { key: 'playerFirstBid', label: '玩家先叫分', isBool: true },
+    { key: 'aiThinkTime', label: 'AI 思考时间（毫秒）' },
+    { key: 'targetMultiplier', label: '目标倍数' },
   ],
 };
 

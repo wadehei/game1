@@ -45,6 +45,17 @@ vi.mock('axios', () => {
 // Mock request module
 vi.mock('../../utils/request', () => ({
   API_ORIGIN: 'http://localhost:3000',
+  createApiClient: () => ({
+    get: mockClientGet,
+    post: mockClientPost,
+    put: mockClientPut,
+    delete: mockClientDelete,
+    raw: {
+      get: mockAxiosGet,
+      post: mockAxiosPost,
+      delete: mockAxiosDelete,
+    },
+  }),
 }));
 
 import {
@@ -178,12 +189,11 @@ describe('api/admin', () => {
     });
 
     it('listVoiceLines should fetch from /api/voice', async () => {
-      global.fetch = vi.fn().mockResolvedValue({
-        json: () => Promise.resolve({ data: [] }),
-      });
+      // client.get returns unwrapped data (simulating interceptor)
+      mockClientGet.mockResolvedValue([]);
 
       const result = await listVoiceLines();
-      expect(global.fetch).toHaveBeenCalledWith('http://localhost:3000/api/voice');
+      expect(mockClientGet).toHaveBeenCalledWith('');
       expect(result).toEqual([]);
     });
   });

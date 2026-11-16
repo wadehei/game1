@@ -60,10 +60,10 @@ afterEach(() => {
 describe('useRoomEvents — draw events', () => {
   describe('draw_round', () => {
     it('设置 gameEvents.round 并重置 stroke/final/hint/guessResult', () => {
-      ctx.gameEvents.stroke = { old: true };
+      ctx.gameEvents.stroke = { old: true } as any;
       ctx.gameEvents.final = { old: true } as any;
-      ctx.gameEvents.hint = { old: true };
-      ctx.gameEvents.guessResult = [{ old: true }];
+      ctx.gameEvents.hint = { old: true } as any;
+      ctx.gameEvents.guessResult = [{ old: true }] as any;
 
       const m = {
         t: 'draw_round' as const,

@@ -28,7 +28,8 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { DoudizhuTable3D, createTable3D } from '../utils/table3d';
+import type { DoudizhuTable3D } from './utils/table3d';
+import { createTable3D } from './utils/table3d';
 
 const router = useRouter();
 const containerRef = ref<HTMLElement | null>(null);
@@ -73,20 +74,14 @@ const goBack = () => {
   router.push('/doudizhu');
 };
 
-onMounted(() => {
+onMounted(async () => {
   if (!containerRef.value) return;
 
-  // 检查 Three.js 是否可用
-  if (typeof THREE === 'undefined') {
-    console.warn('Three.js 未加载，3D 功能不可用');
-    isLoading.value = false;
-    return;
-  }
-
   try {
-    table3d = createTable3D({
+    // 动态加载 Three.js (~600KB)，仅在访问 3D 页面时下载
+    table3d = await createTable3D({
       container: containerRef.value,
-      onViewChange: (camera) => {
+      onViewChange: () => {
         // 可以在这里更新 UI 元素位置
       },
     });

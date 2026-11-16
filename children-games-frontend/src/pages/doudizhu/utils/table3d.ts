@@ -4,9 +4,12 @@
  *
  * 这是一个原型演示，展示 3D 化的可能性
  * 需要安装: npm install three @types/three
+ *
+ * 优化: Three.js 通过动态导入加载，仅在访问 3D 页面时才会下载 (~600KB)
  */
 
-import * as THREE from 'three';
+// Three.js 通过动态导入加载，类型定义使用 import() 语法
+type THREE = typeof import('three');
 
 // 牌桌配置
 const TABLE_CONFIG = {
@@ -27,26 +30,30 @@ const CARD_CONFIG = {
 
 export interface Table3DOptions {
   container: HTMLElement;
-  onViewChange?: (camera: THREE.Camera) => void;
+  onViewChange?: (camera: import('three').Camera) => void;
 }
 
 export class DoudizhuTable3D {
-  private scene: THREE.Scene;
-  private camera: THREE.PerspectiveCamera;
-  private renderer: THREE.WebGLRenderer;
+  private scene: import('three').Scene;
+  private camera: import('three').PerspectiveCamera;
+  private renderer: import('three').WebGLRenderer;
   private container: HTMLElement;
   private animationFrameId: number | null = null;
 
-  private table: THREE.Group | null = null;
-  private cards: THREE.Group[] = [];
+  private table: import('three').Group | null = null;
+  private cards: import('three').Group[] = [];
 
-  private onViewChange?: (camera: THREE.Camera) => void;
+  private onViewChange?: (camera: import('three').Camera) => void;
   private boundHandleResize: () => void;
 
-  constructor(options: Table3DOptions) {
+  // Three.js 命名空间引用（通过动态导入获取）
+  private THREE: THREE;
+
+  constructor(options: Table3DOptions, THREE: THREE) {
     this.container = options.container;
     this.onViewChange = options.onViewChange;
     this.boundHandleResize = this.handleResize.bind(this);
+    this.THREE = THREE;
 
     // 初始化场景
     this.scene = new THREE.Scene();
@@ -85,6 +92,7 @@ export class DoudizhuTable3D {
   }
 
   private setupLights(): void {
+    const THREE = this.THREE;
     // 环境光
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     this.scene.add(ambientLight);
@@ -110,6 +118,7 @@ export class DoudizhuTable3D {
   }
 
   private createTable(): void {
+    const THREE = this.THREE;
     this.table = new THREE.Group();
 
     // 桌面
@@ -159,7 +168,8 @@ export class DoudizhuTable3D {
   /**
    * 创建一张 3D 牌
    */
-  createCard(value: number, suit: number, faceUp: boolean = true): THREE.Group {
+  createCard(value: number, suit: number, faceUp: boolean = true): import('three').Group {
+    const THREE = this.THREE;
     const cardGroup = new THREE.Group();
 
     // 牌的主体
@@ -210,7 +220,8 @@ export class DoudizhuTable3D {
     return cardGroup;
   }
 
-  private addCardFace(cardGroup: THREE.Group, value: number, suit: number): void {
+  private addCardFace(cardGroup: import('three').Group, value: number, suit: number): void {
+    const THREE = this.THREE;
     // 创建 Canvas 纹理
     const canvas = document.createElement('canvas');
     canvas.width = 128;
@@ -282,7 +293,8 @@ export class DoudizhuTable3D {
     cardGroup.add(faceMesh);
   }
 
-  private addCardBack(cardGroup: THREE.Group): void {
+  private addCardBack(cardGroup: import('three').Group): void {
+    const THREE = this.THREE;
     // 创建背面纹理
     const canvas = document.createElement('canvas');
     canvas.width = 128;
@@ -342,7 +354,13 @@ export class DoudizhuTable3D {
   /**
    * 将牌放到指定位置
    */
-  placeCard(card: THREE.Group, x: number, y: number, z: number, rotation: number = 0): void {
+  placeCard(
+    card: import('three').Group,
+    x: number,
+    y: number,
+    z: number,
+    rotation: number = 0
+  ): void {
     card.position.set(x, y, z);
     card.rotation.y = rotation;
     this.scene.add(card);
@@ -352,7 +370,7 @@ export class DoudizhuTable3D {
   /**
    * 发牌动画
    */
-  async dealCardsAnimation(cards: THREE.Group[][]): Promise<void> {
+  async dealCardsAnimation(cards: import('three').Group[][]): Promise<void> {
     const duration = 1000;
     const startTime = performance.now();
 
@@ -436,7 +454,7 @@ export class DoudizhuTable3D {
 
     // 清理 Three.js 资源
     this.scene.traverse((object) => {
-      if (object instanceof THREE.Mesh) {
+      if (object instanceof this.THREE.Mesh) {
         object.geometry.dispose();
         if (Array.isArray(object.material)) {
           object.material.forEach((m) => m.dispose());
@@ -452,8 +470,10 @@ export class DoudizhuTable3D {
 }
 
 /**
- * 创建 3D 牌桌实例
+ * 异步创建 3D 牌桌实例（动态加载 Three.js）
+ * Three.js (~600KB) 仅在调用此函数时才会下载
  */
-export function createTable3D(options: Table3DOptions): DoudizhuTable3D {
-  return new DoudizhuTable3D(options);
+export async function createTable3D(options: Table3DOptions): Promise<DoudizhuTable3D> {
+  const THREE = await import('three');
+  return new DoudizhuTable3D(options, THREE);
 }

@@ -69,10 +69,10 @@ describe('HomePage', () => {
     expect(wrapper.find('.game-list').exists()).toBe(true);
   });
 
-  it('renders all 13 game cards', () => {
+  it('renders all 14 game cards', () => {
     const wrapper = mount(HomePage);
     const cards = wrapper.findAll('.game-card');
-    expect(cards.length).toBe(13);
+    expect(cards.length).toBe(14);
   });
 
   it('displays default nickname when no user info', () => {

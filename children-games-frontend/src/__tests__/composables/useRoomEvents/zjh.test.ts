@@ -124,9 +124,9 @@ describe('useRoomEvents — zjh events', () => {
           },
         ],
       };
-      ctx.gameEvents.showdown = { old: true };
-      ctx.gameEvents.settle = { old: true };
-      ctx.gameEvents.compareCards = { old: true };
+      ctx.gameEvents.showdown = { old: true } as any;
+      ctx.gameEvents.settle = { old: true } as any;
+      ctx.gameEvents.compareCards = { old: true } as any;
 
       ws.emit('zjh_phase', {
         t: 'zjh_phase',

@@ -234,9 +234,13 @@ const remove = async (key: string) => {
     confirmText: '删除',
   });
   if (!ok) return;
-  await deleteVoice(key).catch(() => {});
-  recordedKeys.delete(key);
-  flash('已删除，回退系统语音');
+  try {
+    await deleteVoice(key);
+    recordedKeys.delete(key);
+    flash('已删除，回退系统语音');
+  } catch {
+    flash('删除失败，请重试');
+  }
 };
 
 onMounted(loadList);

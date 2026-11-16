@@ -3,6 +3,7 @@
  * 返回可直接存入 avatar 字段的相对 URL
  */
 import { API_ORIGIN } from './apiOrigin';
+import { storage } from './storage';
 
 export const uploadPhotoAvatar = async (file: File): Promise<string> => {
   const bitmap = await createImageBitmap(file);
@@ -32,9 +33,18 @@ export const uploadPhotoAvatar = async (file: File): Promise<string> => {
     throw new Error('压缩失败');
   }
 
+  // 获取 token 用于认证
+  const token = storage.getItem('token');
+  if (!token) {
+    throw new Error('未登录，无法上传头像');
+  }
+
   const res = await fetch(`${API_ORIGIN}/api/upload/avatar`, {
     method: 'POST',
-    headers: { 'Content-Type': blob.type },
+    headers: {
+      'Content-Type': blob.type,
+      Authorization: `Bearer ${token}`,
+    },
     body: blob,
   });
   const data = await res.json();
