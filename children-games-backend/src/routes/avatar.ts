@@ -9,6 +9,7 @@ import {
   RATE_LIMIT_MAX_SIZE,
   RATE_LIMIT_CLEANUP_THRESHOLD,
 } from '../config/constants';
+import { secureId } from '../utils/secureRandom';
 
 /**
  * 照片头像上传（非必填，默认仍用 emoji）
@@ -144,7 +145,8 @@ router.post(
     }
 
     await ensureDir();
-    const name = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`;
+    // 文件名：时间戳 + 6 字符安全随机（防预测枚举）
+    const name = `${Date.now()}_${secureId(6)}${ext}`;
     await fsPromises.writeFile(path.join(AVATAR_DIR, name), body);
     success(res, { url: `/api/avatars/${name}` });
   })

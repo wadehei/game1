@@ -7,6 +7,7 @@ import type { ActionResult, GameHandler } from './types';
 import { getRoomBus } from '../bus';
 import { getRoom } from '../roomManager';
 import { secureShuffle, securePickOne } from '../../utils/secureRandom';
+import { z } from 'zod';
 
 // 时长可通过环境变量缩短（测试/演示用）：SPY_TALK_SECONDS / SPY_VOTE_SECONDS
 const TALK_SECONDS = Math.max(5, Number(process.env.SPY_TALK_SECONDS) || 90);
@@ -209,6 +210,13 @@ export const spyHandler: GameHandler<SpyState> = {
   allowSpectators: false,
   rematchSwapSeats: false,
   validActions: new Set(['spy_vote']),
+  actionSchemas: {
+    spy_vote: z.object({
+      t: z.literal('spy_vote'),
+      // null=弃权（协议测试明确要求接受，勿收紧）
+      target: z.number().int().min(0).nullable(),
+    }),
+  },
 
   create(): SpyState {
     return {

@@ -14,6 +14,7 @@ import {
   joinRoom,
   memberList,
   sweepIdle,
+  clearAllRoomTimers,
   TOTAL_MEMBER_LIMIT,
   type Member,
 } from './roomManager';
@@ -96,9 +97,13 @@ export const kickUserEverywhere = (userId: number, reason: string): void => {
   }
 };
 
+// ─── WebSocket 服务器实例（模块级，供 shutdown 使用）───────────────────
+let wss: WebSocketServer | null = null;
+let sweepInterval: ReturnType<typeof setInterval> | null = null;
+
 // ─── 初始化 ───────────────────
 export const initWsServer = (server: Server): void => {
-  const wss = new WebSocketServer({ server, path: '/ws' });
+  wss = new WebSocketServer({ server, path: '/ws' });
   setRoomBus({ broadcast: busBroadcast, sendToUser: busSendToUser });
 
   wss.on('connection', async (ws: WebSocket, req: import('http').IncomingMessage) => {
@@ -276,7 +281,7 @@ export const initWsServer = (server: Server): void => {
   // ─── 心跳检测：清理僵死连接 ───────────────────
   // 使用 ws 库原生 ping/pong 帧（非应用层消息），每 30 秒检查一次
   const heartbeatTimer = setInterval(() => {
-    wss.clients.forEach((ws) => {
+    wss?.clients.forEach((ws) => {
       const ctx = clients.get(ws);
       if (!ctx) return;
       if (ctx.isAlive === false) {
@@ -295,7 +300,7 @@ export const initWsServer = (server: Server): void => {
   wss.on('close', () => clearInterval(heartbeatTimer));
 
   // 定期清理：空闲房间 + 过期语音
-  setInterval(
+  sweepInterval = setInterval(
     () => {
       try {
         sweepIdle();
@@ -304,7 +309,24 @@ export const initWsServer = (server: Server): void => {
       }
     },
     5 * 60 * 1000
-  ).unref();
+  );
+  sweepInterval.unref?.();
+};
+
+/** 优雅关闭：断开所有 WS 连接 + 清理房间定时器 + 停止心跳/清扫 */
+export const shutdownWsServer = (): void => {
+  // 清理所有房间定时器
+  clearAllRoomTimers();
+  // 关闭 WebSocket 服务器（会触发 wss 'close' 事件清理心跳定时器）
+  if (wss) {
+    wss.close();
+    wss = null;
+  }
+  // 清理清扫定时器
+  if (sweepInterval) {
+    clearInterval(sweepInterval);
+    sweepInterval = null;
+  }
 };
 
 // 供大厅展示的游戏列表

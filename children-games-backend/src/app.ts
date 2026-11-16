@@ -13,9 +13,9 @@ import { sequelize, testConnection } from './config/database';
 import { initModels, seedDefaultAdmin } from './models';
 import routes from './routes';
 import avatarRoutes from './routes/avatar';
-import { initWsServer } from './ws/wsServer';
+import { initWsServer, shutdownWsServer } from './ws/wsServer';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
-import { logError, logInfo, initLogger } from './utils/logger';
+import { logError, logInfo, initLogger, shutdownLogger } from './utils/logger';
 import { initSlowQueryLogger, shutdownSlowQueryLogger } from './services/slowQueryLogger';
 import { globalLimiter } from './middleware/rateLimiter';
 import { swaggerSpec } from './config/swagger';
@@ -121,12 +121,20 @@ const gracefulShutdown = async (signal: string) => {
       logInfo('server', '✅ HTTP 服务器已关闭');
     });
   }
+  // 1.5 关闭 WebSocket 服务器（断开所有连接 + 清理房间定时器）
+  shutdownWsServer();
   // 2. 关闭 Redis 连接
   await closeRedis();
+  // 2.3 关闭 Redis 监控（聚合定时器）
+  const { redisMonitor } = await import('./services/redisMonitor');
+  redisMonitor.shutdown();
   // 2.5 关闭慢查询日志（刷盘）
   shutdownSlowQueryLogger();
   // 2.6 关闭审计日志清理调度器
   shutdownAuditLogCleanup();
+  // 2.7 关闭备份调度器
+  const { shutdownBackupScheduler } = await import('./services/backupService');
+  shutdownBackupScheduler();
   // 3. 关闭数据库连接池
   try {
     await sequelize.close();
@@ -134,7 +142,9 @@ const gracefulShutdown = async (signal: string) => {
   } catch (err) {
     logError('server', '关闭数据库连接失败', err instanceof Error ? err.stack : String(err));
   }
-  // 4. 给正在处理的请求最多 10 秒完成
+  // 4. 日志最终刷盘
+  shutdownLogger();
+  // 5. 给正在处理的请求最多 10 秒完成
   setTimeout(() => {
     logInfo('server', '⏰ 强制退出');
     process.exit(1);

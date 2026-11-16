@@ -7,6 +7,7 @@ import { getRoomBus } from '../bus';
 import { config } from '../../config';
 import { applyChipDelta, writeCareerRecords } from '../../services/battleChips';
 import { securePickOne } from '../../utils/secureRandom';
+import { z } from 'zod';
 import {
   buildDeck,
   handValue,
@@ -450,6 +451,16 @@ export const blackjackHandler: GameHandler<BJState> = {
     'blackjack_stand',
     'blackjack_double',
   ]),
+  actionSchemas: {
+    blackjack_bet: z.object({
+      t: z.literal('blackjack_bet'),
+      amount: z.number().int().min(1),
+    }),
+    blackjack_pass_bank: z.object({ t: z.literal('blackjack_pass_bank') }),
+    blackjack_hit: z.object({ t: z.literal('blackjack_hit') }),
+    blackjack_stand: z.object({ t: z.literal('blackjack_stand') }),
+    blackjack_double: z.object({ t: z.literal('blackjack_double') }),
+  },
 
   normalizeConfig(config: Record<string, unknown>): Record<string, unknown> {
     const modes = ['rotate', 'winner', 'keep'];

@@ -5,6 +5,8 @@ import { addTimer, getRoom, type Seat } from '../roomManager';
 import type { ActionResult, GameHandler } from './types';
 import { getRoomBus } from '../bus';
 import { applyChipDelta } from '../../services/battleChips';
+import { logError } from '../../utils/logger';
+import { z } from 'zod';
 import {
   autoFollow,
   autoLead,
@@ -421,7 +423,11 @@ const settleHand = (room: Room, winner: Member, reason: 'done' | 'quit'): void =
   for (const d of deltas) {
     applyChipDelta(d.userId, d.delta).catch((err) => {
       // 积分变更失败时记录并通知用户，但不回滚牌局状态
-      console.error(`[ddz] applyChipDelta failed for userId=${d.userId}, delta=${d.delta}`, err);
+      logError(
+        'ddz',
+        `applyChipDelta failed for userId=${d.userId}, delta=${d.delta}`,
+        err instanceof Error ? err.stack : String(err)
+      );
       const m = room.members.get(d.userId);
       if (m) {
         getRoomBus().sendToUser(room, d.userId, {
@@ -494,6 +500,17 @@ export const ddzHandler: GameHandler<DdzState> = {
   allowSpectators: true,
   rematchSwapSeats: false,
   validActions: new Set(['ddz_bid', 'ddz_play', 'ddz_pass']),
+  actionSchemas: {
+    ddz_bid: z.object({
+      t: z.literal('ddz_bid'),
+      score: z.number().int().min(0).max(3),
+    }),
+    ddz_play: z.object({
+      t: z.literal('ddz_play'),
+      cards: z.array(z.string().min(1)).min(1).max(20),
+    }),
+    ddz_pass: z.object({ t: z.literal('ddz_pass') }),
+  },
 
   normalizeConfig(config: Record<string, unknown>): Record<string, unknown> {
     const unit = Number(config?.baseUnit);
@@ -554,38 +571,13 @@ export const ddzHandler: GameHandler<DdzState> = {
     startHand(room);
   },
 
-  /** 无底注：退出不损积分，按当前桌面积分直接终局（不足三家无法继续） */
+  /** 无底注：退出不损积分，按当前桌面积分直接终局（不足三家无法继续）。
+   *  斗地主 3 人桌任一退出即不足三家；"剩余≥2 继续叫分"会造成 2 人无限重发循环
+   *  （efc3045 引入、ws-ddz「叫分阶段退出即终局」逮住，勿再改回） */
   onPlayerQuit(room: Room, member: Member): ActionResult | void {
     const st = room.game as DdzState;
     st.players.delete(member.userId);
-
     if (room.phase === 'playing') {
-      if (st.handPhase === 'bidding') {
-        // 叫分阶段退出：清除定时器，剩余≥2人时继续叫分
-        clearGameTimer(st);
-        const remaining = getSeatedPlayers(room);
-        if (remaining.length >= 2) {
-          // 推进到下一个仍在的玩家
-          st.turnSeat = nextSeatOf(room, member.seat);
-          st.bidCount += 1; // 视同此人不叫
-          // 如果剩余人都已叫过，直接定地主或重发
-          if (st.bidCount >= remaining.length) {
-            if (st.bidBestSeat !== null) decideLandlord(room);
-            else {
-              st.bidStartOffset += 1;
-              getRoomBus().broadcast(room, { t: 'ddz_redeal', round: st.round });
-              startHand(room);
-            }
-          } else {
-            armBidTimer(room, st);
-          }
-          return;
-        }
-        // 人数不足，直接终局
-        finish(room, '人数不足，提前结束');
-        return { ended: { winnerSeat: st.ranking?.[0]?.seat ?? -1, reason: '人数不足，提前结束' } };
-      }
-
       finish(room, '人数不足，提前结束');
       return { ended: { winnerSeat: st.ranking?.[0]?.seat ?? -1, reason: '人数不足，提前结束' } };
     }

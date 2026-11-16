@@ -6,6 +6,7 @@ import type { ActionResult, GameHandler } from './types';
 import { getRoomBus } from '../bus';
 import { QuizQuestion } from '../../models';
 import { sequelize } from '../../config/database';
+import { z } from 'zod';
 
 const QUESTION_SECONDS = 15;
 const REVEAL_SECONDS = 3;
@@ -52,6 +53,12 @@ export const quizHandler: GameHandler<QuizState> = {
   allowSpectators: true,
   rematchSwapSeats: false,
   validActions: new Set(['quiz_answer']),
+  actionSchemas: {
+    quiz_answer: z.object({
+      t: z.literal('quiz_answer'),
+      choice: z.number().int().min(0).max(3),
+    }),
+  },
 
   create(): QuizState {
     return {

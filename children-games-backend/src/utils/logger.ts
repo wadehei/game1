@@ -207,3 +207,12 @@ export const initLogger = (): void => {
     // ignore
   }
 };
+
+/** 优雅关闭：刷盘 + 停止定时器 */
+export const shutdownLogger = (): void => {
+  if (flushTimer) {
+    clearInterval(flushTimer);
+    flushTimer = null;
+  }
+  flush(); // 最终刷盘
+};

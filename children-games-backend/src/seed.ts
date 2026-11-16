@@ -1,6 +1,7 @@
 import { LevelConfig } from './models';
 import { sequelize, testConnection } from './config/database';
 import { initModels } from './models';
+import { logInfo, logError } from './utils/logger';
 
 // 生成默认关卡配置
 async function seedLevelConfigs() {
@@ -8,7 +9,7 @@ async function seedLevelConfigs() {
     await testConnection();
     await initModels();
 
-    console.log('开始初始化关卡配置...');
+    logInfo('seed', '开始初始化关卡配置...');
 
     // 记忆翻牌关卡
     for (let i = 1; i <= 20; i++) {
@@ -117,10 +118,10 @@ async function seedLevelConfigs() {
       });
     }
 
-    console.log('✅ 关卡配置初始化完成');
+    logInfo('seed', '✅ 关卡配置初始化完成');
     process.exit(0);
   } catch (error) {
-    console.error('初始化失败:', error);
+    logError('seed', '初始化失败', error instanceof Error ? error.stack : String(error));
     process.exit(1);
   }
 }
