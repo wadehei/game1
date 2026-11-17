@@ -102,7 +102,9 @@ export function useBalloonEngine() {
   for (let i = 0; i < MAX_PARTICLES; i++) {
     popParticles.push({ x: 0, y: 0, radius: 0, grow: 0, alpha: 0, color: '', speed: 0, angle: 0 });
   }
-  let spawnTimer: ReturnType<typeof setInterval> | null = null;
+  // 生成改在 rAF 循环内按时间判定（原 setInterval 独立于游戏循环：
+  // 窗口被遮挡时 rAF 停而 interval 继续，气球会在出生点无限堆积）
+  let lastSpawnAt = 0;
   let shakeOffset = { x: 0, y: 0 };
   let bgGradient: CanvasGradient | null = null;
   const floatTexts: FloatText[] = [];
@@ -153,10 +155,6 @@ export function useBalloonEngine() {
       cancelAnimationFrame(animationId);
       animationId = null;
     }
-    if (spawnTimer) {
-      clearInterval(spawnTimer);
-      spawnTimer = null;
-    }
   };
 
   const spawnBalloon = () => {
@@ -192,7 +190,6 @@ export function useBalloonEngine() {
 
   const resumeLoop = () => {
     if (gameEnded || animationId !== null) return;
-    spawnTimer = setInterval(spawnBalloon, levelConfig.value.spawnRate);
     gameLoop();
   };
 
@@ -205,6 +202,7 @@ export function useBalloonEngine() {
     targetScore.value = levelConfig.value.targetScore;
     balloonList = [];
     bulletList = [];
+    lastSpawnAt = Date.now(); // 开局先等一个 spawnRate 再出第一只（与旧 setInterval 节奏一致）
     // perf: reset pools in-place to preserve pre-allocated capacity (GC optimization)
     // 标记所有槽位为"死亡"状态，spawn 函数可立即复用，避免丢弃预分配容量
     for (let i = 0; i < popParticles.length; i++) popParticles[i].alpha = 0;
@@ -243,6 +241,12 @@ export function useBalloonEngine() {
     const now = Date.now();
     const dt = Math.min((now - lastFrameTime) / 1000, 0.05);
     lastFrameTime = now;
+    // 生成与游戏循环同生命周期：rAF 停（窗口遮挡/后台/暂停）则不生成，
+    // 恢复后最多补 1 只，不再出现出生点气球堆积
+    if (now - lastSpawnAt >= levelConfig.value.spawnRate) {
+      lastSpawnAt = now;
+      spawnBalloon();
+    }
     update(dt);
     render(dt);
     animationId = requestAnimationFrame(gameLoop);
