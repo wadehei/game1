@@ -53,6 +53,11 @@ const routes = [
     component: () => import('@/pages/memory/index.vue'),
   },
   {
+    path: '/memory-3d',
+    name: 'Memory3D',
+    component: () => import('@/pages/memory/index3d.vue'),
+  },
+  {
     path: '/fruit',
     name: 'Fruit',
     component: () => import('@/pages/fruit/index.vue'),
@@ -73,9 +78,19 @@ const routes = [
     component: () => import('@/pages/mole/index.vue'),
   },
   {
+    path: '/mole-3d',
+    name: 'Mole3D',
+    component: () => import('@/pages/mole/index3d.vue'),
+  },
+  {
     path: '/simon',
     name: 'Simon',
     component: () => import('@/pages/simon/index.vue'),
+  },
+  {
+    path: '/simon-3d',
+    name: 'Simon3D',
+    component: () => import('@/pages/simon/index3d.vue'),
   },
   {
     path: '/match',

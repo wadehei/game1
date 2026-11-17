@@ -68,6 +68,38 @@ test.describe('儿童游戏乐园 - 全游戏测试', () => {
     });
   });
 
+  test.describe('1b. 3D 模式冒烟（CSS 3D 页可开 + 关键元素 + 2D/3D 互切）', () => {
+    test('memory-3d 场景渲染出立体卡牌', async ({ page }) => {
+      await page.goto('/#/memory-3d');
+      await waitForGameInit(page);
+      const cards = await page.locator('.card3d').count();
+      expect(cards).toBeGreaterThan(0);
+      await expect(page.locator('text=关卡')).toBeVisible();
+    });
+
+    test('mole-3d 场景渲染出 9 个立体洞口', async ({ page }) => {
+      await page.goto('/#/mole-3d');
+      await waitForGameInit(page);
+      expect(await page.locator('.hole').count()).toBe(9);
+    });
+
+    test('simon-3d 场景渲染出 4 枚立体按键', async ({ page }) => {
+      await page.goto('/#/simon-3d');
+      await waitForGameInit(page);
+      expect(await page.locator('.key3d').count()).toBe(4);
+    });
+
+    test('游戏内 2D/3D 一键互切', async ({ page }) => {
+      await page.goto('/#/memory');
+      await waitForGameInit(page);
+      await page.locator('button[title="切换 3D 模式"]').click();
+      await expect(page).toHaveURL(/memory-3d/);
+      await page.locator('button[title="切换 2D 模式"]').click();
+      await expect(page).toHaveURL(/#\/memory$/);
+      await expect(page.locator('text=关卡')).toBeVisible();
+    });
+  });
+
   test.describe('2. 接水果游戏', () => {
     test('Canvas 应正常渲染并显示水果', async ({ page }) => {
       await page.goto('/#/fruit');

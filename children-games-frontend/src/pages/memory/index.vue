@@ -9,7 +9,11 @@
       @toggle-sound="sounds.toggleSound"
       @go-back="router.back()"
       @select-level="openLevelSelect"
-    />
+    >
+      <template #actions>
+        <button class="mode-switch-btn" title="切换 3D 模式" @click="go3d">3D</button>
+      </template>
+    </GameHeader>
 
     <!-- 游戏画布 -->
     <div
@@ -65,368 +69,51 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { useGameSounds } from '@/composables/useGameSounds';
-import { useGameProgress } from '@/composables/useGameProgress';
-import { useGameLifecycle } from '@/composables/useGameLifecycle';
-import { getLevelOverride } from '@/api/game';
-import { speak, playVoice } from '@/utils/voice';
-import { useAdaptiveAssist } from '@/composables/useAdaptiveAssist';
-import { defaultLevelConfig } from '@/utils/levelDefaults';
 import GameHeader from '@/components/GameHeader.vue';
 import ResultModal from '@/components/ResultModal.vue';
 import LevelSelectModal from '@/components/LevelSelectModal.vue';
 import PauseMenu from '@/components/PauseMenu.vue';
-
-import dogSvg from '@/static/images/games/memory/dog.svg';
-import catSvg from '@/static/images/games/memory/cat.svg';
-import pandaSvg from '@/static/images/games/memory/panda.svg';
-import foxSvg from '@/static/images/games/memory/fox.svg';
-import frogSvg from '@/static/images/games/memory/frog.svg';
-import monkeySvg from '@/static/images/games/memory/monkey.svg';
-import pigSvg from '@/static/images/games/memory/pig.svg';
-import cowSvg from '@/static/images/games/memory/cow.svg';
-import chickenSvg from '@/static/images/games/memory/chicken.svg';
-import octopusSvg from '@/static/images/games/memory/octopus.svg';
-import lionSvg from '@/static/images/games/memory/lion.svg';
-import tigerSvg from '@/static/images/games/memory/tiger.svg';
-import bearSvg from '@/static/images/games/memory/bear.svg';
-import koalaSvg from '@/static/images/games/memory/koala.svg';
-import rabbitSvg from '@/static/images/games/memory/rabbit.svg';
-import dragonSvg from '@/static/images/games/memory/dragon.svg';
-
-const emojiToSvg: Record<string, string> = {
-  '🐶': dogSvg,
-  '🐱': catSvg,
-  '🐼': pandaSvg,
-  '🦊': foxSvg,
-  '🐸': frogSvg,
-  '🐵': monkeySvg,
-  '🐷': pigSvg,
-  '🐮': cowSvg,
-  '🐔': chickenSvg,
-  '🐙': octopusSvg,
-  '🦁': lionSvg,
-  '🐯': tigerSvg,
-  '🐻': bearSvg,
-  '🐨': koalaSvg,
-  '🐰': rabbitSvg,
-  '🐲': dragonSvg,
-};
-const getAnimalImage = (emoji: string): string => emojiToSvg[emoji] || dogSvg;
-
-interface Card {
-  id: number;
-  emoji: string;
-  flipped: boolean;
-  matched: boolean;
-}
+import { useMemoryGame } from './useMemoryGame';
+import { getAnimalImage } from './animalImages';
 
 const router = useRouter();
-const emojis = [
-  '🐶',
-  '🐱',
-  '🐼',
-  '🦊',
-  '🐸',
-  '🐵',
-  '🐷',
-  '🐮',
-  '🐔',
-  '🐙',
-  '🦁',
-  '🐯',
-  '🐻',
-  '🐨',
-  '🐰',
-  '🐲',
-];
 
-const sounds = useGameSounds();
-
-const currentLevel = ref(1);
-const moves = ref(0);
-const timeLeft = ref(60);
-const cards = ref<Card[]>([]);
-const flippedCards = ref<number[]>([]);
-const showResult = ref(false);
-const gameWon = ref(false);
-const stars = ref(0);
-const paused = ref(false);
-const showLevelSelect = ref(false);
-let levelSelectPaused = false;
-const { loadStartLevel, saveProgress: saveGameProgress, recordPlay } = useGameProgress('memory');
-const assist = useAdaptiveAssist('memory');
-let timer: ReturnType<typeof setInterval> | null = null;
-let gameEnded = false;
-
-const levelConfig = ref<Record<string, any>>({
-  pairs: 2,
-  timeLimit: 90,
-});
-
-const gridSize = computed(() => {
-  const total = levelConfig.value.pairs * 2;
-  // 在 2~4 列里选能整除、且最接近方形（略竖）的布局——卡片尽可能大，无残行
-  let best = 2;
-  let bestScore = Infinity;
-  for (const cols of [4, 3, 2]) {
-    if (total % cols !== 0) continue;
-    const rows = total / cols;
-    const score = Math.abs(rows / cols - 1.4);
-    if (score < bestScore) {
-      bestScore = score;
-      best = cols;
-    }
-  }
-  return best;
-});
-
-const totalCards = computed(() => levelConfig.value.pairs * 2);
-
-const headerItems = computed(() => [
-  { label: '关卡', value: currentLevel.value },
-  { label: '时间', value: `${timeLeft.value}s`, valueClass: timeLeft.value <= 10 ? 'warning' : '' },
-  { label: '步数', value: moves.value },
-]);
-
-const initGame = () => {
-  const { pairs } = levelConfig.value;
-  const selectedEmojis = emojis.slice(0, pairs);
-  const cardPairs = [...selectedEmojis, ...selectedEmojis];
-
-  // Fisher-Yates 均匀洗牌
-  cards.value = shuffle(cardPairs).map((emoji, index) => ({
-    id: index,
-    emoji,
-    flipped: false,
-    matched: false,
-  }));
-
-  moves.value = 0;
-  timeLeft.value = levelConfig.value.timeLimit;
-  flippedCards.value = [];
-  showResult.value = false;
-  gameWon.value = false;
-  stars.value = 0;
-  gameEnded = false;
-  paused.value = false;
-
-  startTimer();
-};
-
-// 均匀洗牌，避免 sort(random) 的分布偏差
-const shuffle = <T,>(arr: T[]): T[] => {
-  const result = [...arr];
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
-};
-
-const stopTimer = () => {
-  if (timer) {
-    clearInterval(timer);
-    timer = null;
-  }
-};
-
-const startTimer = () => {
-  stopTimer();
-  timer = setInterval(() => {
-    if (timeLeft.value > 0) {
-      timeLeft.value--;
-    } else {
-      endGame(false);
-    }
-  }, 1000);
-};
-
-const pauseGame = () => {
-  if (gameEnded) return;
-  paused.value = true;
-  stopTimer();
-};
-
-const resumeGame = () => {
-  if (gameEnded) return;
-  paused.value = false;
-  startTimer();
-};
+// 逻辑层（2D/3D 共用）：翻牌判定/计时/进度上报/难度系统
+const game = useMemoryGame();
+const {
+  sounds,
+  currentLevel,
+  moves,
+  timeLeft,
+  cards,
+  showResult,
+  gameWon,
+  stars,
+  paused,
+  showLevelSelect,
+  levelConfig,
+  gridSize,
+  totalCards,
+  headerItems,
+  flipCard,
+  pauseGame,
+  resumeGame,
+  openLevelSelect,
+  closeLevelSelect,
+  chooseLevel,
+  restartGame,
+  nextLevel,
+} = game;
 
 const quitGame = () => {
   router.back();
 };
 
-// ─── 选关 ────────────────────────────────
-const openLevelSelect = () => {
-  if (!gameEnded && !paused.value) {
-    levelSelectPaused = true;
-    pauseGame();
-  }
-  showLevelSelect.value = true;
+// 游戏内一键切 3D（进度/关卡在同一存档上无缝衔接）
+const go3d = () => {
+  router.push('/memory-3d');
 };
-
-const closeLevelSelect = () => {
-  showLevelSelect.value = false;
-  if (levelSelectPaused) {
-    levelSelectPaused = false;
-    resumeGame();
-  }
-};
-
-const chooseLevel = async (level: number) => {
-  levelSelectPaused = false;
-  showLevelSelect.value = false;
-  currentLevel.value = level;
-  await applyLevelConfig(level);
-  initGame();
-};
-
-// 系统自动暂停（切后台 / 护眼休息）与用户主动暂停的区分
-let autoPausedByRest = false;
-
-const handlePause = () => {
-  if (!paused.value) {
-    autoPausedByRest = true;
-    pauseGame();
-  }
-};
-
-const handleResume = () => {
-  if (autoPausedByRest) {
-    autoPausedByRest = false;
-    resumeGame();
-  }
-};
-
-useGameLifecycle({ onPause: handlePause, onResume: handleResume });
-
-const flipCard = (index: number) => {
-  const card = cards.value[index];
-  if (paused.value || card.flipped || card.matched || flippedCards.value.length >= 2) return;
-
-  card.flipped = true;
-  flippedCards.value.push(index);
-  sounds.play('click');
-
-  if (flippedCards.value.length === 2) {
-    moves.value++;
-    checkMatch();
-  }
-};
-
-const checkMatch = () => {
-  const [first, second] = flippedCards.value;
-  const card1 = cards.value[first];
-  const card2 = cards.value[second];
-
-  if (card1.emoji === card2.emoji) {
-    card1.matched = true;
-    card2.matched = true;
-    flippedCards.value = [];
-    sounds.play('match');
-    checkWin();
-  } else {
-    sounds.play('bounce');
-    setTimeout(() => {
-      card1.flipped = false;
-      card2.flipped = false;
-      flippedCards.value = [];
-    }, 800);
-  }
-};
-
-const checkWin = () => {
-  const allMatched = cards.value.every((card) => card.matched);
-  if (allMatched) {
-    endGame(true);
-  }
-};
-
-const endGame = (won: boolean) => {
-  if (gameEnded) return;
-  gameEnded = true;
-
-  stopTimer();
-  paused.value = false;
-  gameWon.value = won;
-
-  if (won) {
-    sounds.play('success');
-    const timeUsed = levelConfig.value.timeLimit - timeLeft.value;
-    const timeRatio = timeUsed / levelConfig.value.timeLimit;
-    const moveRatio = moves.value / levelConfig.value.pairs;
-
-    if (timeRatio < 0.5 && moveRatio < 2.5) {
-      stars.value = 3;
-    } else if (timeRatio < 0.7 && moveRatio < 3.5) {
-      stars.value = 2;
-    } else {
-      stars.value = 1;
-    }
-
-    assist.record(true);
-    // 保存进度
-    saveProgress();
-  } else {
-    sounds.play('fail');
-    assist.record(false);
-    recordPlay();
-  }
-
-  showResult.value = true;
-};
-
-const saveProgress = () => {
-  saveGameProgress({
-    level: currentLevel.value,
-    score: moves.value,
-    stars: stars.value,
-  });
-};
-
-const restartGame = () => {
-  initGame();
-};
-
-const applyLevelConfig = async (level: number) => {
-  const a = assist.level();
-  const base = defaultLevelConfig('memory', level);
-  levelConfig.value = {
-    ...base,
-    timeLimit: Math.round(base.timeLimit * (1 + 0.3 * a)),
-  };
-  // 后台难度覆盖优先（离线/未配置时用内置公式）
-  const override = await getLevelOverride('memory', level);
-  if (override && currentLevel.value === level) {
-    levelConfig.value = { ...levelConfig.value, ...override };
-  }
-};
-
-const nextLevel = async () => {
-  currentLevel.value++;
-  sounds.play('levelUp');
-  // 更新关卡配置
-  await applyLevelConfig(currentLevel.value);
-  initGame();
-};
-
-onMounted(async () => {
-  sounds.init();
-
-  // 续关：从上次通关的关卡继续
-  currentLevel.value = await loadStartLevel();
-  await applyLevelConfig(currentLevel.value);
-  initGame();
-  playVoice('memory_intro', '翻一翻卡片，找出两个一样的图案');
-});
-
-onUnmounted(() => {
-  stopTimer();
-});
 </script>
 
 <style scoped>
@@ -468,6 +155,32 @@ onUnmounted(() => {
 :deep(.memory-header .back-btn) {
   background: rgba(255, 255, 255, 0.55);
   color: #3d4a63;
+}
+
+.mode-switch-btn {
+  background: rgba(255, 255, 255, 0.55);
+  color: #3d4a63;
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.mode-switch-btn:hover {
+  background: rgba(255, 255, 255, 0.8);
+  transform: scale(1.1);
+}
+
+.mode-switch-btn:active {
+  transform: scale(0.95);
 }
 
 .game-board {

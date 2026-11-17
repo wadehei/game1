@@ -12,6 +12,7 @@
       >
       <span v-else class="value" :class="item.valueClass">{{ item.value }}</span>
     </div>
+    <slot name="actions"></slot>
     <button class="sound-btn" @click="$emit('toggleSound')">
       {{ muted ? '🔇' : '🔊' }}
     </button>
