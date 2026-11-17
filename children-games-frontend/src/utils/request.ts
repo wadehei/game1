@@ -93,7 +93,9 @@ instance.interceptors.response.use(
       if (!authExpiredHandled && location.hash !== '#/profiles') {
         authExpiredHandled = true;
         showToast('登录已过期，请重新选择角色', 'error');
-        const currentHash = location.hash.replace(/^#\/?/, '');
+        // redirect 必须以 / 开头：profiles 消费端校验 startsWith('/')（防 // 协议外跳），
+        // 去掉 '#' 但保留 '/'，否则登录后回跳永不生效
+        const currentHash = location.hash.replace(/^#/, '');
         const redirect = currentHash ? `?redirect=${encodeURIComponent(currentHash)}` : '';
         location.hash = `#/profiles${redirect}`;
       }
