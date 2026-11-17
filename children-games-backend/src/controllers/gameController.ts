@@ -535,6 +535,34 @@ export const getStarsLeaderboard = asyncHandler(async (req: Request, res: Respon
   );
 });
 
+/** 家庭积分榜（battleChips 永久积分，对战牌类激励） */
+export const getChipsLeaderboard = asyncHandler(async (req: Request, res: Response) => {
+  const limit = Math.min(
+    Math.max(parseInt(req.query.limit as string, 10) || LEADERBOARD_DEFAULT_LIMIT, 1),
+    LEADERBOARD_MAX_LIMIT
+  );
+  const users = await User.findAll({
+    where: { openid: { [Op.like]: 'family_%' } },
+    attributes: ['id', 'nickname', 'avatar', 'battleChips', 'level'],
+    order: [
+      ['battleChips', 'DESC'],
+      ['id', 'ASC'],
+    ],
+    limit,
+  });
+  success(
+    res,
+    users.map((u, i) => ({
+      rank: i + 1,
+      userId: u.id,
+      nickname: u.nickname,
+      avatar: u.avatar,
+      battleChips: u.battleChips ?? 0,
+      level: u.level,
+    }))
+  );
+});
+
 export const getLeaderboard = asyncHandler(async (req: Request, res: Response) => {
   const paramsResult = gameIdParamSchema.safeParse(req.params);
   if (!paramsResult.success) {

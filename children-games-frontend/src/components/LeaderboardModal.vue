@@ -2,12 +2,18 @@
   <div v-if="show" class="board-modal" @click.self="$emit('close')">
     <div class="board-content">
       <div class="board-title">
-        🏆 {{ tab === 'stars' ? '家庭总星榜' : gameName + '·家庭排行' }}
+        🏆
+        {{
+          tab === 'stars' ? '家庭总星榜' : tab === 'chips' ? '家庭积分榜' : gameName + '·家庭排行'
+        }}
       </div>
 
       <div class="board-tabs">
         <button class="board-tab" :class="{ active: tab === 'stars' }" @click="switchTab('stars')">
           ⭐ 总星榜
+        </button>
+        <button class="board-tab" :class="{ active: tab === 'chips' }" @click="switchTab('chips')">
+          💰 积分
         </button>
         <button class="board-tab" :class="{ active: tab === 'game' }" @click="switchTab('game')">
           {{ gameName }}
@@ -31,6 +37,7 @@
           <PlayerAvatar :avatar="row.avatar" :size="38" />
           <span class="row-name">{{ row.nickname }}</span>
           <span v-if="tab === 'stars'" class="row-score">⭐ {{ row.totalStars }}</span>
+          <span v-else-if="tab === 'chips'" class="row-score">💰 {{ row.battleChips }}</span>
           <span v-else class="row-score">{{ formatScore(gameId, row.highScore) }}</span>
         </div>
       </template>
@@ -42,7 +49,13 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { getLeaderboard, getStarsLeaderboard, type StarsLeaderboardRow } from '@/api/game';
+import {
+  getLeaderboard,
+  getStarsLeaderboard,
+  getChipsLeaderboard,
+  type StarsLeaderboardRow,
+  type ChipsLeaderboardRow,
+} from '@/api/game';
 import { useUserStore } from '@/store/user';
 import { formatScore } from '@/utils/gameMeta';
 import PlayerAvatar from '@/components/PlayerAvatar.vue';
@@ -69,7 +82,8 @@ const myUserId = computed(() => userStore.userInfo?.id);
 const loading = ref(false);
 const rows = ref<LeaderboardRow[]>([]);
 const starRows = ref<StarsLeaderboardRow[]>([]);
-const tab = ref<'stars' | 'game'>('stars');
+const chipsRows = ref<ChipsLeaderboardRow[]>([]);
+const tab = ref<'stars' | 'chips' | 'game'>('stars');
 
 const medal = (rank: number): string =>
   ({ 1: '🥇', 2: '🥈', 3: '🥉' })[rank as 1 | 2 | 3] || `${rank}`;
@@ -96,19 +110,39 @@ const loadStars = async (): Promise<void> => {
   }
 };
 
-const switchTab = (t: 'stars' | 'game'): void => {
+const loadChips = async (): Promise<void> => {
+  loading.value = true;
+  try {
+    chipsRows.value = await getChipsLeaderboard(20);
+  } catch {
+    chipsRows.value = [];
+  } finally {
+    loading.value = false;
+  }
+};
+
+const switchTab = (t: 'stars' | 'chips' | 'game'): void => {
   if (tab.value === t) return;
   tab.value = t;
   if (t === 'stars') void loadStars();
+  else if (t === 'chips') void loadChips();
   else void loadGame();
 };
 
 /** 统一渲染源：总星榜行带 totalStars，游戏行带 highScore */
 const displayRows = computed(() => {
   if (tab.value === 'stars') {
-    return starRows.value.map((r) => ({ ...r, highScore: 0, totalStars: r.totalStars }));
+    return starRows.value.map((r) => ({
+      ...r,
+      highScore: 0,
+      totalStars: r.totalStars,
+      battleChips: 0,
+    }));
   }
-  return rows.value.map((r) => ({ ...r, totalStars: 0 }));
+  if (tab.value === 'chips') {
+    return chipsRows.value.map((r) => ({ ...r, highScore: 0, totalStars: 0 }));
+  }
+  return rows.value.map((r) => ({ ...r, totalStars: 0, battleChips: 0 }));
 });
 
 watch(

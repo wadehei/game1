@@ -77,6 +77,20 @@ export const getStarsLeaderboard = async (limit = 20): Promise<StarsLeaderboardR
   return api.get<StarsLeaderboardRow[]>('/game/leaderboard/stars', { limit });
 };
 
+export interface ChipsLeaderboardRow {
+  rank: number;
+  userId: number;
+  nickname: string;
+  avatar: string;
+  battleChips: number;
+  level: number;
+}
+
+/** 家庭积分榜：家庭成员按对战永久积分排序（21点/三张牌/斗地主） */
+export const getChipsLeaderboard = async (limit = 20): Promise<ChipsLeaderboardRow[]> => {
+  return api.get<ChipsLeaderboardRow[]>('/game/leaderboard/chips', { limit });
+};
+
 // 获取今日任务进度
 export const getDailyTask = async (): Promise<DailyTaskInfo> => {
   return api.get<DailyTaskInfo>('/game/daily-task');

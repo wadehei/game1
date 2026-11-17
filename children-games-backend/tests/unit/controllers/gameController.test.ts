@@ -85,6 +85,7 @@ import {
   recordPlay,
   getDailyTask,
   getLeaderboard,
+  getChipsLeaderboard,
   getAchievements,
 } from '../../../src/controllers/gameController';
 import { GameProgress, User } from '../../../src/models';
@@ -346,6 +347,41 @@ describe('gameController', () => {
   });
 
   // ─── recordPlay ────────────────────────────────────────────────
+  describe('getChipsLeaderboard', () => {
+    it('按 battleChips 降序返回家庭用户并带 rank', async () => {
+      (User.findAll as Mock).mockResolvedValue([
+        { id: 4, nickname: 'llz', avatar: '🦊', battleChips: 1200, level: 6 },
+        { id: 1, nickname: 'ssh', avatar: '🐼', battleChips: 800, level: 6 },
+      ]);
+      const req = mockReq({ query: {} });
+      const res = mockRes();
+      await getChipsLeaderboard(req as any, res, mockNext);
+      await flushPromises();
+      const data = res.jsonBody.data;
+      expect(data).toHaveLength(2);
+      expect(data[0]).toEqual({
+        rank: 1,
+        userId: 4,
+        nickname: 'llz',
+        avatar: '🦊',
+        battleChips: 1200,
+        level: 6,
+      });
+      expect(data[1].rank).toBe(2);
+    });
+
+    it('battleChips 为空的成员兜底 0', async () => {
+      (User.findAll as Mock).mockResolvedValue([
+        { id: 9, nickname: 'ww', avatar: '🌟', battleChips: null, level: 1 },
+      ]);
+      const req = mockReq({ query: {} });
+      const res = mockRes();
+      await getChipsLeaderboard(req as any, res, mockNext);
+      await flushPromises();
+      expect(res.jsonBody.data[0].battleChips).toBe(0);
+    });
+  });
+
   describe('recordPlay', () => {
     it('should increment playCount for existing progress', async () => {
       const fakeProgress = { playCount: 5, save: vi.fn().mockResolvedValue(true) };

@@ -192,4 +192,77 @@ onMounted(load);
   font-size: 12px;
   padding: 8px 2px;
 }
+
+/* 面板骨架（DashboardPanel 同款为 scoped 样式，本组件需自带） */
+.panel {
+  background: #fff;
+  border-radius: 14px;
+  padding: 18px;
+}
+
+.panel-title {
+  font-size: 19px;
+  margin: 0 0 16px;
+  color: #2c3e50;
+}
+
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.refresh-btn {
+  border: none;
+  background: #eef1fd;
+  color: #667eea;
+  font-size: 12px;
+  font-weight: bold;
+  padding: 7px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.stat-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 16px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.stat-num {
+  font-size: 26px;
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #999;
+  margin-top: 4px;
+}
+
+.section {
+  margin-bottom: 18px;
+}
+
+.section-title {
+  font-size: 14px;
+  color: #4a5568;
+  margin: 0 0 10px;
+}
 </style>

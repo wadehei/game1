@@ -31,13 +31,27 @@ async function mockApis(page) {
       }),
     })
   );
-  await page.route('**/api/game/leaderboard/**', (route) =>
-    route.fulfill({
+  await page.route('**/api/game/leaderboard/**', (route) => {
+    const url = route.request().url();
+    if (url.includes('/leaderboard/chips')) {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          code: 200,
+          data: [
+            { rank: 1, userId: 1, nickname: 'test', avatar: '🦊', battleChips: 1200, level: 1 },
+            { rank: 2, userId: 2, nickname: 'p2', avatar: '🐼', battleChips: 800, level: 2 },
+          ],
+        }),
+      });
+    }
+    return route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ code: 200, data: [] }),
-    })
-  );
+    });
+  });
 }
 
 /**
@@ -73,6 +87,17 @@ test.describe('排行榜系统', () => {
       const firstBoardBtn = page.locator('button.board-btn').first();
       await firstBoardBtn.click({ force: true });
       await expect(page.locator('.board-modal')).toBeVisible();
+    });
+
+    test('积分榜 tab：标题为家庭积分榜且渲染 battleChips', async ({ page }) => {
+      await mockApis(page);
+      await waitForGameList(page);
+      await page.locator('button.board-btn').first().click({ force: true });
+      await expect(page.locator('.board-modal')).toBeVisible();
+      await page.locator('.board-tab', { hasText: '💰 积分' }).click();
+      await expect(page.locator('.board-title')).toContainText('家庭积分榜');
+      await expect(page.locator('.board-row')).toHaveCount(2);
+      await expect(page.locator('.board-row').first()).toContainText('💰 1200');
     });
 
     test('弹窗默认显示总星榜，切本游戏 tab 后标题含游戏名', async ({ page }) => {
