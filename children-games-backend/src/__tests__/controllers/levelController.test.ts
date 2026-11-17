@@ -156,7 +156,6 @@ describe('levelController', () => {
       expect(validGameIds).toContain('memory');
       expect(validGameIds).toContain('fruit');
       expect(validGameIds).toContain('puzzle');
-      expect(validGameIds).toContain('balloon');
       expect(validGameIds).toContain('tank');
       expect(validGameIds).toContain('mole');
       expect(validGameIds).toContain('simon');

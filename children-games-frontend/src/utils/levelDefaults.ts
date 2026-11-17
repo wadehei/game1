@@ -27,14 +27,6 @@ export interface PuzzleLevelConfig {
   gridSize: number;
   timeLimit: number;
 }
-export interface BalloonLevelConfig {
-  spawnRate: number;
-  moveSpeed: number;
-  targetScore: number;
-  bullets: number;
-  rainbowChance: number;
-  goldenChance: number;
-}
 export interface TankLevelDefaults {
   enemyCount: number;
   enemySpeed: number;
@@ -95,7 +87,6 @@ export interface LevelConfigByGame {
   memory: MemoryLevelConfig;
   fruit: FruitLevelConfig;
   puzzle: PuzzleLevelConfig;
-  balloon: BalloonLevelConfig;
   tank: TankLevelDefaults;
   mole: MoleLevelConfig;
   simon: SimonLevelConfig;
@@ -126,15 +117,6 @@ const FORMULAS: Record<string, Formula> = {
   puzzle: (level) => ({
     gridSize: Math.min(3 + Math.floor((level - 1) / 4), 5),
     timeLimit: Math.max(180 - (level - 1) * 12, 50),
-  }),
-  // 打气球：生成间隔每关 -70ms，飘速每关 +0.25，限时分数每关 +40
-  balloon: (level) => ({
-    spawnRate: Math.max(1200 - (level - 1) * 70, 420),
-    moveSpeed: Math.min(1 + (level - 1) * 0.25, 6),
-    targetScore: 100 + (level - 1) * 40,
-    bullets: 30 + (level - 1) * 4,
-    rainbowChance: 0.05,
-    goldenChance: 0.1,
   }),
   // 坦克：敌人数量每关 +1（封顶 9），速度每关 +0.3，射速每关 +5%
   tank: (level) => ({
@@ -244,14 +226,6 @@ export const LEVEL_FIELD_DEFS: Record<string, FieldDef[]> = {
   puzzle: [
     { key: 'gridSize', label: '拼图边长（2~6 格）' },
     { key: 'timeLimit', label: '时限（秒）' },
-  ],
-  balloon: [
-    { key: 'spawnRate', label: '上浮间隔（毫秒，越小越难）' },
-    { key: 'moveSpeed', label: '上浮速度' },
-    { key: 'targetScore', label: '目标分数' },
-    { key: 'bullets', label: '子弹数' },
-    { key: 'rainbowChance', label: '彩虹气球概率 0~1', step: '0.01' },
-    { key: 'goldenChance', label: '金色气球概率 0~1', step: '0.01' },
   ],
   tank: [
     { key: 'enemyCount', label: '敌人数量' },

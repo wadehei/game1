@@ -64,7 +64,9 @@ const getBattleCareerViaAPI = async (page: Page) => {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) return null;
-      return await response.json();
+      // 后端 envelope 是 {code,message,data}——取业务数据层
+      const json = await response.json();
+      return json?.data ?? null;
     } catch {
       return null;
     }
@@ -182,7 +184,7 @@ test.describe('积分系统 - 每日救济金', () => {
 
     // 查找救济金相关元素
     const reliefButton = page.locator(
-      '[data-testid="daily-relief"], .daily-relief, .relief-btn, text=救济金'
+      '[data-testid="daily-relief"], .daily-relief, .relief-btn, :text("救济金")'
     );
     const hasReliefEntry = await reliefButton.count();
 
@@ -220,7 +222,7 @@ test.describe('积分系统 - 每日救济金', () => {
 
     // 查找并点击救济金按钮
     const reliefButton = page.locator(
-      '[data-testid="daily-relief"], .daily-relief, .relief-btn, text=领取救济金'
+      '[data-testid="daily-relief"], .daily-relief, .relief-btn, :text("领取救济金")'
     );
     const hasRelief = await reliefButton.count();
 
@@ -250,7 +252,7 @@ test.describe('积分系统 - 历史记录', () => {
 
     // 查找历史记录区域
     const historySection = page.locator(
-      '[data-testid="chips-history"], .chips-history, .recent-games, text=最近战绩'
+      '[data-testid="chips-history"], .chips-history, .recent-games, :text("最近战绩")'
     );
     const hasHistory = await historySection.count();
 

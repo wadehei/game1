@@ -27,7 +27,6 @@ export const GAME_RULES: Record<string, { lowerScoreIsBetter: boolean }> = {
   memory: { lowerScoreIsBetter: true },
   puzzle: { lowerScoreIsBetter: true },
   fruit: { lowerScoreIsBetter: false },
-  balloon: { lowerScoreIsBetter: false },
   tank: { lowerScoreIsBetter: false },
   mole: { lowerScoreIsBetter: false },
   simon: { lowerScoreIsBetter: false },

@@ -94,7 +94,6 @@ const games = [
   { id: 'memory', name: '记忆翻牌', totalLevels: 20, icon: '🧠' },
   { id: 'fruit', name: '接水果', totalLevels: 30, icon: '🍎' },
   { id: 'puzzle', name: '拼图游戏', totalLevels: 25, icon: '🧩' },
-  { id: 'balloon', name: '打气球', totalLevels: 30, icon: '🎈' },
   { id: 'tank', name: '坦克大战', totalLevels: 25, icon: '🚀' },
   { id: 'mole', name: '打地鼠', totalLevels: 20, icon: '🐹' },
   { id: 'simon', name: '音乐记忆', totalLevels: 15, icon: '🎵' },

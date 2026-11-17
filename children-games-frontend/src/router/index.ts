@@ -63,11 +63,6 @@ const routes = [
     component: () => import('@/pages/puzzle/index.vue'),
   },
   {
-    path: '/balloon',
-    name: 'Balloon',
-    component: () => import('@/pages/balloon/index.vue'),
-  },
-  {
     path: '/tank',
     name: 'Tank',
     component: () => import('@/pages/tank/index.vue'),

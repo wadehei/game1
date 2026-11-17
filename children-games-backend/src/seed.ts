@@ -58,23 +58,6 @@ async function seedLevelConfigs() {
       });
     }
 
-    // 打气球关卡
-    for (let i = 1; i <= 30; i++) {
-      await LevelConfig.findOrCreate({
-        where: { gameId: 'balloon', level: i },
-        defaults: {
-          gameId: 'balloon',
-          level: i,
-          config: JSON.stringify({
-            spawnRate: Math.max(1200 - i * 25, 400),
-            moveSpeed: 1 + i * 0.08,
-            targetScore: 100 + i * 25,
-            specialRate: Math.min(0.1 + i * 0.005, 0.2),
-          }),
-        },
-      });
-    }
-
     // 坦克大战关卡
     for (let i = 1; i <= 25; i++) {
       await LevelConfig.findOrCreate({

@@ -16,7 +16,6 @@ const VOICE_KEYS = new Set([
   'memory_intro',
   'fruit_intro',
   'puzzle_intro',
-  'balloon_intro',
   'tank_intro',
   'mole_intro',
   'simon_intro',

@@ -14,7 +14,6 @@ describe('gameMeta', () => {
       expect(gameIds).toContain('memory');
       expect(gameIds).toContain('fruit');
       expect(gameIds).toContain('puzzle');
-      expect(gameIds).toContain('balloon');
       expect(gameIds).toContain('tank');
       expect(gameIds).toContain('math');
       expect(gameIds).toContain('sudoku');

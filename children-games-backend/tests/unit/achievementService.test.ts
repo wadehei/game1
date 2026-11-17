@@ -12,7 +12,6 @@ describe('achievementService', () => {
         'memory',
         'puzzle',
         'fruit',
-        'balloon',
         'tank',
         'mole',
         'simon',
@@ -37,7 +36,6 @@ describe('achievementService', () => {
     it('should have correct scoring direction for point-based games', () => {
       // Games where higher score is better (points/score)
       expect(GAME_RULES.fruit.lowerScoreIsBetter).toBe(false);
-      expect(GAME_RULES.balloon.lowerScoreIsBetter).toBe(false);
       expect(GAME_RULES.tank.lowerScoreIsBetter).toBe(false);
       expect(GAME_RULES.mole.lowerScoreIsBetter).toBe(false);
     });

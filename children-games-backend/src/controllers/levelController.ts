@@ -8,7 +8,6 @@ export const LEVEL_FIELDS: Record<string, string[]> = {
   memory: ['pairs', 'timeLimit'],
   fruit: ['spawnRate', 'fallSpeed', 'bombChance', 'targetScore', 'lives'],
   puzzle: ['gridSize', 'timeLimit'],
-  balloon: ['spawnRate', 'moveSpeed', 'targetScore', 'bullets', 'rainbowChance', 'goldenChance'],
   tank: [
     'enemyCount',
     'enemySpeed',

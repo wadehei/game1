@@ -1,7 +1,6 @@
 import iconMemorySvg from '@/static/images/games/lobby/icon-memory.svg';
 import iconFruitSvg from '@/static/images/games/lobby/icon-fruit.svg';
 import iconPuzzleSvg from '@/static/images/games/lobby/icon-puzzle.svg';
-import iconBalloonSvg from '@/static/images/games/lobby/icon-balloon.svg';
 import iconTankSvg from '@/static/images/games/lobby/icon-tank.svg';
 import iconMoleSvg from '@/static/images/games/lobby/icon-mole.svg';
 import iconSimonSvg from '@/static/images/games/lobby/icon-simon.svg';
@@ -42,13 +41,6 @@ export const games: readonly GameCatalogItem[] = [
     totalLevels: 25,
     icon: iconPuzzleSvg,
     bgColor: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-  },
-  {
-    id: 'balloon',
-    name: '打气球',
-    totalLevels: 30,
-    icon: iconBalloonSvg,
-    bgColor: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
   },
   {
     id: 'tank',

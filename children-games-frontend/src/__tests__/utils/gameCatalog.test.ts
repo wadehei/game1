@@ -5,7 +5,6 @@ import { games, type GameCatalogItem } from '../../utils/gameCatalog';
 vi.mock('@/static/images/games/lobby/icon-memory.svg', () => ({ default: 'memory.svg' }));
 vi.mock('@/static/images/games/lobby/icon-fruit.svg', () => ({ default: 'fruit.svg' }));
 vi.mock('@/static/images/games/lobby/icon-puzzle.svg', () => ({ default: 'puzzle.svg' }));
-vi.mock('@/static/images/games/lobby/icon-balloon.svg', () => ({ default: 'balloon.svg' }));
 vi.mock('@/static/images/games/lobby/icon-tank.svg', () => ({ default: 'tank.svg' }));
 vi.mock('@/static/images/games/lobby/icon-mole.svg', () => ({ default: 'mole.svg' }));
 vi.mock('@/static/images/games/lobby/icon-simon.svg', () => ({ default: 'simon.svg' }));
@@ -30,7 +29,6 @@ describe('gameCatalog', () => {
       expect(gameIds).toContain('memory');
       expect(gameIds).toContain('fruit');
       expect(gameIds).toContain('puzzle');
-      expect(gameIds).toContain('balloon');
       expect(gameIds).toContain('tank');
       expect(gameIds).toContain('mole');
       expect(gameIds).toContain('simon');
@@ -89,8 +87,8 @@ describe('gameCatalog', () => {
   });
 
   describe('游戏数据完整性', () => {
-    it('should have at least 14 games registered', () => {
-      expect(games.length).toBeGreaterThanOrEqual(14);
+    it('should have at least 13 games registered', () => {
+      expect(games.length).toBeGreaterThanOrEqual(13);
     });
 
     it('memory game should have 20 levels', () => {

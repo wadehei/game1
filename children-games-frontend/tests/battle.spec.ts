@@ -231,19 +231,27 @@ test.describe('对战系统 - WebSocket 对战流程', () => {
       await expect(page).toHaveURL(/\/battle$/);
     });
 
-    test('可以复制邀请链接', async ({ page }) => {
-      await setupAuthAndGoto(page, '/battle');
-      await createRoom(page, 'gomoku');
-      await waitForWsConnection(page);
+    test('可以复制邀请链接', async ({ browser }) => {
+      // clipboard.writeText 在 headless 下默认被拒（无权限）→ 复制失败文案不切换，
+      // 授予剪贴板权限后 room.vue 的 navigator.clipboard 路径才能走通
+      const ctx = await browser.newContext({ permissions: ['clipboard-write', 'clipboard-read'] });
+      const page = await ctx.newPage();
+      try {
+        await setupAuthAndGoto(page, '/battle');
+        await createRoom(page, 'gomoku');
+        await waitForWsConnection(page);
 
-      // 点击复制按钮（房间号区域）
-      await page.locator('[data-testid="room-code"]').click();
-      await page.waitForTimeout(500);
+        // 点击复制按钮（房间号区域）
+        await page.locator('[data-testid="room-code"]').click();
+        await page.waitForTimeout(500);
 
-      // 验证显示"链接已复制"
-      const copyText = page.locator('.rt-copy');
-      const text = await copyText.textContent();
-      expect(text).toBe('链接已复制');
+        // 验证显示"链接已复制"
+        const copyText = page.locator('.rt-copy');
+        const text = await copyText.textContent();
+        expect(text).toBe('链接已复制');
+      } finally {
+        await ctx.close();
+      }
     });
   });
 

@@ -21,7 +21,6 @@ export const SINGLE_PLAYER_GAMES: readonly SinglePlayerGameMeta[] = [
   { id: 'memory', title: '记忆翻牌', lowerScoreIsBetter: true },
   { id: 'fruit', title: '接水果', lowerScoreIsBetter: false },
   { id: 'puzzle', title: '拼图游戏', lowerScoreIsBetter: true },
-  { id: 'balloon', title: '打气球', lowerScoreIsBetter: false },
   { id: 'tank', title: '坦克大战', lowerScoreIsBetter: false },
   { id: 'mole', title: '打地鼠', lowerScoreIsBetter: false },
   { id: 'simon', title: '音乐记忆', lowerScoreIsBetter: false },

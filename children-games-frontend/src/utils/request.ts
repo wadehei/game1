@@ -90,7 +90,10 @@ instance.interceptors.response.use(
       const userStore = useUserStore();
       userStore.logout();
       // 登录过期提示 + 跳转角色选择页（防循环 + 防重复触发）
-      if (!authExpiredHandled && location.hash !== '#/profiles') {
+      // admin 是独立的凭证体系（admin_token + 自己的 401 处理），
+      // 在后台相关页面不做用户侧跳转，否则会把 admin/login 劫持到 profiles
+      const onAdminPage = location.hash.startsWith('#/admin');
+      if (!authExpiredHandled && !onAdminPage && location.hash !== '#/profiles') {
         authExpiredHandled = true;
         showToast('登录已过期，请重新选择角色', 'error');
         // redirect 必须以 / 开头：profiles 消费端校验 startsWith('/')（防 // 协议外跳），
