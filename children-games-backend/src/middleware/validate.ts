@@ -12,8 +12,15 @@ export const validate = (schema: ZodSchema, source: 'body' | 'query' | 'params' 
       const data = req[source];
       const validated = schema.parse(data);
 
-      // 用验证后的数据替换原数据（去除未定义字段）
-      req[source] = validated;
+      // 用验证后的数据替换原数据（去除未定义字段）。
+      // Express 5 的 req.query 是只读 getter，整体赋值会抛 TypeError
+      // （/api/admin/logs 审计日志在生产一直 500 的根因，2026-11-18 埋点批踩出），
+      // query 只能就地改写
+      if (source === 'query') {
+        Object.assign(req.query, validated);
+      } else {
+        req[source] = validated;
+      }
 
       next();
     } catch (error) {

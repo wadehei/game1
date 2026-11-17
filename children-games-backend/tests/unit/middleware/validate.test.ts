@@ -17,6 +17,26 @@ const mockResponse = () => {
 };
 
 describe('validate middleware', () => {
+  // Express 5 的 req.query 是只读 getter（复刻其行为），整体赋值会抛 TypeError
+  // ——生产 /api/admin/logs 与 /api/admin/events/summary 曾因此 500（2026-11-18）
+  it('should not throw when query is a read-only getter (Express 5 semantics)', () => {
+    const querySchema = z.object({ days: z.coerce.number().int().default(7) });
+    const req: any = {};
+    // 真实 Express 缓存同一个解析对象（getter 返回同一引用），这里保持一致
+    const parsed = { days: '3' };
+    Object.defineProperty(req, 'query', {
+      get: () => parsed,
+      set: () => {
+        throw new TypeError('Cannot set property query');
+      },
+    });
+    const res = mockResponse();
+    const next = vi.fn();
+    expect(() => validateQuery(querySchema)(req, res, next)).not.toThrow();
+    expect(next).toHaveBeenCalledOnce();
+    expect(req.query.days).toBe(3);
+  });
+
   const schema = z.object({
     name: z.string().min(1),
     age: z.number().int().positive(),
