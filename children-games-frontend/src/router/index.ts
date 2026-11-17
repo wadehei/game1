@@ -103,6 +103,11 @@ const routes = [
     component: () => import('@/pages/match3/index.vue'),
   },
   {
+    path: '/match3-3d',
+    name: 'Match33D',
+    component: () => import('@/pages/match3/index3d.vue'),
+  },
+  {
     path: '/math',
     name: 'Math',
     component: () => import('@/pages/math/index.vue'),
@@ -121,6 +126,11 @@ const routes = [
     path: '/claw',
     name: 'Claw',
     component: () => import('@/pages/claw/index.vue'),
+  },
+  {
+    path: '/claw-3d',
+    name: 'Claw3D',
+    component: () => import('@/pages/claw/index3d.vue'),
   },
   {
     path: '/doudizhu',

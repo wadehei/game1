@@ -9,7 +9,11 @@
       @toggle-sound="sounds.toggleSound"
       @go-back="router.back()"
       @select-level="openLevelSelect"
-    />
+    >
+      <template #actions>
+        <button class="mode-switch-btn" title="切换 3D 模式" @click="go3d">3D</button>
+      </template>
+    </GameHeader>
 
     <!-- 状态提示 -->
     <div class="status-bar">
@@ -23,7 +27,7 @@
         <div
           class="claw"
           :class="{ dropping: isDropping, holding: isHolding }"
-          :style="{ left: clawX + '%', top: clawY + 'px' }"
+          :style="{ left: clawX * 100 + '%', top: clawY + 'px' }"
         >
           <div class="claw-arm">🪝</div>
         </div>
@@ -35,7 +39,7 @@
           :key="prize.id"
           class="prize"
           :class="{ gone: prize.grabbed }"
-          :style="{ left: prize.x + '%' }"
+          :style="{ left: prize.x * 100 + '%' }"
           :disabled="prize.grabbed"
         >
           {{ prize.emoji }}
@@ -48,7 +52,7 @@
         }}</span>
       </div>
       <!-- 抓取按钮 -->
-      <button class="drop-btn" :disabled="isDropping || gameEnded || paused" @click="dropClaw">
+      <button class="drop-btn" :disabled="isDropping || showResult || paused" @click="dropClaw">
         抓！
       </button>
     </div>
@@ -82,267 +86,57 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { useGameSounds } from '@/composables/useGameSounds';
-import { useGameProgress } from '@/composables/useGameProgress';
-import { useGameLifecycle } from '@/composables/useGameLifecycle';
-import { useAdaptiveAssist } from '@/composables/useAdaptiveAssist';
-import { getLevelOverride } from '@/api/game';
-import { playVoice } from '@/utils/voice';
-import { defaultLevelConfig } from '@/utils/levelDefaults';
 import GameHeader from '@/components/GameHeader.vue';
 import ResultModal from '@/components/ResultModal.vue';
 import LevelSelectModal from '@/components/LevelSelectModal.vue';
 import PauseMenu from '@/components/PauseMenu.vue';
-
-interface Prize {
-  id: number;
-  emoji: string;
-  x: number; // 在奖品台的百分比位置
-  grabbed: boolean;
-}
+import { useClawGame } from './useClawGame';
 
 const router = useRouter();
-const sounds = useGameSounds();
-const { loadStartLevel, saveProgress: saveGameProgress, recordPlay } = useGameProgress('claw');
-const assist = useAdaptiveAssist('claw');
 
-const currentLevel = ref(1);
-const timeLeft = ref(75);
-const showResult = ref(false);
-const gameWon = ref(false);
-const stars = ref(0);
-const showLevelSelect = ref(false);
-const paused = ref(false);
-
-const clawX = ref(50); // 百分比位置
-const clawDir = ref(1);
-const clawY = ref(0); // 0=顶部待机，>0=下爪中（px，相对导轨）
-const isDropping = ref(false);
-const isHolding = ref(false);
-const prizes = ref<Prize[]>([]);
-const collected = ref(0);
-const collectedPrizes = ref<string[]>([]);
-
-const levelConfig = ref<Record<string, number>>({ clawSpeed: 120, targetGrabs: 8, timeLimit: 75 });
-
-let gameEnded = false;
-let rafId = 0;
-let lastTs = 0;
-let dropTimer: ReturnType<typeof setTimeout> | null = null;
-let tickTimer: ReturnType<typeof setInterval> | null = null;
-let prizeSeq = 0;
-
-const TOYS = ['🧸', '🎁', '🐶', '🍭', '🚗', '🌈', '⭐', '🍬', '🦄', '🐧'];
-
-const headerItems = computed(() => [
-  { label: '关卡', value: currentLevel.value },
-  { label: '抓到', value: `${collected.value}/${levelConfig.value.targetGrabs}` },
-  { label: '时间', value: `${timeLeft.value}s` },
-]);
-
-const statusText = computed(() => {
-  if (gameEnded) return gameWon.value ? '礼物全抓走啦！' : '时间到啦～';
-  if (paused.value) return '游戏暂停中';
-  if (isDropping.value) return '下爪中…';
-  return '看准小礼物，按「抓！」';
-});
-
-// ── 奖品生成 ──
-const spawnPrize = (): Prize => {
-  prizeSeq += 1;
-  // 避免与现有奖品过近（保证可抓）
-  let x = 0;
-  for (let tries = 0; tries < 20; tries += 1) {
-    x = 8 + Math.random() * 84;
-    if (!prizes.value.some((p) => !p.grabbed && Math.abs(p.x - x) < 14)) break;
-  }
-  return { id: prizeSeq, emoji: TOYS[Math.floor(Math.random() * TOYS.length)], x, grabbed: false };
-};
-
-const refillPrizes = (): void => {
-  while (prizes.value.filter((p) => !p.grabbed).length < 6) {
-    prizes.value.push(spawnPrize());
-  }
-};
-
+// 逻辑层（2D/3D 共用）：巡航/下爪判定/计时/进度上报；巡航宽度注入导轨 DOM 宽
 const railRef = ref<HTMLElement | null>(null);
+const {
+  sounds,
+  currentLevel,
+  showResult,
+  gameWon,
+  stars,
+  showLevelSelect,
+  paused,
+  clawX,
+  isDropping,
+  isReleasing,
+  isHolding,
+  prizes,
+  collected,
+  collectedPrizes,
+  headerItems,
+  statusText,
+  dropClaw,
+  pauseGame,
+  resumeGame,
+  openLevelSelect,
+  chooseLevel,
+  quitGame,
+  restartGame,
+  nextLevel,
+} = useClawGame(() => railRef.value?.offsetWidth || 300);
 
-// ── 爪子移动（rAF，暂停/结束即冻结） ──
-const step = (ts: number): void => {
-  rafId = requestAnimationFrame(step);
-  if (lastTs === 0) {
-    lastTs = ts;
-    return;
-  }
-  const dt = Math.min((ts - lastTs) / 1000, 0.05);
-  lastTs = ts;
-  if (paused.value || gameEnded || isDropping.value) return;
-  const width = railRef.value?.offsetWidth || 300;
-  const speedPct = (levelConfig.value.clawSpeed / width) * 100;
-  clawX.value += clawDir.value * speedPct * dt;
-  if (clawX.value >= 94) {
-    clawX.value = 94;
-    clawDir.value = -1;
-  } else if (clawX.value <= 6) {
-    clawX.value = 6;
-    clawDir.value = 1;
-  }
-};
-
-// ── 下爪 ──
-const dropClaw = (): void => {
-  if (isDropping.value || gameEnded || paused.value) return;
-  isDropping.value = true;
-  sounds.play('click');
-  const DROP_MS = 450;
-  clawY.value = 150; // CSS transition 下移
-  dropTimer = setTimeout(() => {
-    // 命中判定：爪心与奖品横向距离
-    const hit = prizes.value.find((p) => !p.grabbed && Math.abs(p.x - clawX.value) < 9);
-    if (hit) {
-      hit.grabbed = true;
-      isHolding.value = true;
-      collected.value += 1;
-      collectedPrizes.value.push(hit.emoji);
-      sounds.play('match');
-    } else {
-      sounds.play('fail');
-    }
-    dropTimer = setTimeout(() => {
-      clawY.value = 0; // 收爪
-      dropTimer = setTimeout(() => {
-        isHolding.value = false;
-        isDropping.value = false;
-        refillPrizes();
-        if (collected.value >= levelConfig.value.targetGrabs) endGame(true);
-      }, DROP_MS);
-    }, 180);
-  }, DROP_MS);
-};
-
-// ── 计时 ──
-const tick = (): void => {
-  if (paused.value || gameEnded) return;
-  timeLeft.value -= 1;
-  if (timeLeft.value <= 0) {
-    timeLeft.value = 0;
-    endGame(false);
-  }
-};
-
-// ── 生命周期流程 ──
-const initGame = (): void => {
-  gameEnded = false;
-  showResult.value = false;
-  gameWon.value = false;
-  stars.value = 0;
-  collected.value = 0;
-  collectedPrizes.value = [];
-  prizes.value = [];
-  refillPrizes();
-  clawX.value = 50;
-  clawDir.value = 1;
-  clawY.value = 0;
-  isDropping.value = false;
-  isHolding.value = false;
-  timeLeft.value = levelConfig.value.timeLimit;
-  lastTs = 0;
-
-  sounds.play('click');
-  playVoice('claw_intro', '看准小礼物，按抓抓，把它们都抓出来吧');
-  if (tickTimer) clearInterval(tickTimer);
-  tickTimer = setInterval(tick, 1000);
-};
-
-const endGame = (won: boolean): void => {
-  if (gameEnded) return;
-  gameEnded = true;
-  gameWon.value = won;
-  if (tickTimer) clearInterval(tickTimer);
-  if (won) {
-    sounds.play('success');
-    const ratio = timeLeft.value / levelConfig.value.timeLimit;
-    stars.value = ratio >= 0.5 ? 3 : ratio >= 0.25 ? 2 : 1;
-    assist.record(true);
-    // 胜局计入进度（成绩=抓到只数，越多越好）
-    saveGameProgress({
-      level: currentLevel.value + 1,
-      score: collected.value,
-      stars: stars.value,
-    });
-  } else {
-    sounds.play('fail');
-    assist.record(false);
-    recordPlay();
-  }
-  showResult.value = true;
-};
-
-const restartGame = (): void => initGame();
-
-const nextLevel = async (): Promise<void> => {
-  currentLevel.value += 1;
-  sounds.play('levelUp');
-  await applyLevelConfig(currentLevel.value);
-  initGame();
-};
-
-const applyLevelConfig = async (level: number): Promise<void> => {
-  const base = defaultLevelConfig('claw', level);
-  levelConfig.value = { ...base };
-  const override = await getLevelOverride('claw', level);
-  if (override) {
-    // claw 的字段白名单全为数值（clawSpeed/targetGrabs/timeLimit）
-    levelConfig.value = { ...levelConfig.value, ...override } as Record<string, number>;
-  }
-  // 自适应辅助：连败降速 / 减目标（孩子无感知）
-  const assistLevel = assist.level();
-  if (assistLevel >= 1) levelConfig.value.clawSpeed = Math.round(levelConfig.value.clawSpeed * 0.8);
-  if (assistLevel >= 2) levelConfig.value.targetGrabs -= 2;
-};
-
-// ── 暂停（手动 + 护眼） ──
-const pauseGame = (): void => {
-  paused.value = true;
-};
-const resumeGame = (): void => {
-  paused.value = false;
-};
-
-useGameLifecycle({ onPause: () => (paused.value = true), onResume: () => (paused.value = false) });
-
-const openLevelSelect = (): void => {
-  if (!gameEnded) paused.value = true;
-  showLevelSelect.value = true;
-};
-
-const chooseLevel = async (level: number): Promise<void> => {
-  showLevelSelect.value = false;
-  paused.value = false;
-  currentLevel.value = level;
-  await applyLevelConfig(level);
-  initGame();
-};
-
-const quitGame = (): void => {
-  router.back();
-};
-
-onMounted(async () => {
-  sounds.init();
-  rafId = requestAnimationFrame(step);
-  currentLevel.value = await loadStartLevel();
-  await applyLevelConfig(currentLevel.value);
-  initGame();
+// 渲染细节：下爪/收爪位移只属 2D CSS（450ms 与逻辑层下爪时序对齐）
+const clawY = ref(0);
+watch(isDropping, (dropping) => {
+  if (dropping) clawY.value = 150;
+});
+watch(isReleasing, (releasing) => {
+  if (releasing) clawY.value = 0;
 });
 
-onUnmounted(() => {
-  cancelAnimationFrame(rafId);
-  if (tickTimer) clearInterval(tickTimer);
-  if (dropTimer) clearTimeout(dropTimer);
-});
+const go3d = () => {
+  router.push('/claw-3d');
+};
 </script>
 
 <style scoped>
@@ -475,6 +269,32 @@ onUnmounted(() => {
 .drop-btn:disabled {
   opacity: 0.45;
   cursor: default;
+}
+
+.mode-switch-btn {
+  background: rgba(232, 68, 127, 0.12);
+  color: #c2416e;
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.mode-switch-btn:hover {
+  background: rgba(232, 68, 127, 0.24);
+  transform: scale(1.1);
+}
+
+.mode-switch-btn:active {
+  transform: scale(0.95);
 }
 
 .tip-text {

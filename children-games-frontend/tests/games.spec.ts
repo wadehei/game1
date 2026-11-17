@@ -68,7 +68,7 @@ test.describe('儿童游戏乐园 - 全游戏测试', () => {
     });
   });
 
-  test.describe('1b. 3D 模式冒烟（CSS 3D 页可开 + 关键元素 + 2D/3D 互切）', () => {
+  test.describe('1b. 3D 模式冒烟（3D 页可开 + 关键元素 + 2D/3D 互切）', () => {
     test('memory-3d 场景渲染出立体卡牌', async ({ page }) => {
       await page.goto('/#/memory-3d');
       await waitForGameInit(page);
@@ -98,6 +98,35 @@ test.describe('儿童游戏乐园 - 全游戏测试', () => {
       await expect(page).toHaveURL(/#\/memory$/);
       await expect(page.locator('text=关卡')).toBeVisible();
     });
+  });
+
+  test('claw-3d 场景渲染出 3D 机柜（WebGL canvas）', async ({ page }) => {
+    await page.goto('/#/claw-3d');
+    await waitForGameInit(page, 2500);
+    const canvasInfo = await page.evaluate(() => {
+      const canvas = document.querySelector('.scene3d canvas') as HTMLCanvasElement | null;
+      if (!canvas) return { exists: false };
+      return { exists: true, width: canvas.width, height: canvas.height };
+    });
+    expect(canvasInfo.exists).toBe(true);
+    expect(canvasInfo.width).toBeGreaterThan(100);
+    // 加载过渡应已结束（场景就绪）
+    await expect(page.locator('text=3D 机柜搭建中')).toHaveCount(0);
+  });
+
+  test('match3-3d 场景渲染出 3D 棋盘（WebGL canvas）', async ({ page }) => {
+    await page.goto('/#/match3-3d');
+    await waitForGameInit(page, 2500);
+    const canvasInfo = await page.evaluate(() => {
+      const canvas = document.querySelector('.scene3d canvas') as HTMLCanvasElement | null;
+      if (!canvas) return { exists: false };
+      return { exists: true, width: canvas.width, height: canvas.height };
+    });
+    expect(canvasInfo.exists).toBe(true);
+    expect(canvasInfo.width).toBeGreaterThan(100);
+    await expect(page.locator('text=3D 棋盘搭建中')).toHaveCount(0);
+    // 头部状态条在（与 2D 共享 engine）
+    await expect(page.locator('text=关卡')).toBeVisible();
   });
 
   test.describe('2. 接水果游戏', () => {
