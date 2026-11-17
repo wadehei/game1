@@ -230,8 +230,10 @@ const games = ref<
 const selected = ref('gomoku');
 
 // hero 横幅点击：滚动到「创建房间」区
+// 勿用 behavior:'smooth'——其动画依赖 rAF 帧推进，后台标签页/被遮挡窗口 rAF 停摆时
+// 滚动会冻结在起点（与 transition 冻结同一环境坑），瞬时滚动由浏览器同步完成最可靠
 const scrollToCreate = (): void => {
-  document.querySelector('.section.card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  document.querySelector('.section.card')?.scrollIntoView({ block: 'start' });
 };
 const selectedTitle = computed(
   () => games.value.find((g) => g.type === selected.value)?.title || '五子棋'
