@@ -117,6 +117,12 @@ const routes = [
     name: 'Doudizhu3D',
     component: () => import('@/pages/doudizhu/index3d.vue'),
   },
+  {
+    // 已删游戏（/balloon 等）或手输错链接的兜底，回首页而不是空白
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    redirect: '/',
+  },
 ];
 
 const router = createRouter({
