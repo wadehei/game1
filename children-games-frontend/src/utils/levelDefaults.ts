@@ -119,7 +119,7 @@ const FORMULAS: Record<string, Formula> = {
     spawnRate: Math.max(1000 - (level - 1) * 70, 380),
     fallSpeed: Math.min(2 + (level - 1) * 0.5, 9),
     bombChance: Math.min(0.12 + (level - 1) * 0.03, 0.4),
-    targetScore: 100 + (level - 1) * 50,
+    targetScore: 80 + (level - 1) * 50,
     lives: 3,
   }),
   // 拼图：格子每 4 关升一档，限时每关 -12s（同格子内也有紧迫感差异）
