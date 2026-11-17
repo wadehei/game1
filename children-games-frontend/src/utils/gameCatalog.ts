@@ -1,7 +1,6 @@
 import iconMemorySvg from '@/static/images/games/lobby/icon-memory.svg';
 import iconFruitSvg from '@/static/images/games/lobby/icon-fruit.svg';
 import iconPuzzleSvg from '@/static/images/games/lobby/icon-puzzle.svg';
-import iconBalloonSvg from '@/static/images/games/lobby/icon-balloon.svg';
 import iconTankSvg from '@/static/images/games/lobby/icon-tank.svg';
 import iconMoleSvg from '@/static/images/games/lobby/icon-mole.svg';
 import iconSimonSvg from '@/static/images/games/lobby/icon-simon.svg';
@@ -11,6 +10,7 @@ import iconMatch3Svg from '@/static/images/games/lobby/icon-match3.svg';
 import iconBrickSvg from '@/static/images/games/lobby/icon-brick.svg';
 import iconSudokuSvg from '@/static/images/games/lobby/icon-sudoku.svg';
 import iconClawSvg from '@/static/images/games/lobby/icon-claw.svg';
+import iconDoudizhuSvg from '@/static/images/games/lobby/icon-doudizhu.svg';
 
 export interface GameCatalogItem {
   id: string;
@@ -41,13 +41,6 @@ export const games: readonly GameCatalogItem[] = [
     totalLevels: 25,
     icon: iconPuzzleSvg,
     bgColor: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-  },
-  {
-    id: 'balloon',
-    name: '打气球',
-    totalLevels: 30,
-    icon: iconBalloonSvg,
-    bgColor: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
   },
   {
     id: 'tank',
@@ -111,5 +104,12 @@ export const games: readonly GameCatalogItem[] = [
     totalLevels: 20,
     icon: iconClawSvg,
     bgColor: 'linear-gradient(135deg, #f66d9b 0%, #c2429c 100%)',
+  },
+  {
+    id: 'doudizhu',
+    name: '斗地主',
+    totalLevels: 30,
+    icon: iconDoudizhuSvg,
+    bgColor: 'linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%)',
   },
 ];

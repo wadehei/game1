@@ -7,6 +7,7 @@ import { getRoomBus } from '../bus';
 import { applyChipDelta, writeCareerRecords } from '../../services/battleChips';
 import { cardLabel, type Card } from './blackjack/engine';
 import { buildZjhDeck, compareZjh, handRank, typeName } from './zjh/engine';
+import { z } from 'zod';
 import {
   getSeatedPlayers,
   clearGameTimer,
@@ -539,6 +540,19 @@ export const zjhHandler: GameHandler<ZjhState> = {
   allowSpectators: true,
   rematchSwapSeats: false,
   validActions: new Set(['zjh_look', 'zjh_call', 'zjh_fold', 'zjh_raise', 'zjh_compare']),
+  actionSchemas: {
+    zjh_look: z.object({ t: z.literal('zjh_look') }),
+    zjh_call: z.object({ t: z.literal('zjh_call') }), // 跟注
+    zjh_fold: z.object({ t: z.literal('zjh_fold') }), // 弃牌
+    zjh_raise: z.object({
+      t: z.literal('zjh_raise'),
+      amount: z.number().int().min(1),
+    }),
+    zjh_compare: z.object({
+      t: z.literal('zjh_compare'),
+      target: z.number().int().min(0), // target seat
+    }),
+  },
 
   normalizeConfig(config: Record<string, unknown>): Record<string, unknown> {
     return {

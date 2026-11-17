@@ -258,7 +258,17 @@ const render = (): void => {
   ctx.fillRect(0, 0, arena.value.w, arena.value.h);
   // 墙
   ctx.fillStyle = '#8d99ae';
-  for (const w of walls.value) ctx.fillRect(w.x, w.y, w.w, w.h);
+  for (const w of walls.value) {
+    ctx.fillRect(w.x, w.y, w.w, w.h);
+    // 砖纹：顶边高光 + 中线 + 底边阴影
+    ctx.fillStyle = '#a5b1c2';
+    ctx.fillRect(w.x, w.y, w.w, 2);
+    ctx.fillStyle = '#6b7688';
+    ctx.fillRect(w.x, w.y + Math.round(w.h / 2), w.w, 1);
+    ctx.fillStyle = '#7a869a';
+    ctx.fillRect(w.x, w.y + w.h - 2, w.w, 2);
+    ctx.fillStyle = '#8d99ae';
+  }
   if (!snap) return;
   // 子弹
   ctx.fillStyle = '#333';

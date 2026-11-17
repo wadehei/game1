@@ -142,7 +142,11 @@ const startEdit = (u: AdminUser) => {
 };
 
 const saveEdit = async (id: number) => {
-  await updateUser(id, { nickname: editNickname.value, avatar: editAvatar.value }).catch(() => {});
+  try {
+    await updateUser(id, { nickname: editNickname.value, avatar: editAvatar.value });
+  } catch {
+    showToast('保存失败，请重试', 'error');
+  }
   editingId.value = null;
   await load();
 };
@@ -153,7 +157,12 @@ const clearPin = async (u: AdminUser) => {
     detail: '清除后任何人都能直接进入该角色。',
   });
   if (!ok) return;
-  await clearUserPin(u.id).catch(() => {});
+  try {
+    await clearUserPin(u.id);
+    showToast(`已清除「${u.nickname}」的口令`);
+  } catch {
+    showToast('清除口令失败，请重试', 'error');
+  }
   await load();
 };
 
@@ -165,7 +174,12 @@ const resetProgress = async (u: AdminUser) => {
     confirmText: '重置',
   });
   if (!ok) return;
-  await resetUserProgress(u.id).catch(() => {});
+  try {
+    await resetUserProgress(u.id);
+    showToast(`已重置「${u.nickname}」的进度`);
+  } catch {
+    showToast('重置进度失败，请重试', 'error');
+  }
   await load();
 };
 
@@ -177,7 +191,12 @@ const removeUser = async (u: AdminUser) => {
     confirmText: '删除',
   });
   if (!ok) return;
-  await deleteUser(u.id).catch(() => {});
+  try {
+    await deleteUser(u.id);
+    showToast(`已删除「${u.nickname}」`);
+  } catch {
+    showToast('删除失败，请重试', 'error');
+  }
   await load();
 };
 

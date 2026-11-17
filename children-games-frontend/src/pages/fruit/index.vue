@@ -127,9 +127,12 @@ const { loadStartLevel, saveProgress: saveGameProgress, recordPlay } = useGamePr
 const assist = useAdaptiveAssist('fruit');
 let ctx: CanvasRenderingContext2D | null = null;
 let animationId: number | null = null;
-let spawnTimer: ReturnType<typeof setInterval> | null = null;
+// 生成改在 rAF 循环内按时间判定（原 setInterval 独立于游戏循环：
+// 窗口被遮挡时 rAF 停而 interval 继续，水果会在顶边无限堆积）
+let lastSpawnAt = 0;
 let bgGradient: CanvasGradient | null = null;
 let gameEnded = false;
+let lastFrameTime = Date.now();
 
 let basketX = 150;
 const basketWidth = 70;
@@ -158,6 +161,7 @@ const initGame = async () => {
   lives.value = levelConfig.value.lives ?? 3;
   targetScore.value = levelConfig.value.targetScore;
   fruits = [];
+  lastSpawnAt = Date.now(); // 开局先等一个 spawnRate 再掉第一只（与旧 setInterval 节奏一致）
   showResult.value = false;
   gameWon.value = false;
   stars.value = 0;
@@ -191,15 +195,10 @@ const pauseLoop = () => {
     cancelAnimationFrame(animationId);
     animationId = null;
   }
-  if (spawnTimer) {
-    clearInterval(spawnTimer);
-    spawnTimer = null;
-  }
 };
 
 const resumeLoop = () => {
   if (gameEnded || animationId !== null) return;
-  spawnTimer = setInterval(spawnFruit, levelConfig.value.spawnRate);
   gameLoop();
 };
 
@@ -260,14 +259,23 @@ const spawnFruit = () => {
 };
 
 const gameLoop = () => {
-  update();
-  render();
+  const now = Date.now();
+  const dt = Math.min((now - lastFrameTime) / 1000, 0.05);
+  lastFrameTime = now;
+  // 生成与游戏循环同生命周期：rAF 停（窗口遮挡/后台/暂停）则不生成，
+  // 恢复后最多补 1 只，不再出现遮挡期水果堆积
+  if (now - lastSpawnAt >= levelConfig.value.spawnRate) {
+    lastSpawnAt = now;
+    spawnFruit();
+  }
+  update(dt);
+  render(dt);
   animationId = requestAnimationFrame(gameLoop);
 };
 
-const update = () => {
+const update = (dt: number) => {
   fruits = fruits.filter((fruit) => {
-    fruit.y += fruit.speed;
+    fruit.y += fruit.speed * dt * 60;
 
     // 检查是否被篮子接住
     const basketCenterX = basketX + basketWidth / 2;
@@ -316,7 +324,7 @@ const update = () => {
   });
 };
 
-const render = () => {
+const render = (dt: number) => {
   if (!ctx) return;
   const c = ctx;
 
@@ -357,8 +365,8 @@ const render = () => {
   // 绘制并更新粒子
   if (particles.length > 0) {
     particles = particles.filter((p) => {
-      p.radius += p.speed;
-      p.alpha -= 0.03;
+      p.radius += p.speed * dt * 60;
+      p.alpha -= 0.03 * dt * 60;
       if (p.alpha <= 0) return false;
       ctx!.beginPath();
       ctx!.arc(p.x, p.y, p.radius, 0, Math.PI * 2);

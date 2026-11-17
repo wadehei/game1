@@ -30,10 +30,27 @@ export async function setupAuthAndGoto(page: Page, path: string, options: SetupA
     await mockAllBattleApis(page, { nickname, battleChips, level });
   }
 
+  // 尽量取一个真后端的有效 token：本地后端活着时，未 mock 的请求真发出去
+  // 会带此 token 返回 200；否则（后端没起）未 mock 请求是网络错误/500，
+  // 不会触发 401 过期跳转逻辑把页面拉去 /profiles（回归 52b4b8f 行为）
+  let realToken = '';
+  try {
+    const loginRes = await fetch('http://localhost:3002/api/user/login/family', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uid: 1 }),
+      signal: AbortSignal.timeout(3000),
+    });
+    const loginJson = await loginRes.json();
+    realToken = loginJson?.data?.accessToken || '';
+  } catch {
+    // 后端不在：回退占位 token（mock 覆盖的请求照常工作）
+  }
+
   // 注入 localStorage
   await page.addInitScript(
-    ({ nick, chips, lvl }) => {
-      localStorage.setItem('token', 'test_token');
+    ({ nick, chips, lvl, tok }) => {
+      localStorage.setItem('token', tok || 'test_token');
       localStorage.setItem('last_profile_id', '1');
       localStorage.setItem(
         'userInfo',
@@ -46,7 +63,7 @@ export async function setupAuthAndGoto(page: Page, path: string, options: SetupA
         })
       );
     },
-    { nick: nickname, chips: battleChips, lvl: level }
+    { nick: nickname, chips: battleChips, lvl: level, tok: realToken }
   );
 
   // 导航到目标页面

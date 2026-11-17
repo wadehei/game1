@@ -8,7 +8,6 @@ export const LEVEL_FIELDS: Record<string, string[]> = {
   memory: ['pairs', 'timeLimit'],
   fruit: ['spawnRate', 'fallSpeed', 'bombChance', 'targetScore', 'lives'],
   puzzle: ['gridSize', 'timeLimit'],
-  balloon: ['spawnRate', 'moveSpeed', 'targetScore', 'bullets', 'rainbowChance', 'goldenChance'],
   tank: [
     'enemyCount',
     'enemySpeed',
@@ -28,6 +27,7 @@ export const LEVEL_FIELDS: Record<string, string[]> = {
   brick: ['rows', 'ballSpeed', 'paddleWidth', 'lives'],
   sudoku: ['gridSize', 'prefilled', 'timeLimit'],
   claw: ['clawSpeed', 'targetGrabs', 'timeLimit'],
+  doudizhu: ['aiDifficulty', 'playerFirstBid', 'aiThinkTime', 'targetMultiplier'],
 };
 
 /** 读取某关卡的云端覆盖配置：没有则 override 为 null（默认难度以前端内置公式为准） */

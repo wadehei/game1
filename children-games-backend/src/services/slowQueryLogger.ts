@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { logWarn } from '../utils/logger';
 
 /**
  * 慢查询日志记录器
@@ -69,7 +70,7 @@ export const recordSlowQuery = (duration: number, sql: string): void => {
   buffer.push(entry);
 
   // 同时输出到控制台（WARN 级别）
-  console.warn(`[Slow Query] ${entry.duration}ms | ${entry.sql}`);
+  logWarn('slowQuery', `[Slow Query] ${entry.duration}ms | ${entry.sql}`);
 
   if (!flushTimer) {
     flushTimer = setInterval(flush, FLUSH_INTERVAL_MS);

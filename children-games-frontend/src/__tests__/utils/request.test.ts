@@ -6,32 +6,36 @@ let capturedInstance: any = null;
 const originalCreate = axios.create;
 
 vi.spyOn(axios, 'create').mockImplementation((...args) => {
-  capturedInstance = originalCreate.call(axios, ...args);
+  // 注意：wrapper 必须闭包绑定本实例（inst），不能引用可变的 capturedInstance——
+  // 否则同一次被测代码里连续 axios.create 两个实例时，早期实例的拦截器注册
+  // 会被重定向到最后一个实例上（createApiClient 双实例场景踩过）
+  const inst: any = originalCreate.call(axios, ...args);
+  capturedInstance = inst;
 
   // Wrap interceptors.use to capture the callbacks
-  const origReqUse = capturedInstance.interceptors.request.use;
-  const origResUse = capturedInstance.interceptors.response.use;
+  const origReqUse = inst.interceptors.request.use;
+  const origResUse = inst.interceptors.response.use;
 
   let reqFn: any;
   let resOkFn: any;
   let resErrFn: any;
 
-  capturedInstance.interceptors.request.use = (fn: any, ...rest: any[]) => {
+  inst.interceptors.request.use = (fn: any, ...rest: any[]) => {
     reqFn = fn;
-    return origReqUse.call(capturedInstance.interceptors.request, fn, ...rest);
+    return origReqUse.call(inst.interceptors.request, fn, ...rest);
   };
-  capturedInstance.interceptors.response.use = (okFn: any, errFn: any, ...rest: any[]) => {
+  inst.interceptors.response.use = (okFn: any, errFn: any, ...rest: any[]) => {
     resOkFn = okFn;
     resErrFn = errFn;
-    return origResUse.call(capturedInstance.interceptors.response, okFn, errFn, ...rest);
+    return origResUse.call(inst.interceptors.response, okFn, errFn, ...rest);
   };
 
   // Expose for testing
-  capturedInstance.__testGetReqInterceptor = () => reqFn;
-  capturedInstance.__testGetResOkInterceptor = () => resOkFn;
-  capturedInstance.__testGetResErrInterceptor = () => resErrFn;
+  inst.__testGetReqInterceptor = () => reqFn;
+  inst.__testGetResOkInterceptor = () => resOkFn;
+  inst.__testGetResErrInterceptor = () => resErrFn;
 
-  return capturedInstance;
+  return inst;
 });
 
 // Mock the user store module
@@ -148,5 +152,40 @@ describe('request (api)', () => {
 
       expect(localStorage.getItem('token')).toBe('valid-token');
     });
+  });
+});
+
+describe('createApiClient（admin 等独立模块用）', () => {
+  it('raw 实例必须带 baseURL——回归守护：曾是全局 axios，生产同源部署丢 /api 前缀全 404', async () => {
+    localStorage.setItem('admin_token', 'adm-jwt');
+    const mod = await import('../../utils/request');
+    const client = mod.createApiClient({ baseURL: '/api/voice', tokenKey: 'admin_token' });
+
+    expect((client.raw as any).defaults.baseURL).toBe('/api/voice');
+    expect(client.raw).not.toBe(axios); // 不能是全局裸实例
+  });
+
+  it('raw 不做 {code,data} 解包且自动附 token（blob 场景拿原始响应）', async () => {
+    localStorage.setItem('admin_token', 'adm-jwt');
+    const mod = await import('../../utils/request');
+    const client = mod.createApiClient({ baseURL: '/api/voice', tokenKey: 'admin_token' });
+
+    const envelope = { code: 200, data: { voiceId: 'v1' }, message: 'ok' };
+    const adapter = vi.fn().mockResolvedValue({
+      data: envelope,
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      config: {},
+    });
+    (client.raw as any).defaults.adapter = adapter;
+
+    const res = await client.raw.post('/game_start', 'blob-bytes');
+    expect(res.data).toEqual(envelope); // 原始 AxiosResponse，未解包
+
+    const reqConfig = adapter.mock.calls[0][0];
+    expect(reqConfig.url).toBe('/game_start');
+    const auth = reqConfig.headers?.get?.('Authorization') ?? reqConfig.headers?.Authorization;
+    expect(auth).toBe('Bearer adm-jwt');
   });
 });

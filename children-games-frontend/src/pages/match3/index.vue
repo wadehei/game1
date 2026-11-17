@@ -45,6 +45,15 @@
           popin: cell.popin,
           neighbor: engine.isNeighborOfSelected(cell.r, cell.c),
         }"
+        :style="
+          engine.isNumberTheme.value
+            ? {
+                '--m3-bg': ['#FF8F8F', '#FFB74D', '#FFF176', '#AED581', '#80CBC4', '#90CAF9'][
+                  cell.kind
+                ],
+              }
+            : {}
+        "
         @click="engine.tapCell(cell.r, cell.c)"
       >
         {{ engine.theme.value[cell.kind] }}
@@ -210,7 +219,7 @@ onMounted(async () => {
   aspect-ratio: 1;
   border: none;
   border-radius: 10px;
-  background: #fff8ee;
+  background: var(--m3-bg, #fff8ee);
   font-size: clamp(18px, 4.6vw, 26px);
   line-height: 1;
   display: flex;

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import {
   getErrorLogs,
   clearErrorLogs,
@@ -8,9 +9,20 @@ import {
 import { getAuditLogs } from '../../controllers/auditLogController';
 import { adminMiddleware } from '../../middleware/adminAuth';
 import { auditLog } from '../../middleware/auditLog';
+import { validateQuery } from '../../middleware/validate';
 import { redisMonitor } from '../../services/redisMonitor';
 
 const router = Router();
+
+/** 审计日志分页参数校验（startDate/endDate 供 auditLogController 时间范围过滤，勿删） */
+const auditLogsQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  action: z.string().optional(),
+  adminId: z.coerce.number().int().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+});
 
 // 所有系统管理路由需要管理员认证
 router.use(adminMiddleware);
@@ -81,7 +93,7 @@ router.get('/backup', auditLog('backup.download'), downloadBackup);
  *             schema:
  *               $ref: '#/components/schemas/Success'
  */
-router.get('/backups', listAutoBackups);
+router.get('/backups', auditLog('backups.list'), listAutoBackups);
 
 /**
  * @swagger
@@ -99,7 +111,7 @@ router.get('/backups', listAutoBackups);
  *             schema:
  *               $ref: '#/components/schemas/Success'
  */
-router.get('/redis-stats', async (_req, res) => {
+router.get('/redis-stats', auditLog('redis-stats.view'), async (_req, res) => {
   const stats = await redisMonitor.getStats();
   res.json({ code: 200, message: 'success', data: stats });
 });
@@ -129,6 +141,11 @@ router.get('/redis-stats', async (_req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Success'
  */
-router.get('/audit-logs', getAuditLogs);
+router.get(
+  '/audit-logs',
+  validateQuery(auditLogsQuerySchema),
+  auditLog('audit-logs.view'),
+  getAuditLogs
+);
 
 export default router;

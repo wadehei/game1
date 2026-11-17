@@ -9,6 +9,7 @@ import {
   generateAccessToken,
   generateRefreshToken,
 } from '../utils/auth';
+import { RATE_LIMIT_MAX_SIZE, RATE_LIMIT_CLEANUP_THRESHOLD } from '../config/constants';
 import type { User } from '../models';
 
 /** Redis key 前缀 */
@@ -24,6 +25,28 @@ const REFRESH_USER_PREFIX = 'token:refresh-user:';
  */
 const memoryBlacklist = new Map<string, number>(); // jti -> expiresAt
 const memoryRefreshTokens = new Map<string, { userId: number; expiresAt: number }>(); // jti -> data
+
+/** 驱逐最老的内存黑名单条目（按 expiresAt 升序） */
+const evictOldestBlacklist = (targetSize: number): void => {
+  if (memoryBlacklist.size <= targetSize) return;
+  const entries = [...memoryBlacklist.entries()].sort((a, b) => a[1] - b[1]);
+  const toDelete = memoryBlacklist.size - targetSize;
+  for (let i = 0; i < toDelete; i++) {
+    memoryBlacklist.delete(entries[i][0]);
+  }
+};
+
+/** 驱逐最老的内存 refresh token 条目（按 expiresAt 升序） */
+const evictOldestRefreshTokens = (targetSize: number): void => {
+  if (memoryRefreshTokens.size <= targetSize) return;
+  const entries = [...memoryRefreshTokens.entries()].sort(
+    (a, b) => a[1].expiresAt - b[1].expiresAt
+  );
+  const toDelete = memoryRefreshTokens.size - targetSize;
+  for (let i = 0; i < toDelete; i++) {
+    memoryRefreshTokens.delete(entries[i][0]);
+  }
+};
 
 // 定期清理过期的内存数据（每 10 分钟）
 const cleanupInterval = setInterval(
@@ -67,7 +90,10 @@ export async function blacklistToken(jti: string, expiresAt: number): Promise<bo
     }
   }
 
-  // Fallback: 内存存储
+  // Fallback: 内存存储（加上限保护）
+  if (!memoryBlacklist.has(jti) && memoryBlacklist.size >= RATE_LIMIT_MAX_SIZE) {
+    evictOldestBlacklist(RATE_LIMIT_CLEANUP_THRESHOLD);
+  }
   memoryBlacklist.set(jti, expiresAt);
   return true;
 }
@@ -147,7 +173,10 @@ export async function storeRefreshToken(jti: string, userId: number): Promise<bo
     }
   }
 
-  // Fallback: 内存存储
+  // Fallback: 内存存储（加上限保护）
+  if (!memoryRefreshTokens.has(jti) && memoryRefreshTokens.size >= RATE_LIMIT_MAX_SIZE) {
+    evictOldestRefreshTokens(RATE_LIMIT_CLEANUP_THRESHOLD);
+  }
   memoryRefreshTokens.set(jti, data);
   return true;
 }

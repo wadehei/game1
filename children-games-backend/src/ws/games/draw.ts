@@ -6,6 +6,7 @@ import { addTimer, clearRoomTimers, addChat } from '../roomManager';
 import type { ActionResult, GameHandler } from './types';
 import { getRoomBus } from '../bus';
 import { secureShuffle, securePickOne } from '../../utils/secureRandom';
+import { z } from 'zod';
 
 const PICK_SECONDS = 10;
 const DRAW_SECONDS = Math.max(10, Number(process.env.DRAW_SECONDS) || 90);
@@ -215,6 +216,21 @@ export const drawHandler: GameHandler<DrawState> = {
     'draw_skip',
     'guess',
   ]),
+  actionSchemas: {
+    draw_pick: z.object({ t: z.literal('draw_pick'), index: z.number().int().min(0) }), // 候选词下标（与 onAction 的 payload.index、前端 DrawGame 一致）
+    draw_stroke: z.object({
+      t: z.literal('draw_stroke'),
+      // 点是 0~1 归一化的 [x, y] 元组（与前端 DrawGame.toNorm、协议测试一致，勿写成 {x,y} 对象）
+      points: z.array(z.tuple([z.number(), z.number()])),
+      color: z.string(),
+      width: z.number(),
+      cont: z.boolean().optional(), // true=上一笔的连续批次
+    }),
+    draw_undo: z.object({ t: z.literal('draw_undo') }),
+    draw_clear: z.object({ t: z.literal('draw_clear') }),
+    draw_skip: z.object({ t: z.literal('draw_skip') }),
+    guess: z.object({ t: z.literal('guess'), content: z.string().max(50) }),
+  },
 
   create(): DrawState {
     return {

@@ -105,12 +105,53 @@ const headerItems = computed(() => [
   { label: '敌人', value: engine.enemyCount.value },
 ]);
 
+// ── 键盘控制 ──
+const handleKeyDown = (e: KeyboardEvent) => {
+  if (e.repeat) return;
+  if (engine.paused.value) return;
+  switch (e.key) {
+    case 'ArrowLeft':
+    case 'a':
+    case 'A':
+      engine.moveLeft();
+      break;
+    case 'ArrowRight':
+    case 'd':
+    case 'D':
+      engine.moveRight();
+      break;
+    case ' ':
+    case 'ArrowUp':
+    case 'w':
+    case 'W':
+      engine.fire();
+      break;
+  }
+};
+
+const handleKeyUp = (e: KeyboardEvent) => {
+  if (
+    e.key === 'ArrowLeft' ||
+    e.key === 'a' ||
+    e.key === 'A' ||
+    e.key === 'ArrowRight' ||
+    e.key === 'd' ||
+    e.key === 'D'
+  ) {
+    engine.stopMove();
+  }
+};
+
 onMounted(async () => {
   await engine.onMountedSetup(canvasRef.value);
+  document.addEventListener('keydown', handleKeyDown);
+  document.addEventListener('keyup', handleKeyUp);
 });
 
 onUnmounted(() => {
   engine.onUnmountedCleanup();
+  document.removeEventListener('keydown', handleKeyDown);
+  document.removeEventListener('keyup', handleKeyUp);
 });
 </script>
 

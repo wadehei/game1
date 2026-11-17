@@ -75,7 +75,7 @@ await sleep(1000);
 const jumped = await page.evaluate(() => location.hash);
 check(
   `点击跳转到游戏页（${jumped}）`,
-  /^#\/(memory|fruit|puzzle|balloon|tank|mole|simon|math)$/.test(jumped)
+  /^#\/(memory|fruit|puzzle|tank|mole|simon|math)$/.test(jumped)
 );
 
 // ═══ 4. 删除用户清理其照片头像文件 ═══

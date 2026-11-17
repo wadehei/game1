@@ -22,7 +22,6 @@ export const GAME_ROUTES = [
   { hash: '#/memory', name: '记忆翻牌' },
   { hash: '#/fruit', name: '接水果' },
   { hash: '#/puzzle', name: '拼图' },
-  { hash: '#/balloon', name: '打气球' },
   { hash: '#/tank', name: '坦克大战' },
   { hash: '#/mole', name: '打地鼠' },
   { hash: '#/simon', name: '音乐记忆' },

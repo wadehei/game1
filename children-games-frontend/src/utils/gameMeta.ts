@@ -16,7 +16,6 @@ export const GAMES: GameMeta[] = [
   { id: 'memory', name: '记忆翻牌', totalLevels: 20, scoreLabel: '最快 {v} 步', lowerBetter: true },
   { id: 'fruit', name: '接水果', totalLevels: 30, scoreLabel: '最高 {v} 分' },
   { id: 'puzzle', name: '拼图游戏', totalLevels: 25, scoreLabel: '最少 {v} 步', lowerBetter: true },
-  { id: 'balloon', name: '打气球', totalLevels: 30, scoreLabel: '最高 {v} 分' },
   { id: 'tank', name: '坦克大战', totalLevels: 25, scoreLabel: '最高 {v} 分' },
   { id: 'mole', name: '打地鼠', totalLevels: 20, scoreLabel: '最多 {v} 只' },
   { id: 'simon', name: '音乐记忆', totalLevels: 15, scoreLabel: '最长 {v} 步' },
@@ -26,6 +25,7 @@ export const GAMES: GameMeta[] = [
   { id: 'brick', name: '打砖块', totalLevels: 20, scoreLabel: '最高 {v} 分' },
   { id: 'sudoku', name: '动物数独', totalLevels: 20, scoreLabel: '最快 {v} 秒', lowerBetter: true },
   { id: 'claw', name: '抓娃娃机', totalLevels: 20, scoreLabel: '抓到 {v} 只' },
+  { id: 'doudizhu', name: '斗地主', totalLevels: 30, scoreLabel: '最高 {v} 倍' },
 ];
 
 export const getGameMeta = (gameId: string): GameMeta | undefined =>

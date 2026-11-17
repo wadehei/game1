@@ -4,6 +4,7 @@ import { addTimer, clearRoomTimers } from '../roomManager';
 import type { ActionResult, GameHandler } from './types';
 import { getRoomBus } from '../bus';
 import { getRoom } from '../roomManager';
+import { z } from 'zod';
 import {
   buildDeck,
   canPlay,
@@ -122,6 +123,15 @@ export const unoHandler: GameHandler<UnoState> = {
   allowSpectators: true,
   rematchSwapSeats: false,
   validActions: new Set(['uno_play', 'uno_draw', 'uno_pass']),
+  actionSchemas: {
+    uno_play: z.object({
+      t: z.literal('uno_play'),
+      cardId: z.string().min(1), // 手牌 id（与 onAction 读取的 payload.cardId、前端 UnoGame 一致）
+      chooseColor: z.string().optional(), // 万能牌选色（red/yellow/green/blue）
+    }),
+    uno_draw: z.object({ t: z.literal('uno_draw') }),
+    uno_pass: z.object({ t: z.literal('uno_pass') }),
+  },
 
   create(): UnoState {
     return {

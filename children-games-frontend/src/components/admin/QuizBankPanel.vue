@@ -136,6 +136,7 @@ import {
   type AdminQuizQuestion,
 } from '@/api/admin';
 import { confirmAction } from '@/utils/confirmBus';
+import { showToast } from '@/utils/toastBus';
 
 const CATEGORIES = ['综合', '科学', '影视', '历史', '地理'];
 const LIMIT = 20;
@@ -223,7 +224,12 @@ const remove = async (q: AdminQuizQuestion) => {
     confirmText: '删除',
   });
   if (!ok) return;
-  await adminQuizDelete(q.id).catch(() => {});
+  try {
+    await adminQuizDelete(q.id);
+    showToast('题目已删除');
+  } catch {
+    showToast('删除失败，请重试', 'error');
+  }
   await load();
 };
 

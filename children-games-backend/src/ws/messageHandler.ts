@@ -190,6 +190,20 @@ export const dispatchMessage = (
         return;
       }
 
+      // Schema 校验：若游戏定义了该动作的 Zod schema，先校验 payload
+      if (handler.actionSchemas && handler.actionSchemas[msg.t as string]) {
+        const schema = handler.actionSchemas[msg.t as string];
+        const parseResult = schema.safeParse(msg);
+        if (!parseResult.success) {
+          send(ws, { t: 'error', message: '消息格式无效' });
+          logError(
+            'ws',
+            `${room.gameType} schema 校验失败: action=${msg.t}, errors=${JSON.stringify(parseResult.error.issues)}`
+          );
+          return;
+        }
+      }
+
       let result;
       try {
         result = handler.onAction(room, me, msg.t as string, msg);

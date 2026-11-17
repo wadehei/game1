@@ -1,6 +1,7 @@
 import { LevelConfig } from './models';
 import { sequelize, testConnection } from './config/database';
 import { initModels } from './models';
+import { logInfo, logError } from './utils/logger';
 
 // 生成默认关卡配置
 async function seedLevelConfigs() {
@@ -8,7 +9,7 @@ async function seedLevelConfigs() {
     await testConnection();
     await initModels();
 
-    console.log('开始初始化关卡配置...');
+    logInfo('seed', '开始初始化关卡配置...');
 
     // 记忆翻牌关卡
     for (let i = 1; i <= 20; i++) {
@@ -57,23 +58,6 @@ async function seedLevelConfigs() {
       });
     }
 
-    // 打气球关卡
-    for (let i = 1; i <= 30; i++) {
-      await LevelConfig.findOrCreate({
-        where: { gameId: 'balloon', level: i },
-        defaults: {
-          gameId: 'balloon',
-          level: i,
-          config: JSON.stringify({
-            spawnRate: Math.max(1200 - i * 25, 400),
-            moveSpeed: 1 + i * 0.08,
-            targetScore: 100 + i * 25,
-            specialRate: Math.min(0.1 + i * 0.005, 0.2),
-          }),
-        },
-      });
-    }
-
     // 坦克大战关卡
     for (let i = 1; i <= 25; i++) {
       await LevelConfig.findOrCreate({
@@ -92,10 +76,35 @@ async function seedLevelConfigs() {
       });
     }
 
-    console.log('✅ 关卡配置初始化完成');
+    // 斗地主关卡（AI难度递增）
+    for (let i = 1; i <= 30; i++) {
+      // 难度梯度：easy(1-10) -> normal(11-20) -> hard(21-30)
+      let aiDifficulty: 'easy' | 'normal' | 'hard' = 'easy';
+      if (i > 20) aiDifficulty = 'hard';
+      else if (i > 10) aiDifficulty = 'normal';
+
+      await LevelConfig.findOrCreate({
+        where: { gameId: 'doudizhu', level: i },
+        defaults: {
+          gameId: 'doudizhu',
+          level: i,
+          config: JSON.stringify({
+            aiDifficulty,
+            // 是否允许玩家先手叫地主
+            playerFirstBid: i <= 5,
+            // AI思考时间（毫秒，越低越强）
+            aiThinkTime: Math.max(2000 - i * 50, 500),
+            // 目标倍数（通关条件）
+            targetMultiplier: Math.min(2 + Math.floor(i / 5), 8),
+          }),
+        },
+      });
+    }
+
+    logInfo('seed', '✅ 关卡配置初始化完成');
     process.exit(0);
   } catch (error) {
-    console.error('初始化失败:', error);
+    logError('seed', '初始化失败', error instanceof Error ? error.stack : String(error));
     process.exit(1);
   }
 }

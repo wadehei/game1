@@ -83,7 +83,6 @@ const LINES = [
   { key: 'memory_intro', scene: '记忆翻牌 · 入场', text: '翻一翻卡片，找出两个一样的图案' },
   { key: 'fruit_intro', scene: '接水果 · 入场', text: '移动篮子，接住水果，小心炸弹哦' },
   { key: 'puzzle_intro', scene: '拼图 · 入场', text: '点一点小方块，把图片拼回原样' },
-  { key: 'balloon_intro', scene: '打气球 · 入场', text: '点一点屏幕，把气球打爆吧' },
   { key: 'tank_intro', scene: '坦克大战 · 入场', text: '左右移动坦克，打败坏坦克' },
   { key: 'mole_intro', scene: '打地鼠 · 入场', text: '打地鼠咯！小兔子是好朋友，不能打哦' },
   { key: 'simon_intro', scene: '音乐记忆 · 入场', text: '记住闪光的顺序，然后跟着点' },
@@ -234,9 +233,13 @@ const remove = async (key: string) => {
     confirmText: '删除',
   });
   if (!ok) return;
-  await deleteVoice(key).catch(() => {});
-  recordedKeys.delete(key);
-  flash('已删除，回退系统语音');
+  try {
+    await deleteVoice(key);
+    recordedKeys.delete(key);
+    flash('已删除，回退系统语音');
+  } catch {
+    flash('删除失败，请重试');
+  }
 };
 
 onMounted(loadList);

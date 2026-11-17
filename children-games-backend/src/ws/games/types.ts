@@ -1,6 +1,9 @@
 // 游戏插件接口定义：每个对战游戏实现一个 GameHandler，由 wsServer 路由分发
 import type { Room, Member } from '../roomManager';
+import type { ZodType } from 'zod';
 
+// 游戏类型清单：与 packages/shared/src/types/common.ts 的 GAME_TYPES 由
+// tests/unit/registry.contract.test.ts 契约测试强制对齐，改这里必须同步 shared
 export type GameType =
   'gomoku' | 'quiz' | 'draw' | 'spy' | 'uno' | 'blackjack' | 'zjh' | 'tank' | 'ddz';
 
@@ -10,6 +13,12 @@ export interface ActionResult {
   toMember?: Array<{ userId: number; msg: Record<string, unknown> }>; // 点对点事件
   ended?: { winnerSeat: number; reason: string } | null; // 非空 = 对局结束（winnerSeat -1 表示无人获胜如平局）
 }
+
+/**
+ * 动作 schema 映射：每个游戏可定义各动作的 Zod schema
+ * key 为动作名（如 'play'），value 为 payload 的 Zod schema
+ */
+export type ActionSchemaMap = Record<string, ZodType>;
 
 export interface GameHandler<S = unknown, C = unknown, A = unknown> {
   type: GameType;
@@ -21,6 +30,7 @@ export interface GameHandler<S = unknown, C = unknown, A = unknown> {
   allowSpectators: boolean;
   rematchSwapSeats: boolean; // 重开时是否交换座位
   validActions?: Set<string>; // 可选：该游戏支持的动作白名单，用于消息校验
+  actionSchemas?: ActionSchemaMap; // 可选：各动作的 Zod schema，用于 payload 校验
   create(): S; // 初始游戏状态
   normalizeConfig?(config: C): C; // 建房配置白名单校验+默认值（非法值静默纠正，游戏期间不可改）
   start?(room: Room): ActionResult | void; // ready→playing 时调用（抽题/发牌/发词）

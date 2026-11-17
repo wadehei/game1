@@ -27,14 +27,6 @@ export interface PuzzleLevelConfig {
   gridSize: number;
   timeLimit: number;
 }
-export interface BalloonLevelConfig {
-  spawnRate: number;
-  moveSpeed: number;
-  targetScore: number;
-  bullets: number;
-  rainbowChance: number;
-  goldenChance: number;
-}
 export interface TankLevelDefaults {
   enemyCount: number;
   enemySpeed: number;
@@ -95,7 +87,6 @@ export interface LevelConfigByGame {
   memory: MemoryLevelConfig;
   fruit: FruitLevelConfig;
   puzzle: PuzzleLevelConfig;
-  balloon: BalloonLevelConfig;
   tank: TankLevelDefaults;
   mole: MoleLevelConfig;
   simon: SimonLevelConfig;
@@ -119,22 +110,13 @@ const FORMULAS: Record<string, Formula> = {
     spawnRate: Math.max(1000 - (level - 1) * 70, 380),
     fallSpeed: Math.min(2 + (level - 1) * 0.5, 9),
     bombChance: Math.min(0.12 + (level - 1) * 0.03, 0.4),
-    targetScore: 100 + (level - 1) * 50,
+    targetScore: 80 + (level - 1) * 50,
     lives: 3,
   }),
   // 拼图：格子每 4 关升一档，限时每关 -12s（同格子内也有紧迫感差异）
   puzzle: (level) => ({
     gridSize: Math.min(3 + Math.floor((level - 1) / 4), 5),
     timeLimit: Math.max(180 - (level - 1) * 12, 50),
-  }),
-  // 打气球：生成间隔每关 -70ms，飘速每关 +0.25，限时分数每关 +40
-  balloon: (level) => ({
-    spawnRate: Math.max(1200 - (level - 1) * 70, 420),
-    moveSpeed: Math.min(1 + (level - 1) * 0.25, 6),
-    targetScore: 100 + (level - 1) * 40,
-    bullets: 30 + (level - 1) * 4,
-    rainbowChance: 0.05,
-    goldenChance: 0.1,
   }),
   // 坦克：敌人数量每关 +1（封顶 9），速度每关 +0.3，射速每关 +5%
   tank: (level) => ({
@@ -201,6 +183,13 @@ const FORMULAS: Record<string, Formula> = {
     targetGrabs: 8 + Math.floor((level - 1) / 2),
     timeLimit: Math.max(75 - (level - 1) * 3, 45),
   }),
+  // 斗地主：AI 难度随关卡提升，思考时间逐渐缩短，目标倍数递增
+  doudizhu: (level) => ({
+    aiDifficulty: level <= 10 ? 0 : level <= 20 ? 1 : 2, // 0=easy, 1=normal, 2=hard
+    playerFirstBid: level <= 5,
+    aiThinkTime: Math.max(2000 - (level - 1) * 50, 500),
+    targetMultiplier: Math.min(2 + Math.floor((level - 1) / 5), 8),
+  }),
 };
 
 /** 某游戏某关的内置默认配置（调用方按需取用；字面量 gameId 获得精确类型） */
@@ -237,14 +226,6 @@ export const LEVEL_FIELD_DEFS: Record<string, FieldDef[]> = {
   puzzle: [
     { key: 'gridSize', label: '拼图边长（2~6 格）' },
     { key: 'timeLimit', label: '时限（秒）' },
-  ],
-  balloon: [
-    { key: 'spawnRate', label: '上浮间隔（毫秒，越小越难）' },
-    { key: 'moveSpeed', label: '上浮速度' },
-    { key: 'targetScore', label: '目标分数' },
-    { key: 'bullets', label: '子弹数' },
-    { key: 'rainbowChance', label: '彩虹气球概率 0~1', step: '0.01' },
-    { key: 'goldenChance', label: '金色气球概率 0~1', step: '0.01' },
   ],
   tank: [
     { key: 'enemyCount', label: '敌人数量' },
@@ -299,6 +280,12 @@ export const LEVEL_FIELD_DEFS: Record<string, FieldDef[]> = {
     { key: 'clawSpeed', label: '爪速（像素/秒，越大越难）' },
     { key: 'targetGrabs', label: '目标抓取数' },
     { key: 'timeLimit', label: '时限（秒）' },
+  ],
+  doudizhu: [
+    { key: 'aiDifficulty', label: 'AI 难度（0容易 1普通 2困难）' },
+    { key: 'playerFirstBid', label: '玩家先叫分', isBool: true },
+    { key: 'aiThinkTime', label: 'AI 思考时间（毫秒）' },
+    { key: 'targetMultiplier', label: '目标倍数' },
   ],
 };
 

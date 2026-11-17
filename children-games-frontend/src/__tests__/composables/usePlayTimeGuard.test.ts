@@ -172,7 +172,7 @@ describe('composables/usePlayTimeGuard', () => {
 
     it('should countdown during rest', () => {
       localStorage.setItem('parent_rest_interval', '1');
-      const routePath = () => '/balloon';
+      const routePath = () => '/memory';
       const { restShow, restCountdown } = usePlayTimeGuard(routePath);
 
       vi.advanceTimersByTime(60000); // trigger rest

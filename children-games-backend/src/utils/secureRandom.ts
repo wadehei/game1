@@ -65,3 +65,30 @@ export const securePickN = <T>(arr: T[], n: number): T[] => {
   }
   return secureShuffle(arr).slice(0, n);
 };
+
+/**
+ * 生成不可预测的随机 ID
+ *
+ * @param length - ID 长度，默认 8
+ * @param alphabet - 字符集，默认 Base62（去掉易混淆字符 0/1/O/l/I）
+ *
+ * 用途：房间 ID、语音 ID、头像文件名等需要不可预测性的场景
+ * 替代 Math.random().toString(36) 等可预测方案
+ */
+export const secureId = (
+  length = 8,
+  alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
+): string => {
+  const bytes = randomBytes(length);
+  return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('');
+};
+
+/**
+ * 生成不可预测的房间 ID（8 字符，约 2.18e14 种组合）
+ *
+ * 设计考量：
+ * - 8 字符 Base62 = 62^8 ≈ 2.18 × 10^14 种组合，暴力枚举不可行
+ * - 去掉易混淆字符（0/O、1/l/I），用户手动输入友好
+ * - 纯字母数字，URL/分享安全
+ */
+export const secureRoomId = (): string => secureId(8);

@@ -26,6 +26,9 @@ const THEMES: string[][] = [
   ['🍎', '🍇', '🍉', '🍓', '🍑', '🍍'],
 ];
 
+// 数字主题方块底色（低饱和护眼色系），按 kind 索引对应
+const NUMBER_THEME_COLORS = ['#FF8F8F', '#FFB74D', '#FFF176', '#AED581', '#80CBC4', '#90CAF9'];
+
 export function useMatch3Engine() {
   const router = useRouter();
   const sounds = useGameSounds();
@@ -55,6 +58,8 @@ export function useMatch3Engine() {
 
   // ── Computed ──
   const theme = computed(() => THEMES[Math.floor((currentLevel.value - 1) / 5) % THEMES.length]);
+  const themeIndex = computed(() => Math.floor((currentLevel.value - 1) / 5) % THEMES.length);
+  const isNumberTheme = computed(() => themeIndex.value === 0);
   const kindsCount = computed(() =>
     Math.min(theme.value.length, Number(levelConfig.value.kinds) || 6)
   );
@@ -416,6 +421,7 @@ export function useMatch3Engine() {
 
     // Computed
     theme,
+    isNumberTheme,
     kindsCount,
     movesUsed,
     flatCells,

@@ -75,7 +75,7 @@ test.describe('排行榜系统', () => {
       await expect(page.locator('.board-modal')).toBeVisible();
     });
 
-    test('弹窗标题应包含游戏名称', async ({ page }) => {
+    test('弹窗默认显示总星榜，切本游戏 tab 后标题含游戏名', async ({ page }) => {
       await waitForGameList(page);
       // Get the game name from the card
       const gameCard = page.locator('.game-card').first();
@@ -85,6 +85,11 @@ test.describe('排行榜系统', () => {
 
       const title = page.locator('.board-title');
       await expect(title).toBeVisible();
+      // 总星榜是默认 tab（956f533 双 tab 设计）
+      await expect(title).toContainText('家庭总星榜');
+
+      // 切到本游戏 tab（文案=游戏名）后标题变为 游戏名·家庭排行
+      await page.locator('.board-tab', { hasText: gameName || '' }).click();
       await expect(title).toContainText(gameName || '');
       await expect(title).toContainText('家庭排行');
     });

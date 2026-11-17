@@ -63,11 +63,6 @@ const routes = [
     component: () => import('@/pages/puzzle/index.vue'),
   },
   {
-    path: '/balloon',
-    name: 'Balloon',
-    component: () => import('@/pages/balloon/index.vue'),
-  },
-  {
     path: '/tank',
     name: 'Tank',
     component: () => import('@/pages/tank/index.vue'),
@@ -111,6 +106,16 @@ const routes = [
     path: '/claw',
     name: 'Claw',
     component: () => import('@/pages/claw/index.vue'),
+  },
+  {
+    path: '/doudizhu',
+    name: 'Doudizhu',
+    component: () => import('@/pages/doudizhu/index.vue'),
+  },
+  {
+    path: '/doudizhu-3d',
+    name: 'Doudizhu3D',
+    component: () => import('@/pages/doudizhu/index3d.vue'),
   },
 ];
 

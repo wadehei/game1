@@ -1,5 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import axios from 'axios';
+
+// Use vi.hoisted to create stable mock references
+const { mockClientGet, mockClientPost, mockRawGet, mockRawPost, mockAxiosGet, mockAxiosPost } =
+  vi.hoisted(() => ({
+    mockClientGet: vi.fn(),
+    mockClientPost: vi.fn(),
+    mockRawGet: vi.fn(),
+    mockRawPost: vi.fn(),
+    mockAxiosGet: vi.fn(),
+    mockAxiosPost: vi.fn(),
+  }));
 
 // Mock request module
 vi.mock('../../utils/request', () => ({
@@ -10,13 +20,24 @@ vi.mock('../../utils/request', () => ({
     delete: vi.fn(),
   },
   API_ORIGIN: 'http://localhost:3000',
+  createApiClient: () => ({
+    get: mockClientGet,
+    post: mockClientPost,
+    put: vi.fn(),
+    delete: vi.fn(),
+    raw: {
+      get: mockRawGet,
+      post: mockRawPost,
+      delete: vi.fn(),
+    },
+  }),
 }));
 
-// Mock axios for direct calls
+// Mock axios for direct calls (room.ts uses axios directly for some calls)
 vi.mock('axios', () => ({
   default: {
-    post: vi.fn(),
-    get: vi.fn(),
+    post: mockAxiosPost,
+    get: mockAxiosGet,
   },
 }));
 
@@ -151,22 +172,18 @@ describe('api/room', () => {
       const mockBlob = new Blob(['audio data'], { type: 'audio/webm' });
       const mockResponse = { data: { data: { voiceId: 'voice-123' } } };
 
-      mockedAxios.post.mockResolvedValue(mockResponse);
+      mockRawPost.mockResolvedValue(mockResponse);
       localStorage.setItem('token', 'user-token');
 
       const result = await uploadRoomVoice('room-123', mockBlob, 5000);
 
-      expect(mockedAxios.post).toHaveBeenCalledWith(
-        `${API_ORIGIN}/api/room/room-123/voice?duration=5000`,
-        mockBlob,
-        {
-          headers: {
-            'Content-Type': 'audio/webm',
-            Authorization: 'Bearer user-token',
-          },
-          timeout: 10000,
-        }
-      );
+      expect(mockRawPost).toHaveBeenCalledWith('/room/room-123/voice?duration=5000', mockBlob, {
+        headers: {
+          'Content-Type': 'audio/webm',
+          Authorization: 'Bearer user-token',
+        },
+        timeout: 10000,
+      });
       expect(result).toEqual({ voiceId: 'voice-123' });
     });
 
@@ -174,11 +191,11 @@ describe('api/room', () => {
       const mockBlob = new Blob(['audio data']);
       const mockResponse = { data: { data: { voiceId: 'voice-456' } } };
 
-      mockedAxios.post.mockResolvedValue(mockResponse);
+      mockRawPost.mockResolvedValue(mockResponse);
 
       await uploadRoomVoice('room-456', mockBlob, 3000);
 
-      expect(mockedAxios.post).toHaveBeenCalledWith(
+      expect(mockRawPost).toHaveBeenCalledWith(
         expect.stringContaining('voice?duration=3000'),
         expect.any(Blob),
         expect.objectContaining({
@@ -195,30 +212,27 @@ describe('api/room', () => {
       const mockBlob = new Blob(['audio data'], { type: 'audio/webm' });
       const mockResponse = { data: mockBlob };
 
-      mockedAxios.get.mockResolvedValue(mockResponse);
+      mockRawGet.mockResolvedValue(mockResponse);
       localStorage.setItem('token', 'user-token');
 
       const result = await fetchRoomVoice('room-123', 'voice-123');
 
-      expect(mockedAxios.get).toHaveBeenCalledWith(
-        `${API_ORIGIN}/api/room/room-123/voice/voice-123`,
-        {
-          responseType: 'blob',
-          headers: {
-            Authorization: 'Bearer user-token',
-          },
-        }
-      );
+      expect(mockRawGet).toHaveBeenCalledWith('/room/room-123/voice/voice-123', {
+        responseType: 'blob',
+        headers: {
+          Authorization: 'Bearer user-token',
+        },
+      });
       expect(result).toBeInstanceOf(Blob);
     });
 
     it('should handle missing token', async () => {
       const mockBlob = new Blob(['audio data']);
-      mockedAxios.get.mockResolvedValue({ data: mockBlob });
+      mockRawGet.mockResolvedValue({ data: mockBlob });
 
       const result = await fetchRoomVoice('room-789', 'voice-789');
 
-      expect(mockedAxios.get).toHaveBeenCalledWith(
+      expect(mockRawGet).toHaveBeenCalledWith(
         expect.stringContaining('voice/voice-789'),
         expect.objectContaining({
           responseType: 'blob',

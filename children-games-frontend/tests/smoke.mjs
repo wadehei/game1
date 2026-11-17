@@ -14,7 +14,6 @@ const routes = [
   { hash: '#/memory', name: '记忆翻牌', expect: (d) => d.cards >= 4, expectText: '应有翻牌卡片' },
   { hash: '#/fruit', name: '接水果', expect: (d) => d.canvas, expectText: '应有画布' },
   { hash: '#/puzzle', name: '拼图', expect: (d) => d.pieces === 9, expectText: '应有 3×3 拼图块' },
-  { hash: '#/balloon', name: '打气球', expect: (d) => d.canvas, expectText: '应有画布' },
   {
     hash: '#/tank',
     name: '坦克大战',
@@ -96,8 +95,7 @@ for (const r of routes) {
   }));
 
   // 交互冒烟
-  if (r.hash === '#/balloon') await page.click('canvas').catch(() => {});
-  else if (r.hash === '#/tank') await page.click('.fire-btn').catch(() => {});
+  if (r.hash === '#/tank') await page.click('.fire-btn').catch(() => {});
   else if (r.hash === '#/mole') await page.click('.hole').catch(() => {});
   else if (r.hash === '#/simon') await page.click('.pad').catch(() => {});
   else if (r.hash === '#/math') await page.click('.option-btn').catch(() => {});

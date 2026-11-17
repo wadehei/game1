@@ -59,6 +59,19 @@ export default defineConfig(async ({ mode }) => ({
   },
   server: {
     port: 8080,
+    // 开发环境安全头（生产环境在 Nginx/CDN 层配置）
+    headers: {
+      // 防止点击劫持
+      'X-Frame-Options': 'DENY',
+      // 防止 MIME 类型嗅探
+      'X-Content-Type-Options': 'nosniff',
+      // 控制引用信息泄露
+      'Referrer-Policy': 'strict-origin-when-cross-origin',
+      // 限制浏览器功能（允许同源脚本、内联样式、图片等）
+      // 注意：生产环境 CSP 应在 Nginx/CDN 层配置，更灵活
+      'Content-Security-Policy':
+        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' ws: wss: http: https:; font-src 'self' data:; media-src 'self' blob:;",
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:3002',
@@ -80,6 +93,8 @@ export default defineConfig(async ({ mode }) => ({
         manualChunks: {
           // Vue 核心生态
           'vue-vendor': ['vue', 'vue-router', 'pinia'],
+          // Three.js 单独打包（~600KB），仅在 3D 页面加载
+          'three-vendor': ['three'],
         },
         chunkFileNames: 'assets/js/[name]-[hash].js',
         entryFileNames: 'assets/js/[name]-[hash].js',

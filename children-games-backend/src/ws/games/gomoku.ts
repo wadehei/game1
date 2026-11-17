@@ -2,6 +2,7 @@
 import type { Room, Member } from '../roomManager';
 import type { ActionResult, GameHandler } from './types';
 import { createGomoku, placeStone, BLACK, WHITE, type GomokuState } from '../gomoku';
+import { z } from 'zod';
 
 const colorOf = (seat: number): number => (seat === 0 ? BLACK : WHITE);
 
@@ -15,6 +16,14 @@ export const gomokuHandler: GameHandler<GomokuState> = {
   allowSpectators: true,
   rematchSwapSeats: true,
   validActions: new Set(['move', 'resign']),
+  actionSchemas: {
+    move: z.object({
+      t: z.literal('move'),
+      x: z.number().int().min(0).max(14),
+      y: z.number().int().min(0).max(14),
+    }),
+    resign: z.object({ t: z.literal('resign') }),
+  },
 
   create: () => createGomoku(),
 

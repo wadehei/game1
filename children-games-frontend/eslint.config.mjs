@@ -15,7 +15,16 @@ export default [
 
   // Global ignores
   {
-    ignores: ['dist/**', 'node_modules/**', 'coverage/**', '*.config.js', '*.config.ts'],
+    ignores: [
+      'dist/**',
+      'node_modules/**',
+      'coverage/**',
+      '*.config.js',
+      '*.config.ts',
+      // playwright 产物：data/ 下是超大单行 JS 数据，lint 会撑爆 stylish 格式化器
+      'playwright-report/**',
+      'test-results/**',
+    ],
   },
 
   // Vue files config

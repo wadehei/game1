@@ -1,6 +1,8 @@
 import axios from 'axios';
+import type { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { API_ORIGIN } from './apiOrigin';
 import { storage } from '@/utils/storage';
+import { showToast } from '@/utils/toastBus';
 
 export { API_ORIGIN };
 
@@ -22,6 +24,7 @@ instance.interceptors.request.use((config) => {
 
 // ─── 401 静默刷新（single-flight：并发 401 共享同一次刷新） ────────────────────
 let refreshing: Promise<string> | null = null;
+let authExpiredHandled = false;
 
 const tryRefresh = async (): Promise<string> => {
   if (!refreshing) {
@@ -45,6 +48,7 @@ const tryRefresh = async (): Promise<string> => {
       const { useUserStore } = await import('@/store/user');
       const userStore = useUserStore();
       userStore.setTokens(newToken, envelope.data?.refreshToken || refreshToken);
+      authExpiredHandled = false;
 
       return newToken;
     })().finally(() => {
@@ -85,6 +89,19 @@ instance.interceptors.response.use(
       const { useUserStore } = await import('@/store/user');
       const userStore = useUserStore();
       userStore.logout();
+      // 登录过期提示 + 跳转角色选择页（防循环 + 防重复触发）
+      // admin 是独立的凭证体系（admin_token + 自己的 401 处理），
+      // 在后台相关页面不做用户侧跳转，否则会把 admin/login 劫持到 profiles
+      const onAdminPage = location.hash.startsWith('#/admin');
+      if (!authExpiredHandled && !onAdminPage && location.hash !== '#/profiles') {
+        authExpiredHandled = true;
+        showToast('登录已过期，请重新选择角色', 'error');
+        // redirect 必须以 / 开头：profiles 消费端校验 startsWith('/')（防 // 协议外跳），
+        // 去掉 '#' 但保留 '/'，否则登录后回跳永不生效
+        const currentHash = location.hash.replace(/^#/, '');
+        const redirect = currentHash ? `?redirect=${encodeURIComponent(currentHash)}` : '';
+        location.hash = `#/profiles${redirect}`;
+      }
     }
     throw error;
   }
@@ -99,3 +116,75 @@ export const api = {
   delete: <T = unknown>(url: string, data?: unknown) =>
     instance.delete(url, { data }) as Promise<T>,
 };
+
+// ─── 创建自定义 API 客户端（供 admin 等独立模块使用）────────────────────
+export interface CreateApiClientOptions {
+  baseURL: string;
+  tokenKey: string;
+  timeout?: number;
+  onUnauthorized?: () => void;
+}
+
+export interface ApiClient {
+  get: <T = unknown>(url: string, params?: Record<string, unknown>) => Promise<T>;
+  post: <T = unknown>(url: string, data?: unknown) => Promise<T>;
+  put: <T = unknown>(url: string, data?: unknown) => Promise<T>;
+  delete: <T = unknown>(url: string) => Promise<T>;
+  /** 同 baseURL/token 但不做 {code,data} 解包的实例——blob 上传/下载等拿原始 AxiosResponse */
+  raw: AxiosInstance;
+}
+
+/**
+ * 创建带统一拦截器的 API 客户端
+ * - 自动附加 token
+ * - 自动解包 { code, data, message } 响应
+ * - 401 时触发 onUnauthorized 回调
+ */
+export function createApiClient(options: CreateApiClientOptions): ApiClient {
+  const { baseURL, tokenKey, timeout = 15000, onUnauthorized } = options;
+
+  const client = axios.create({ baseURL, timeout });
+  // raw 实例：带 baseURL + token，但不挂响应解包拦截器（blob 响应会被 unwrap 炸掉）。
+  // 注意不能写成 `raw: axios`（全局实例无 baseURL，生产同源部署下丢 /api 前缀 404）
+  const rawClient = axios.create({ baseURL, timeout });
+
+  const withToken = (config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
+    const token = storage.getItem(tokenKey);
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  };
+  client.interceptors.request.use(withToken);
+  rawClient.interceptors.request.use(withToken);
+
+  const unwrap = <T>(response: { data: { code: number; data: T; message?: string } }): T => {
+    const { data } = response;
+    if (data.code === 200) {
+      return data.data;
+    }
+    throw new Error(data.message || `API error: code ${data.code}`);
+  };
+
+  client.interceptors.response.use(
+    (response) => unwrap(response),
+    (error) => {
+      if (error?.response?.status === 401) {
+        storage.removeItem(tokenKey);
+        onUnauthorized?.();
+      }
+      throw error;
+    }
+  );
+
+  return {
+    get: <T = unknown>(url: string, params?: Record<string, unknown>) =>
+      client.get(url, { params }).then((r) => r as unknown as T),
+    post: <T = unknown>(url: string, data?: unknown) =>
+      client.post(url, data).then((r) => r as unknown as T),
+    put: <T = unknown>(url: string, data?: unknown) =>
+      client.put(url, data).then((r) => r as unknown as T),
+    delete: <T = unknown>(url: string) => client.delete(url).then((r) => r as unknown as T),
+    raw: rawClient,
+  };
+}

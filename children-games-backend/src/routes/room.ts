@@ -2,13 +2,21 @@
 // 语音只存房间内存（随房间解散清空），不做持久化
 import { Router, Request, Response } from 'express';
 import express from 'express';
+import { z } from 'zod';
 import { authMiddleware } from '../middleware/auth';
 import { success, fail, asyncHandler } from '../utils/response';
 import { createRoom, getRoom, getVoice, storeVoice, type RoomVoice } from '../ws/roomManager';
 import { gameList, getHandler } from '../ws/games/registry';
 import type { GameType } from '../ws/games/types';
+import { secureId } from '../utils/secureRandom';
 
 const router = Router();
+
+/** 建房请求 schema */
+const createRoomSchema = z.object({
+  gameType: z.string().optional(),
+  config: z.record(z.string(), z.unknown()).optional(),
+});
 
 const isGameType = (t: unknown): t is GameType => {
   try {
@@ -84,7 +92,13 @@ router.post(
   '/',
   authMiddleware,
   asyncHandler(async (req: Request & { userId?: number }, res: Response) => {
-    const { gameType, config } = req.body as { gameType?: GameType; config?: unknown };
+    // Schema 校验
+    const parseResult = createRoomSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      fail(res, '请求参数无效', 400);
+      return;
+    }
+    const { gameType, config } = parseResult.data;
     const type: GameType = isGameType(gameType) ? gameType : 'gomoku';
     const user = { userId: req.userId!, nickname: '', avatar: '' };
     // 建房响应里不含昵称也无妨，进房时 WS 会重新取；这里补全以便房间页立即显示房主
@@ -167,7 +181,8 @@ router.post(
     const duration = Math.min(Number(req.query.duration) || 0, 60);
     const mime = (req.headers['content-type'] || 'audio/webm').split(';')[0];
 
-    const voiceId = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+    // 语音 ID：时间戳 + 6 字符安全随机（防预测枚举）
+    const voiceId = `${Date.now().toString(36)}${secureId(6)}`;
     const voice: RoomVoice = {
       data: body,
       mime,

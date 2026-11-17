@@ -15,6 +15,12 @@ export interface ChatMsg {
   ts: number;
 }
 
+/**
+ * 语音消息（后端存储版）
+ *
+ * 注：shared 的 VoiceItem/RoomVoice 含 voiceId（前端视图），
+ * 后端存储版 voiceId 是 Map key，不存于对象内
+ */
 export interface RoomVoice {
   data: Buffer;
   mime: string;
@@ -24,6 +30,15 @@ export interface RoomVoice {
   ts: number;
 }
 
+/**
+ * 房间成员（后端版）
+ *
+ * 扩展 shared MemberInfo，添加后端专属字段：
+ * - ws: WebSocket 连接（断线时置 null，成员保留以便重连）
+ * - offlineAt: 离线时间戳
+ * - rematch: 是否准备重开
+ * - lastChatAt: 聊天限流时间戳
+ */
 export interface Member {
   userId: number;
   nickname: string;
@@ -32,10 +47,10 @@ export interface Member {
   ready: boolean;
   rematch: boolean;
   online: boolean;
-  ws: WebSocket | null; // WebSocket；断线时置 null，成员保留以便重连
+  ws: WebSocket | null;
   offlineAt: number;
-  lastChatAt?: number; // 聊天限流
-  chips: number; // 进房时的账号积分快照（座位格展示；牌类对局以 handler 内的桌面积分为准）
+  lastChatAt?: number;
+  chips: number;
 }
 
 export interface Room<G = unknown, C = unknown> {
@@ -71,6 +86,7 @@ export const createRoom = (
 ): Room => {
   let id: string;
   do {
+    // 4 位数字房间码：孩子口述/手输友好（前端大厅与分享链接均按 \d{4} 校验，勿改格式）
     id = String(1000 + Math.floor(Math.random() * 9000));
   } while (rooms.has(id));
 
@@ -168,6 +184,13 @@ export const addTimer = (room: Room, timer: NodeJS.Timeout): void => {
 export const clearRoomTimers = (room: Room): void => {
   room.timers.forEach(clearTimeout);
   room.timers = [];
+};
+
+/** 优雅关闭：清理所有房间的定时器 */
+export const clearAllRoomTimers = (): void => {
+  for (const room of rooms.values()) {
+    clearRoomTimers(room);
+  }
 };
 
 export const TOTAL_MEMBER_LIMIT = 12; // 成员总数上限（含观战）

@@ -134,7 +134,7 @@ test.describe('每日任务系统', () => {
         await page.waitForTimeout(500);
         const url = page.url();
         // URL should contain a game path
-        expect(url).toMatch(/#\/(balloon|brick|fruit|match|match3|memory|mole|puzzle|simon|tank)/);
+        expect(url).toMatch(/#\/(brick|fruit|match|match3|memory|mole|puzzle|simon|tank)/);
       }
     });
   });

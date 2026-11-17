@@ -238,8 +238,12 @@ const removeRow = async (level: number) => {
     confirmText: '删除',
   });
   if (!ok) return;
-  await deleteLevelOverride(gameId.value, level).catch(() => {});
-  showMessage(`第 ${level} 关已恢复默认难度`);
+  try {
+    await deleteLevelOverride(gameId.value, level);
+    showMessage(`第 ${level} 关已恢复默认难度`);
+  } catch {
+    showMessage(`删除失败，请重试`);
+  }
   if (editingLevel.value === level) {
     resetForm();
   }

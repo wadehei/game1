@@ -95,8 +95,12 @@ test.describe('管理后台', () => {
   test.describe('2. 路由保护', () => {
     test('未登录访问后台应重定向到登录页', async ({ page }) => {
       await page.goto('/#/');
+      // 等首页未登录 401 的异步跳转（→ profiles?redirect=/）落定，
+      // 否则与下一步 goto('/#/admin') 的路由守卫竞态导致断言不稳
+      await page.waitForTimeout(1500);
       await page.evaluate(() => localStorage.removeItem('admin_token'));
       await page.goto('/#/admin');
+      await page.waitForTimeout(800);
       await expect(page).toHaveURL(/.*admin\/login/);
     });
 

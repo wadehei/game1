@@ -104,6 +104,8 @@ export const runAutoBackup = async (): Promise<{ ok: boolean; file?: string; err
 };
 
 /** 每日定时自动备份：对齐每天 03:05，之后每 24 小时一次 */
+let backupTimer: ReturnType<typeof setTimeout> | null = null;
+
 export const initBackupScheduler = (): void => {
   const fire = async () => {
     const r = await runAutoBackup();
@@ -115,12 +117,21 @@ export const initBackupScheduler = (): void => {
     const next = new Date(now);
     next.setHours(3, 5, 0, 0);
     if (next <= now) next.setDate(next.getDate() + 1);
-    setTimeout(async () => {
+    backupTimer = setTimeout(async () => {
       await fire();
       schedule();
     }, next.getTime() - now.getTime());
+    backupTimer.unref?.();
   };
   schedule();
   // 服务刚启动也补一份当天的（同一天重复写同名文件，天然去重）
   void fire();
+};
+
+/** 优雅关闭：取消备份定时器 */
+export const shutdownBackupScheduler = (): void => {
+  if (backupTimer) {
+    clearTimeout(backupTimer);
+    backupTimer = null;
+  }
 };

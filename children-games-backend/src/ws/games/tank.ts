@@ -5,6 +5,8 @@ import { addTimer, getRoom } from '../roomManager';
 import type { ActionResult, GameHandler } from './types';
 import { getRoomBus } from '../bus';
 import { getSeatedPlayers, buildRanking } from './helpers';
+import { z } from 'zod';
+import { secureRandom, secureRandomInt } from '../../utils/secureRandom';
 
 const TICK_MS = 100; // 服务器 tick 周期
 const TANK_SPEED = 130; // 坦克速度（单位/秒）
@@ -290,8 +292,8 @@ const tick = (room: Room): void => {
         ux = 300;
         uy = 40; // 上走廊中央（三张图均畅通）
       } else {
-        ux = 70 + Math.random() * (ARENA_W - 140 - POWERUP_SIZE);
-        uy = 70 + Math.random() * (ARENA_H - 140 - POWERUP_SIZE);
+        ux = 70 + secureRandom() * (ARENA_W - 140 - POWERUP_SIZE);
+        uy = 70 + secureRandom() * (ARENA_H - 140 - POWERUP_SIZE);
       }
       ok =
         // 整箱与墙重叠检查（旧版只查中心点，26px 箱边缘会视觉蹭墙）
@@ -307,15 +309,12 @@ const tick = (room: Room): void => {
     }
     if (ok) {
       st.powerupSeq += 1;
+      // 道具类型：安全随机（heal 34%, rapid 33%, shield 33%）
+      const roll = secureRandom();
+      const kind = roll < 0.34 ? 'heal' : roll < 0.67 ? 'rapid' : 'shield';
       st.powerups.push({
         id: st.powerupSeq,
-        kind: fixed
-          ? FIRST_POWERUP
-          : Math.random() < 0.34
-            ? 'heal'
-            : Math.random() < 0.5
-              ? 'rapid'
-              : 'shield',
+        kind: fixed ? FIRST_POWERUP : kind,
         x: ux,
         y: uy,
         expireAt: now + POWERUP_TTL_MS,
@@ -364,6 +363,13 @@ export const tankHandler: GameHandler<TankState> = {
   allowSpectators: true,
   rematchSwapSeats: false,
   validActions: new Set(['tank_move', 'tank_fire']),
+  actionSchemas: {
+    tank_move: z.object({
+      t: z.literal('tank_move'),
+      dir: z.number().int().min(0).max(3), // 0=up, 1=right, 2=down, 3=left
+    }),
+    tank_fire: z.object({ t: z.literal('tank_fire') }),
+  },
 
   create(): TankState {
     return {
@@ -385,7 +391,8 @@ export const tankHandler: GameHandler<TankState> = {
     const st = room.game as TankState;
     if (st.started) return;
     st.started = true;
-    st.walls = MAPS[Math.floor(Math.random() * MAPS.length)];
+    // 地图选择：安全随机
+    st.walls = MAPS[secureRandomInt(MAPS.length)];
     const players = getSeatedPlayers(room);
     st.players = new Map();
     st.bullets = [];

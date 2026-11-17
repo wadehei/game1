@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { getUserInfo, updateUserInfo } from '../controllers/userController';
 import { wxLogin, testLogin, familyLogin, getProfiles } from '../controllers/loginController';
 import {
@@ -11,7 +12,7 @@ import { getMyCareer, getBattleCareer, reportPlaytime } from '../controllers/car
 import { authMiddleware } from '../middleware/auth';
 import { recordPlay } from '../controllers/gameController';
 import { loginLimiter, refreshLimiter } from '../middleware/rateLimiter';
-import { validateBody } from '../middleware/validate';
+import { validateBody, validateParams } from '../middleware/validate';
 import {
   wxLoginSchema,
   testLoginSchema,
@@ -22,6 +23,11 @@ import {
   updatePinSchema,
   reportPlaytimeSchema,
 } from '../validators/schemas';
+
+/** gameId 路由参数校验 */
+const gameIdParamsSchema = z.object({
+  gameId: z.string().min(1).max(50),
+});
 
 const router = Router();
 
@@ -381,6 +387,6 @@ router.post('/playtime', authMiddleware, validateBody(reportPlaytimeSchema), rep
  *       401:
  *         description: 未认证
  */
-router.post('/play/:gameId', authMiddleware, recordPlay);
+router.post('/play/:gameId', authMiddleware, validateParams(gameIdParamsSchema), recordPlay);
 
 export default router;

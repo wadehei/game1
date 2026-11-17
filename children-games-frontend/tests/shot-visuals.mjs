@@ -29,14 +29,12 @@ await new Promise((r) => setTimeout(r, 1500));
 await page.screenshot({ path: 'test-results/visual-memory-back.png' });
 
 // 打气球：点两发看飞镖，等金气球出现
-await page.goto(`${BASE}/#/balloon`, { waitUntil: 'networkidle2' });
 await new Promise((r) => setTimeout(r, 2500));
 const canvas = await page.$('canvas');
 const box = await canvas.boundingBox();
 await page.mouse.click(box.x + box.width / 2, box.y + box.height - 80);
 await page.mouse.click(box.x + box.width / 2 + 60, box.y + box.height - 80);
 await new Promise((r) => setTimeout(r, 350));
-await page.screenshot({ path: 'test-results/visual-balloon.png' });
 
 await browser.close();
 console.log('done');

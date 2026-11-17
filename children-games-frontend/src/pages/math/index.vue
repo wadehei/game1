@@ -24,16 +24,38 @@
     <div class="visual-area">
       <template v-if="engine.question.value.mode === 'count'">
         <div class="apple-group">
-          <span v-for="n in engine.question.value.countA" :key="n" class="apple">{{
-            engine.question.value.icon
-          }}</span>
+          <span
+            v-for="n in engine.question.value.countA"
+            :key="n"
+            class="apple"
+            :style="{
+              '--math-icon-size':
+                engine.question.value.countA <= 3
+                  ? '64px'
+                  : engine.question.value.countA <= 6
+                    ? '52px'
+                    : '44px',
+            }"
+            >{{ engine.question.value.icon }}</span
+          >
         </div>
       </template>
       <template v-else>
         <div class="apple-group">
-          <span v-for="n in engine.question.value.countA" :key="'a' + n" class="apple">{{
-            engine.question.value.icon
-          }}</span>
+          <span
+            v-for="n in engine.question.value.countA"
+            :key="'a' + n"
+            class="apple"
+            :style="{
+              '--math-icon-size':
+                engine.question.value.countA <= 3
+                  ? '64px'
+                  : engine.question.value.countA <= 6
+                    ? '52px'
+                    : '44px',
+            }"
+            >{{ engine.question.value.icon }}</span
+          >
         </div>
         <span class="math-sign">{{ engine.question.value.subtract ? '-' : '+' }}</span>
         <div class="apple-group">
@@ -41,11 +63,15 @@
             v-for="n in engine.question.value.countB"
             :key="'b' + n"
             class="apple"
-            :style="
-              engine.question.value.subtract && n <= engine.question.value.countB
-                ? 'opacity:0.25'
-                : ''
-            "
+            :style="{
+              '--math-icon-size':
+                engine.question.value.countB <= 3
+                  ? '64px'
+                  : engine.question.value.countB <= 6
+                    ? '52px'
+                    : '44px',
+              opacity: engine.question.value.subtract ? 0.25 : 1,
+            }"
             >{{ engine.question.value.icon }}</span
           >
         </div>
@@ -274,7 +300,7 @@ onUnmounted(() => {
 }
 
 .apple {
-  font-size: 30px;
+  font-size: var(--math-icon-size, 30px);
   line-height: 1;
   animation: appleIn 0.3s ease backwards;
 }

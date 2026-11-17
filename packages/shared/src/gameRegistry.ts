@@ -21,7 +21,6 @@ export const SINGLE_PLAYER_GAMES: readonly SinglePlayerGameMeta[] = [
   { id: 'memory', title: '记忆翻牌', lowerScoreIsBetter: true },
   { id: 'fruit', title: '接水果', lowerScoreIsBetter: false },
   { id: 'puzzle', title: '拼图游戏', lowerScoreIsBetter: true },
-  { id: 'balloon', title: '打气球', lowerScoreIsBetter: false },
   { id: 'tank', title: '坦克大战', lowerScoreIsBetter: false },
   { id: 'mole', title: '打地鼠', lowerScoreIsBetter: false },
   { id: 'simon', title: '音乐记忆', lowerScoreIsBetter: false },
@@ -31,6 +30,7 @@ export const SINGLE_PLAYER_GAMES: readonly SinglePlayerGameMeta[] = [
   { id: 'brick', title: '打砖块', lowerScoreIsBetter: false },
   { id: 'sudoku', title: '动物数独', lowerScoreIsBetter: true },
   { id: 'claw', title: '抓娃娃机', lowerScoreIsBetter: false },
+  { id: 'doudizhu', title: '斗地主', lowerScoreIsBetter: false },
 ];
 
 export const SINGLE_PLAYER_GAME_IDS: readonly string[] = SINGLE_PLAYER_GAMES.map((g) => g.id);

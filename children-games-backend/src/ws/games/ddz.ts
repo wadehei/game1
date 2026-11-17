@@ -5,6 +5,8 @@ import { addTimer, getRoom, type Seat } from '../roomManager';
 import type { ActionResult, GameHandler } from './types';
 import { getRoomBus } from '../bus';
 import { applyChipDelta } from '../../services/battleChips';
+import { logError } from '../../utils/logger';
+import { z } from 'zod';
 import {
   autoFollow,
   autoLead,
@@ -371,7 +373,8 @@ const settleHand = (room: Room, winner: Member, reason: 'done' | 'quit'): void =
   if (landlordWin) {
     const farmersIdle = [...st.players].every(([uid, p]) => p.isLandlord || p.playedHands === 0);
     if (farmersIdle && st.players.size === 3) spring = 'spring';
-  } else if (lmUid !== undefined && st.players.get(lmUid)!.playedHands <= 1) {
+  } else if (lmUid !== undefined && st.players.get(lmUid)!.playedHands === 1) {
+    // 反春天：地主只出过1手牌就输了
     spring = 'anti';
   }
   if (spring) st.multiplier *= 2;
@@ -418,7 +421,21 @@ const settleHand = (room: Room, winner: Member, reason: 'done' | 'quit'): void =
     };
   });
   for (const d of deltas) {
-    if (d.delta) void applyChipDelta(d.userId, d.delta); // 每局实时入账
+    applyChipDelta(d.userId, d.delta).catch((err) => {
+      // 积分变更失败时记录并通知用户，但不回滚牌局状态
+      logError(
+        'ddz',
+        `applyChipDelta failed for userId=${d.userId}, delta=${d.delta}`,
+        err instanceof Error ? err.stack : String(err)
+      );
+      const m = room.members.get(d.userId);
+      if (m) {
+        getRoomBus().sendToUser(room, d.userId, {
+          t: 'ddz_error',
+          error: '积分入账失败，请联系客服',
+        });
+      }
+    });
     const m = room.members.get(d.userId);
     if (m) m.chips = d.chips;
   }
@@ -483,6 +500,17 @@ export const ddzHandler: GameHandler<DdzState> = {
   allowSpectators: true,
   rematchSwapSeats: false,
   validActions: new Set(['ddz_bid', 'ddz_play', 'ddz_pass']),
+  actionSchemas: {
+    ddz_bid: z.object({
+      t: z.literal('ddz_bid'),
+      score: z.number().int().min(0).max(3),
+    }),
+    ddz_play: z.object({
+      t: z.literal('ddz_play'),
+      cards: z.array(z.string().min(1)).min(1).max(20),
+    }),
+    ddz_pass: z.object({ t: z.literal('ddz_pass') }),
+  },
 
   normalizeConfig(config: Record<string, unknown>): Record<string, unknown> {
     const unit = Number(config?.baseUnit);
@@ -543,7 +571,9 @@ export const ddzHandler: GameHandler<DdzState> = {
     startHand(room);
   },
 
-  /** 无底注：退出不损积分，按当前桌面积分直接终局（不足三家无法继续） */
+  /** 无底注：退出不损积分，按当前桌面积分直接终局（不足三家无法继续）。
+   *  斗地主 3 人桌任一退出即不足三家；"剩余≥2 继续叫分"会造成 2 人无限重发循环
+   *  （efc3045 引入、ws-ddz「叫分阶段退出即终局」逮住，勿再改回） */
   onPlayerQuit(room: Room, member: Member): ActionResult | void {
     const st = room.game as DdzState;
     st.players.delete(member.userId);
@@ -578,8 +608,11 @@ export const ddzHandler: GameHandler<DdzState> = {
     if (st.turnSeat !== member.seat) return { error: '还没轮到你出牌' };
 
     if (action === 'ddz_play') {
-      const cards = Array.isArray(payload?.cards) ? payload.cards.map((c) => String(c)) : [];
+      if (!payload?.cards || !Array.isArray(payload.cards)) return { error: '请选择要出的牌' };
+      const cards = payload.cards.map((c) => String(c));
       if (!cards.length || cards.length > 20) return { error: '请选择要出的牌' };
+      // 验证每张牌格式（非空字符串）
+      if (cards.some((c) => !c || typeof c !== 'string')) return { error: '无效的牌面数据' };
       doPlay(room, member, cards);
       return {};
     }

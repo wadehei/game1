@@ -1,9 +1,42 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 
 // 通用辅助函数
 const waitForGameInit = (page: any, timeout = 1500) => page.waitForTimeout(timeout);
 
+/**
+ * 游戏页访问前置：路由守卫要求登录（无 token 跳 profiles），
+ * 必须先 mock 用户/进度接口并注入 token，否则本文件所有用例必挂
+ * （对齐 sudoku.spec 的 mock 模式）
+ */
+async function setupGameAccess(page: Page) {
+  const json = (body: unknown) => ({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify(body),
+  });
+  await page.route('**/api/user/info', (route) =>
+    route.fulfill(
+      json({ code: 200, data: { id: 1, nickname: 'test', avatar: '🦊', level: 1, totalStars: 10 } })
+    )
+  );
+  await page.route('**/api/game/progress**', (route) =>
+    route.fulfill(json({ code: 200, data: [] }))
+  );
+  await page.addInitScript(() => {
+    localStorage.setItem('token', 'test_token');
+    localStorage.setItem('last_profile_id', '1');
+    localStorage.setItem(
+      'userInfo',
+      JSON.stringify({ id: 1, nickname: 'test', avatar: '🦊', level: 1 })
+    );
+  });
+}
+
 test.describe('儿童游戏乐园 - 全游戏测试', () => {
+  test.beforeEach(async ({ page }) => {
+    await setupGameAccess(page);
+  });
+
   test.describe('1. 记忆翻牌游戏', () => {
     test('应正常加载并显示卡片网格', async ({ page }) => {
       await page.goto('/#/memory');
@@ -113,52 +146,6 @@ test.describe('儿童游戏乐园 - 全游戏测试', () => {
         await page.waitForTimeout(500);
 
         const screenshot = await page.screenshot({ path: 'tests/screenshots/puzzle-move.png' });
-        expect(screenshot).toBeTruthy();
-      }
-    });
-  });
-
-  test.describe('4. 打气球游戏', () => {
-    test('Canvas 应正常渲染并显示气球', async ({ page }) => {
-      await page.goto('/#/balloon');
-      await waitForGameInit(page, 2000);
-
-      const screenshot = await page.screenshot({ path: 'tests/screenshots/balloon-game.png' });
-      expect(screenshot).toBeTruthy();
-
-      // 检查 Canvas 尺寸和渲染
-      const canvasInfo = await page.evaluate(() => {
-        const canvas = document.querySelector('#balloonCanvas') as HTMLCanvasElement;
-        if (!canvas) return { exists: false };
-        return {
-          exists: true,
-          width: canvas.width,
-          height: canvas.height,
-          displayWidth: canvas.offsetWidth,
-          displayHeight: canvas.offsetHeight,
-        };
-      });
-
-      expect(canvasInfo.exists).toBe(true);
-      // Canvas 属性尺寸应与 CSS 尺寸一致
-      expect(canvasInfo.width).toBe(canvasInfo.displayWidth);
-      expect(canvasInfo.height).toBe(canvasInfo.displayHeight);
-      console.log('Balloon Canvas:', canvasInfo);
-    });
-
-    test('点击画布应发射子弹', async ({ page }) => {
-      await page.goto('/#/balloon');
-      await waitForGameInit(page, 2000);
-
-      const canvas = page.locator('#balloonCanvas');
-      const box = await canvas.boundingBox();
-
-      if (box) {
-        // 点击画布中间发射子弹
-        await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-        await page.waitForTimeout(1000);
-
-        const screenshot = await page.screenshot({ path: 'tests/screenshots/balloon-shoot.png' });
         expect(screenshot).toBeTruthy();
       }
     });
