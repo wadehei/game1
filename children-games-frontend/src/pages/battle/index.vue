@@ -7,7 +7,13 @@
       <span class="fb-placeholder" />
     </div>
 
-    <div class="hero card">
+    <!-- 展示横幅：点击滚动到创建区（此前纯静态，点它没反应像页面坏了） -->
+    <div
+      class="hero card clickable"
+      data-testid="battle-hero"
+      title="点此选择游戏并创建房间"
+      @click="scrollToCreate"
+    >
       <div class="hero-icon">♟️</div>
       <div class="hero-text">
         <div class="hero-title">和朋友实时连线</div>
@@ -222,6 +228,11 @@ const games = ref<
   }>
 >([]);
 const selected = ref('gomoku');
+
+// hero 横幅点击：滚动到「创建房间」区
+const scrollToCreate = (): void => {
+  document.querySelector('.section.card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
 const selectedTitle = computed(
   () => games.value.find((g) => g.type === selected.value)?.title || '五子棋'
 );
@@ -363,6 +374,18 @@ const join = () => {
   margin-bottom: 14px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-radius: 16px;
+}
+
+.hero.clickable {
+  cursor: pointer;
+  transition:
+    transform 0.12s ease,
+    filter 0.15s ease;
+}
+
+.hero.clickable:active {
+  transform: scale(0.985);
+  filter: brightness(1.08);
 }
 
 .hero-icon {
