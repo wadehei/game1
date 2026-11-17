@@ -54,7 +54,16 @@ export const config = {
     allowedOrigins: process.env.CORS_ALLOWED_ORIGINS
       ? process.env.CORS_ALLOWED_ORIGINS.split(',').map((origin) => origin.trim())
       : isProduction
-        ? []
+        ? // 生产默认白名单 = 站点真实入口（env 可覆盖）。
+          // 曾因生产默认空数组 + .env 未配置 → 浏览器（带 Origin 头）所有 POST 500，
+          // 而 curl/协议测试无 Origin 头全绿，差点长期漏过（2026-11-17 建房 500 事故）
+          [
+            'http://49.232.231.35',
+            'http://49.232.231.35:90',
+            'http://game.985211.icu',
+            'http://game.985211.icu:90',
+            'https://game.985211.icu',
+          ]
         : ['http://localhost:5173', 'http://localhost:3002'],
   },
 
