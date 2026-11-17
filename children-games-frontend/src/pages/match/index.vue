@@ -396,6 +396,8 @@ onUnmounted(() => {
   background: linear-gradient(180deg, #fdeff4 0%, #e8ecf1 100%);
   padding: 16px;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 }
 
 .status-bar {
@@ -418,6 +420,8 @@ onUnmounted(() => {
   justify-content: space-between;
   max-width: 420px;
   margin: 0 auto;
+  flex: 1;
+  align-content: center;
 }
 
 .lines-svg {
