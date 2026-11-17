@@ -100,6 +100,7 @@ const assist = useAdaptiveAssist('brick');
 let ctx: CanvasRenderingContext2D | null = null;
 let animationId: number | null = null;
 let gameEnded = false;
+let lastFrameTime = Date.now();
 
 // 砖块配色（按行循环，彩虹排布）
 const BRICK_COLORS = [
@@ -268,16 +269,19 @@ const gameLoop = () => {
     animationId = null;
     return;
   }
-  update();
+  const now = Date.now();
+  const dt = Math.min((now - lastFrameTime) / 1000, 0.05);
+  lastFrameTime = now;
+  update(dt);
   render();
   animationId = requestAnimationFrame(gameLoop);
 };
 
-const update = () => {
+const update = (dt: number) => {
   if (gameEnded || paused.value) return;
   // 球运动
-  ballX += ballVX;
-  ballY += ballVY;
+  ballX += ballVX * dt * 60;
+  ballY += ballVY * dt * 60;
 
   // 墙壁反弹
   if (ballX < BALL_R) {
@@ -352,10 +356,10 @@ const update = () => {
   // 粒子
   particles = particles.filter((p) => p.alpha > 0.05);
   for (const p of particles) {
-    p.x += p.vx;
-    p.y += p.vy;
-    p.vy += 0.08;
-    p.alpha -= 0.03;
+    p.x += p.vx * dt * 60;
+    p.y += p.vy * dt * 60;
+    p.vy += 0.08 * dt * 60;
+    p.alpha -= 0.03 * dt * 60;
   }
 };
 

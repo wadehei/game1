@@ -112,6 +112,7 @@ export function useBalloonEngine() {
   }
   let gameEnded = false;
   let levelSelectPaused = false;
+  let lastFrameTime = Date.now();
 
   const levelConfig = ref<Record<string, any>>({
     spawnRate: 1200,
@@ -239,8 +240,11 @@ export function useBalloonEngine() {
 
   // ── 游戏循环 ──
   const gameLoop = () => {
-    update();
-    render();
+    const now = Date.now();
+    const dt = Math.min((now - lastFrameTime) / 1000, 0.05);
+    lastFrameTime = now;
+    update(dt);
+    render(dt);
     animationId = requestAnimationFrame(gameLoop);
   };
 
@@ -316,11 +320,11 @@ export function useBalloonEngine() {
 
   const BULLET_RADIUS = 5;
 
-  const update = () => {
+  const update = (dt: number) => {
     // 1. Move balloons, then compact in-place — remove those above screen
     // perf: in-place compaction avoids allocating a new array every frame
     for (let i = 0; i < balloonList.length; i++) {
-      balloonList[i].y -= balloonList[i].speed;
+      balloonList[i].y -= balloonList[i].speed * dt * 60;
     }
     let writeBal = 0;
     for (let i = 0; i < balloonList.length; i++) {
@@ -334,7 +338,7 @@ export function useBalloonEngine() {
     let writeBul = 0;
     for (let b = 0; b < bulletList.length; b++) {
       const bullet = bulletList[b];
-      bullet.y -= bullet.speed;
+      bullet.y -= bullet.speed * dt * 60;
 
       if (bullet.y <= 0) continue; // off-screen — skip copy (removed)
 
@@ -407,7 +411,7 @@ export function useBalloonEngine() {
     }
   };
 
-  const render = () => {
+  const render = (dt: number) => {
     if (!ctx) return;
     const c = ctx;
 
@@ -473,10 +477,10 @@ export function useBalloonEngine() {
       let writeP = 0;
       for (let i = 0; i < popParticles.length; i++) {
         const p = popParticles[i];
-        p.x += Math.cos(p.angle) * p.speed;
-        p.y += Math.sin(p.angle) * p.speed + 0.12;
-        p.radius += p.grow;
-        p.alpha -= p.grow > 0 ? 0.08 : 0.045;
+        p.x += Math.cos(p.angle) * p.speed * dt * 60;
+        p.y += Math.sin(p.angle) * p.speed * dt * 60 + 0.12 * dt * 60;
+        p.radius += p.grow * dt * 60;
+        p.alpha -= (p.grow > 0 ? 0.08 : 0.045) * dt * 60;
         if (p.alpha <= 0) continue; // dead — skip copy, slot reclaimed by pool
 
         // perf: viewport culling for particles
@@ -503,8 +507,8 @@ export function useBalloonEngine() {
       let writeFt = 0;
       for (let i = 0; i < floatTexts.length; i++) {
         const t = floatTexts[i];
-        t.y -= 1.3;
-        t.life -= 0.03;
+        t.y -= 1.3 * dt * 60;
+        t.life -= 0.03 * dt * 60;
         if (t.life <= 0) continue; // dead — skip copy
         c.globalAlpha = Math.min(1, t.life * 1.4);
         c.font = 'bold 18px sans-serif';

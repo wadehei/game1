@@ -130,6 +130,7 @@ let animationId: number | null = null;
 let spawnTimer: ReturnType<typeof setInterval> | null = null;
 let bgGradient: CanvasGradient | null = null;
 let gameEnded = false;
+let lastFrameTime = Date.now();
 
 let basketX = 150;
 const basketWidth = 70;
@@ -260,14 +261,17 @@ const spawnFruit = () => {
 };
 
 const gameLoop = () => {
-  update();
-  render();
+  const now = Date.now();
+  const dt = Math.min((now - lastFrameTime) / 1000, 0.05);
+  lastFrameTime = now;
+  update(dt);
+  render(dt);
   animationId = requestAnimationFrame(gameLoop);
 };
 
-const update = () => {
+const update = (dt: number) => {
   fruits = fruits.filter((fruit) => {
-    fruit.y += fruit.speed;
+    fruit.y += fruit.speed * dt * 60;
 
     // 检查是否被篮子接住
     const basketCenterX = basketX + basketWidth / 2;
@@ -316,7 +320,7 @@ const update = () => {
   });
 };
 
-const render = () => {
+const render = (dt: number) => {
   if (!ctx) return;
   const c = ctx;
 
@@ -357,8 +361,8 @@ const render = () => {
   // 绘制并更新粒子
   if (particles.length > 0) {
     particles = particles.filter((p) => {
-      p.radius += p.speed;
-      p.alpha -= 0.03;
+      p.radius += p.speed * dt * 60;
+      p.alpha -= 0.03 * dt * 60;
       if (p.alpha <= 0) return false;
       ctx!.beginPath();
       ctx!.arc(p.x, p.y, p.radius, 0, Math.PI * 2);

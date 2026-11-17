@@ -304,11 +304,11 @@ export function useTankEngine() {
   const update = () => {
     // perf: calculate delta time for fps-independent mechanics
     const now = Date.now();
-    const dt = (now - lastFrameTime) / 1000; // seconds
+    const dt = Math.min((now - lastFrameTime) / 1000, 0.05); // seconds
     lastFrameTime = now;
 
     if (moveDirection !== 0) {
-      player.x += moveDirection * player.speed;
+      player.x += moveDirection * player.speed * dt * 60;
       player.x = Math.max(0, Math.min(player.x, canvasWidth.value - player.width));
     }
 
