@@ -8,6 +8,7 @@ import {
   logoutAllDevices,
 } from '../controllers/authController';
 import { updateMyPin } from '../controllers/pinController';
+import { trackEvents } from '../controllers/trackController';
 import { getMyCareer, getBattleCareer, reportPlaytime } from '../controllers/careerController';
 import { authMiddleware } from '../middleware/auth';
 import { recordPlay } from '../controllers/gameController';
@@ -22,6 +23,7 @@ import {
   updateUserInfoSchema,
   updatePinSchema,
   reportPlaytimeSchema,
+  trackSchema,
 } from '../validators/schemas';
 
 /** gameId 路由参数校验 */
@@ -361,6 +363,31 @@ router.put('/pin', authMiddleware, validateBody(updatePinSchema), updateMyPin);
  *         description: 未认证
  */
 router.post('/playtime', authMiddleware, validateBody(reportPlaytimeSchema), reportPlaytime);
+
+/**
+ * @swagger
+ * /api/user/track:
+ *   post:
+ *     summary: 批量上报行为埋点（游戏开局/结局/模式切换/低帧回退）
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               events:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *     responses:
+ *       200:
+ *         description: 上报成功（火后不管型，非法事件被静默过滤）
+ */
+router.post('/track', authMiddleware, validateBody(trackSchema), trackEvents);
 
 /**
  * @swagger

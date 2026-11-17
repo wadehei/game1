@@ -183,6 +183,21 @@ export type AdminUpdateUserInput = z.infer<typeof adminUpdateUserSchema>;
 export type QuizImportInput = z.infer<typeof quizImportSchema>;
 export type UpdatePinInput = z.infer<typeof updatePinSchema>;
 export type ReportPlaytimeInput = z.infer<typeof reportPlaytimeSchema>;
+
+/** 轻量行为埋点批量上报（type 白名单在服务端再过滤一层，这里只约束形状） */
+export const trackEventSchema = z.object({
+  type: z.string().min(1).max(32),
+  gameId: z.string().max(50).optional(),
+  mode: z.string().max(8).optional(),
+  level: z.number().int().optional(),
+  meta: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
+});
+
+export const trackSchema = z.object({
+  events: z.array(trackEventSchema).min(1).max(50),
+});
+
+export type TrackInput = z.infer<typeof trackSchema>;
 export type RecordPlayInput = z.infer<typeof recordPlaySchema>;
 export type AdminLoginInput = z.infer<typeof adminLoginSchema>;
 export type TwoFactorVerifyInput = z.infer<typeof twoFactorVerifySchema>;

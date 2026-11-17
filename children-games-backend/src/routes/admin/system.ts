@@ -7,6 +7,7 @@ import {
   listAutoBackups,
 } from '../../controllers/adminController';
 import { getAuditLogs } from '../../controllers/auditLogController';
+import { eventsSummary } from '../../controllers/trackController';
 import { adminMiddleware } from '../../middleware/adminAuth';
 import { auditLog } from '../../middleware/auditLog';
 import { validateQuery } from '../../middleware/validate';
@@ -26,6 +27,11 @@ const auditLogsQuerySchema = z.object({
 
 // 所有系统管理路由需要管理员认证
 router.use(adminMiddleware);
+
+/** 行为埋点聚合窗口（天数） */
+const eventsSummaryQuerySchema = z.object({
+  days: z.coerce.number().int().min(1).max(90).default(7),
+});
 
 /**
  * @swagger
@@ -149,3 +155,22 @@ router.get(
 );
 
 export default router;
+
+/**
+ * @swagger
+ * /api/admin/events/summary:
+ *   get:
+ *     summary: 行为埋点聚合（近 N 天：按类型/按游戏/3D 模式使用率）
+ *     tags: [Admin System]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: days
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: 聚合结果
+ */
+router.get('/events/summary', validateQuery(eventsSummaryQuerySchema), eventsSummary);

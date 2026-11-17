@@ -48,6 +48,7 @@
         <LevelConfigPanel v-show="activeTab === 'levels'" />
         <VoicePanel v-show="activeTab === 'voice'" />
         <SettingsPanel v-show="activeTab === 'settings'" />
+        <EventsPanel v-show="activeTab === 'events'" />
         <LogsPanel v-show="activeTab === 'logs'" />
         <BackupPanel v-show="activeTab === 'backup'" />
       </main>
@@ -66,6 +67,7 @@ import QuizBankPanel from '@/components/admin/QuizBankPanel.vue';
 import SettingsPanel from '@/components/admin/SettingsPanel.vue';
 import BackupPanel from '@/components/admin/BackupPanel.vue';
 import LevelConfigPanel from '@/components/admin/LevelConfigPanel.vue';
+import EventsPanel from '@/components/admin/EventsPanel.vue';
 import LogsPanel from '@/components/admin/LogsPanel.vue';
 import VoicePanel from '@/components/admin/VoicePanel.vue';
 
@@ -89,6 +91,7 @@ const TABS = [
   { key: 'levels', label: '难度配置', icon: '🎚️' },
   { key: 'voice', label: '语音配音', icon: '🎙️' },
   { key: 'settings', label: '护眼策略', icon: '⏰' },
+  { key: 'events', label: '行为埋点', icon: '📈' },
   { key: 'logs', label: '错误日志', icon: '🐞' },
   { key: 'backup', label: '数据备份', icon: '💾' },
 ];

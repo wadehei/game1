@@ -63,6 +63,10 @@ export function startFpsGuard(options: FpsGuardOptions): FpsGuard {
       const fps = (frames * 1000) / (ts - windowStart);
       if (fps < threshold) {
         stopped = true;
+        // 低帧回退埋点（只记窗口实测 fps，不掺页面信息）
+        void import('@/utils/track').then(({ track }) =>
+          track({ type: 'fps_fallback', meta: { fps: Math.round(fps) } })
+        );
         options.onFallback();
         return;
       }

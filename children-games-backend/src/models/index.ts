@@ -24,6 +24,7 @@ import { FeedbackReply } from './FeedbackReply';
 import { QuizQuestion } from './QuizQuestion';
 import { BattleRecord } from './BattleRecord';
 import { AuditLog } from './AuditLog';
+import { GameEvent } from './GameEvent';
 import { Admin } from './Admin';
 import { logInfo, logError } from '../utils/logger';
 
@@ -55,6 +56,7 @@ export const initModels = async (): Promise<void> => {
     await BattleRecord.sync();
     await AuditLog.sync();
     await Admin.sync();
+    await GameEvent.sync();
     // sync 不会给旧表补列，逐一对比真实表结构补齐缺失列（防表结构漂移）
     await syncMissingColumns(User);
     await syncMissingColumns(GameProgress);
@@ -68,6 +70,7 @@ export const initModels = async (): Promise<void> => {
     await syncMissingColumns(BattleRecord);
     await syncMissingColumns(AuditLog);
     await syncMissingColumns(Admin);
+    await syncMissingColumns(GameEvent);
     // sync 也不会给旧表补索引，手动检查并补齐缺失索引
     await syncMissingIndexes();
     logInfo('database', '✅ 数据表同步成功');

@@ -133,9 +133,9 @@ test.describe('管理后台', () => {
       await expect(page.locator('button.mobile-tab.active').first()).toContainText('数据看板');
     });
 
-    test('应有9个导航标签', async ({ page }) => {
+    test('应有10个导航标签', async ({ page }) => {
       const tabs = page.locator('button.mobile-tab');
-      await expect(tabs).toHaveCount(9);
+      await expect(tabs).toHaveCount(10);
     });
 
     test('点击标签应切换内容', async ({ page }) => {

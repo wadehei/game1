@@ -266,3 +266,16 @@ export const adminQuizImport = (
   questions: QuizQuestionPayload[]
 ): Promise<{ created: number; skipped: number }> =>
   client.post<{ created: number; skipped: number }>('/quiz/import', { questions });
+
+// ─── 行为埋点聚合 ─────────────────────────────────────────────
+export interface EventsSummary {
+  days: number;
+  total: number;
+  byType: Record<string, number>;
+  byGame: Record<string, number>;
+  /** game_start 口径的 2D/3D 使用分布（key=gameId） */
+  modeByGame: Record<string, { '2d': number; '3d': number }>;
+}
+
+export const getEventsSummary = (days: number): Promise<EventsSummary> =>
+  client.get<EventsSummary>(`/events/summary?days=${days}`);

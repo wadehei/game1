@@ -1,4 +1,5 @@
 import { storage } from './storage';
+import { track } from './track';
 
 /**
  * 3D 模式偏好（方案护栏 1：默认 2D，家长可在设置里设默认）
@@ -12,6 +13,7 @@ export const get3dDefault = (): Mode3d => (storage.getItem(DEFAULT_KEY) === '3d'
 
 export const set3dDefault = (mode: Mode3d): void => {
   storage.setItem(DEFAULT_KEY, mode);
+  track({ type: 'parent_set_default', mode });
 };
 
 /**
@@ -29,6 +31,7 @@ export const getGameMode = (gameId: string, legacyKey?: string): Mode3d => {
 
 export const setGameMode = (gameId: string, mode: Mode3d): void => {
   storage.setItem(`mode3d_${gameId}`, mode);
+  track({ type: 'mode_switch', gameId, mode });
 };
 
 /**

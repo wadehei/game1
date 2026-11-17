@@ -147,6 +147,7 @@ import type {
 import type { MemberInfo, S2CSnapshot } from '@children-games/shared';
 import { fetchRoomVoice, uploadRoomVoice } from '@/api/room';
 import { showToast } from '@/utils/toastBus';
+import { track } from '@/utils/track';
 import { soundManager } from '@/utils/sound';
 import GamePanel from '@/components/battle/GamePanel.vue';
 import PlayerAvatar from '@/components/PlayerAvatar.vue';
@@ -157,6 +158,8 @@ import ChatPanel from './components/ChatPanel.vue';
 
 const BLACK = 1;
 const WHITE = 2;
+
+let battleRoomTracked = false;
 
 const route = useRoute();
 const router = useRouter();
@@ -385,7 +388,14 @@ const applySnapshot = (s: S2CSnapshot) => {
   members.value = s.members || [];
   phase.value = s.phase;
   hostUserId.value = s.hostUserId;
-  if (s.gameType) gameType.value = s.gameType;
+  if (s.gameType) {
+    gameType.value = s.gameType;
+    // 行为埋点：对战房间开局（每次房间生命周期只记一次）
+    if (!battleRoomTracked) {
+      battleRoomTracked = true;
+      track({ type: 'battle_room_open', gameId: s.gameType });
+    }
+  }
   board.value = (s.game?.board as number[][] | undefined) || board.value;
   // 保留 serializeFor 的全部字段（各游戏自带结构：五子棋棋盘/UNO 手牌+顶牌/卧底身份等）
   game.value = { ...(s.game ?? {}) } as GameState;
