@@ -81,6 +81,7 @@ import LevelSelectModal from '@/components/LevelSelectModal.vue';
 import PauseMenu from '@/components/PauseMenu.vue';
 import { useMemoryGame } from './useMemoryGame';
 import { getAnimalImage } from './animalImages';
+import { setGameMode } from '@/utils/modePreference';
 
 const router = useRouter();
 
@@ -115,6 +116,7 @@ const quitGame = () => {
 };
 
 const go2d = () => {
+  setGameMode('memory', '2d');
   router.push('/memory');
 };
 </script>

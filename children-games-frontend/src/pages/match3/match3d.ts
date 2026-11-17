@@ -191,6 +191,10 @@ export class Match3Board3D {
       const pos = this.gridPos(cell.r, cell.c);
       const selected =
         !!state.selected && state.selected.r === cell.r && state.selected.c === cell.c;
+      // 与选中块相邻的块轻微提亮（提示可交换对象，与 2D 版 .neighbor 一致）
+      const neighbor =
+        !!state.selected &&
+        Math.abs(state.selected.r - cell.r) + Math.abs(state.selected.c - cell.c) === 1;
 
       // 目标位（clearing 的块原地爆裂不下坠）
       const targetY = selected ? CELL_Y + 0.42 : CELL_Y;
@@ -205,7 +209,7 @@ export class Match3Board3D {
 
       // 选中高亮（emissive 提亮），邻块轻微提亮
       const mat = mesh.material as import('three').MeshStandardMaterial;
-      const targetEmissive = selected ? 0.45 : 0;
+      const targetEmissive = selected ? 0.45 : neighbor ? 0.16 : 0;
       mat.emissiveIntensity += (targetEmissive - mat.emissiveIntensity) * Math.min(1, dt * 12);
     }
 

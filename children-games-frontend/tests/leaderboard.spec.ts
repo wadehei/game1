@@ -79,7 +79,9 @@ test.describe('排行榜系统', () => {
       await waitForGameList(page);
       // Get the game name from the card
       const gameCard = page.locator('.game-card').first();
-      const gameName = await gameCard.locator('.game-name').textContent();
+      // 3D 徽章拼在名字后（has3d 卡片），tab 文案只有游戏名，需剥离徽章后缀
+      const rawName = (await gameCard.locator('.game-name').textContent()) || '';
+      const gameName = rawName.replace(/\s*3D\s*$/, '').trim();
 
       await gameCard.locator('button.board-btn').click({ force: true });
 

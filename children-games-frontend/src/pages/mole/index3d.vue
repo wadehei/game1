@@ -76,6 +76,7 @@ import ResultModal from '@/components/ResultModal.vue';
 import LevelSelectModal from '@/components/LevelSelectModal.vue';
 import PauseMenu from '@/components/PauseMenu.vue';
 import { useMoleGame } from './useMoleGame';
+import { setGameMode } from '@/utils/modePreference';
 
 const router = useRouter();
 
@@ -110,6 +111,7 @@ const quitGame = () => {
 };
 
 const go2d = () => {
+  setGameMode('mole', '2d');
   router.push('/mole');
 };
 </script>

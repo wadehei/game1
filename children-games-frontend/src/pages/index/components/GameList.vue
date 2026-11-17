@@ -11,7 +11,10 @@
         <img :src="game.icon" :alt="game.name" class="icon-image" loading="lazy" />
       </div>
       <div class="game-info">
-        <div class="game-name">{{ game.name }}</div>
+        <div class="game-name">
+          {{ game.name }}
+          <span v-if="game.has3d" class="badge3d">3D</span>
+        </div>
         <div class="game-progress">
           <span class="progress-text">
             关卡 {{ getLevel(game.id) }}/{{ game.totalLevels
@@ -187,5 +190,18 @@ defineEmits<{
 
 .star.active {
   opacity: 1;
+}
+
+.badge3d {
+  display: inline-block;
+  margin-left: 5px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.28);
+  font-size: 10px;
+  font-weight: bold;
+  color: #fff;
+  vertical-align: middle;
+  transform: translateY(-1px);
 }
 </style>

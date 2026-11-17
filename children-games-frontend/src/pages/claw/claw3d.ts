@@ -47,7 +47,7 @@ export class ClawMachine3D {
   private clawFingers: import('three').Mesh[] = [];
   private prizeMeshes = new Map<number, import('three').Mesh>();
   private heldMesh: import('three').Mesh | null = null;
-  private heldColorSeq = 0;
+  private heldPrizeId: number | null = null;
 
   private readonly THREE: THREE;
 
@@ -248,11 +248,17 @@ export class ClawMachine3D {
       finger.rotation.z += (fingerTarget - finger.rotation.z) * 0.18;
     }
 
-    // 抓住的奖品挂在爪心
+    // 抓住的奖品：复用池子里它的网格（颜色/形状与实际奖品一致），挂到爪心
     if (state.holding && !this.heldMesh) {
-      this.heldColorSeq += 1;
-      this.heldMesh = this.makePrizeMesh(this.heldColorSeq);
-      this.scene.add(this.heldMesh);
+      for (const prize of state.prizes) {
+        const mesh = prize.grabbed ? this.prizeMeshes.get(prize.id) : undefined;
+        if (mesh) {
+          this.prizeMeshes.delete(prize.id);
+          this.heldMesh = mesh;
+          this.heldPrizeId = prize.id;
+          break;
+        }
+      }
     }
     if (this.heldMesh) {
       if (state.holding) {
@@ -261,6 +267,7 @@ export class ClawMachine3D {
         // 松爪：掉进出货口方向
         const mesh = this.heldMesh;
         this.heldMesh = null;
+        this.heldPrizeId = null;
         const fall = () => {
           mesh.position.y -= 0.55;
           mesh.position.x += (-2.6 - mesh.position.x) * 0.12;
@@ -277,10 +284,13 @@ export class ClawMachine3D {
       }
     }
 
-    // 奖品池同步：按 id 建模/移动/移除（抓走的缩小消失）
+    // 奖品池同步：按 id 建模/移动/移除（抓走的已提升为爪上持物，池内跳过）
     const alive = new Set<number>();
     for (const prize of state.prizes) {
       alive.add(prize.id);
+      if (prize.id === this.heldPrizeId) {
+        continue;
+      }
       let mesh = this.prizeMeshes.get(prize.id);
       if (!mesh) {
         mesh = this.makePrizeMesh(prize.id);

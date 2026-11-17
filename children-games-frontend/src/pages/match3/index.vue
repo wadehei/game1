@@ -9,7 +9,11 @@
       @toggle-sound="engine.sounds.toggleSound"
       @go-back="router.back()"
       @select-level="engine.showLevelSelect.value = true"
-    />
+    >
+      <template #actions>
+        <button class="mode-switch-btn" title="切换 3D 模式" @click="go3d">3D</button>
+      </template>
+    </GameHeader>
 
     <!-- 状态栏 -->
     <div class="m3-status">
@@ -106,6 +110,8 @@
 import { onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useMatch3Engine } from '@/composables/useMatch3Engine';
+import { getGameMode, setGameMode, maybeShow3dHint } from '@/utils/modePreference';
+import { showToast } from '@/utils/toastBus';
 import GameHeader from '@/components/GameHeader.vue';
 import ResultModal from '@/components/ResultModal.vue';
 import LevelSelectModal from '@/components/LevelSelectModal.vue';
@@ -115,11 +121,46 @@ const router = useRouter();
 const engine = useMatch3Engine();
 
 onMounted(async () => {
+  // 默认模式：家长中心设为 3D 或本游戏上次切到 3D → 直接进 3D 版
+  if (getGameMode('match3') === '3d') {
+    router.replace('/match3-3d');
+    return;
+  }
+  if (maybeShow3dHint('match3')) {
+    showToast('试试右上角「3D」按钮，切换立体画面～', 'info');
+  }
   await engine.onMountedSetup();
 });
+
+const go3d = () => {
+  setGameMode('match3', '3d');
+  router.push('/match3-3d');
+};
 </script>
 
 <style scoped>
+.mode-switch-btn {
+  background: rgba(107, 79, 42, 0.1);
+  color: #6b4f2a;
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.mode-switch-btn:hover {
+  background: rgba(107, 79, 42, 0.22);
+  transform: scale(1.1);
+}
+
 .match3-game {
   min-height: 100vh;
   background: linear-gradient(180deg, #fdf6ec 0%, #f9ecd9 100%);

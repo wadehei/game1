@@ -64,6 +64,9 @@ import ResultModal from '@/components/ResultModal.vue';
 import LevelSelectModal from '@/components/LevelSelectModal.vue';
 import PauseMenu from '@/components/PauseMenu.vue';
 import { useMoleGame } from './useMoleGame';
+import { onMounted } from 'vue';
+import { getGameMode, setGameMode, maybeShow3dHint } from '@/utils/modePreference';
+import { showToast } from '@/utils/toastBus';
 
 const router = useRouter();
 
@@ -99,8 +102,19 @@ const quitGame = () => {
 
 // 游戏内一键切 3D
 const go3d = () => {
+  setGameMode('mole', '3d');
   router.push('/mole-3d');
 };
+// 默认模式：家长中心设为 3D 或本游戏上次切到 3D → 直接进 3D 版
+onMounted(() => {
+  if (getGameMode('mole') === '3d') {
+    router.replace('/mole-3d');
+    return;
+  }
+  if (maybeShow3dHint('mole')) {
+    showToast('试试右上角「3D」按钮，切换立体画面～', 'info');
+  }
+});
 </script>
 
 <style scoped>

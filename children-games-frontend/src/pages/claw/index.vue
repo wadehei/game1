@@ -86,13 +86,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import GameHeader from '@/components/GameHeader.vue';
 import ResultModal from '@/components/ResultModal.vue';
 import LevelSelectModal from '@/components/LevelSelectModal.vue';
 import PauseMenu from '@/components/PauseMenu.vue';
 import { useClawGame } from './useClawGame';
+import { onMounted } from 'vue';
+import { getGameMode, setGameMode, maybeShow3dHint } from '@/utils/modePreference';
+import { showToast } from '@/utils/toastBus';
 
 const router = useRouter();
 
@@ -135,8 +138,19 @@ watch(isReleasing, (releasing) => {
 });
 
 const go3d = () => {
+  setGameMode('claw', '3d');
   router.push('/claw-3d');
 };
+// 默认模式：家长中心设为 3D 或本游戏上次切到 3D → 直接进 3D 版
+onMounted(() => {
+  if (getGameMode('claw') === '3d') {
+    router.replace('/claw-3d');
+    return;
+  }
+  if (maybeShow3dHint('claw')) {
+    showToast('试试右上角「3D」按钮，切换立体画面～', 'info');
+  }
+});
 </script>
 
 <style scoped>

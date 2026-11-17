@@ -18,6 +18,8 @@ export interface GameCatalogItem {
   totalLevels: number;
   icon: string;
   bgColor: string;
+  /** 有 3D 版（首页卡片展示徽章） */
+  has3d?: boolean;
 }
 
 export const games: readonly GameCatalogItem[] = [
@@ -27,6 +29,7 @@ export const games: readonly GameCatalogItem[] = [
     totalLevels: 20,
     icon: iconMemorySvg,
     bgColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    has3d: true,
   },
   {
     id: 'fruit',
@@ -55,6 +58,7 @@ export const games: readonly GameCatalogItem[] = [
     totalLevels: 20,
     icon: iconMoleSvg,
     bgColor: 'linear-gradient(135deg, #a8e063 0%, #56ab2f 100%)',
+    has3d: true,
   },
   {
     id: 'simon',
@@ -62,6 +66,7 @@ export const games: readonly GameCatalogItem[] = [
     totalLevels: 15,
     icon: iconSimonSvg,
     bgColor: 'linear-gradient(135deg, #1a1a2e 0%, #5f27cd 100%)',
+    has3d: true,
   },
   {
     id: 'math',
@@ -83,6 +88,7 @@ export const games: readonly GameCatalogItem[] = [
     totalLevels: 20,
     icon: iconMatch3Svg,
     bgColor: 'linear-gradient(135deg, #ff9966 0%, #ff5e62 100%)',
+    has3d: true,
   },
   {
     id: 'brick',
@@ -104,6 +110,7 @@ export const games: readonly GameCatalogItem[] = [
     totalLevels: 20,
     icon: iconClawSvg,
     bgColor: 'linear-gradient(135deg, #f66d9b 0%, #c2429c 100%)',
+    has3d: true,
   },
   {
     id: 'doudizhu',

@@ -119,7 +119,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useUserStore } from '@/store/user';
-import { storage } from '@/utils/storage';
+import { getGameMode, setGameMode } from '@/utils/modePreference';
 import { detectWebGL } from '@/composables/use3dGuard';
 import type { UnoGameState, GameEvents } from '@/composables/wsTypes';
 import TableScene3D from './TableScene3D.vue';
@@ -263,16 +263,17 @@ const nameOfBySeat = (seat: number): string => {
 };
 
 // ── 3D 牌桌（模式记忆，WebGL 不可用自动保持 2D） ──
-const TABLE_MODE_KEY = 'uno_table_mode';
 const webglOk = detectWebGL();
-const tableMode = ref(storage.getItem(TABLE_MODE_KEY) === '3d' && webglOk ? '3d' : '2d');
+const tableMode = ref<'2d' | '3d'>(
+  getGameMode('uno', 'uno_table_mode') === '3d' && webglOk ? '3d' : '2d'
+);
 const toggleTableMode = (): void => {
   tableMode.value = tableMode.value === '2d' ? '3d' : '2d';
-  storage.setItem(TABLE_MODE_KEY, tableMode.value);
+  setGameMode('uno', tableMode.value);
 };
 const onTableFallback = (): void => {
   tableMode.value = '2d';
-  storage.setItem(TABLE_MODE_KEY, '2d');
+  setGameMode('uno', '2d');
 };
 
 const tableSnapshot = computed<TableSnapshot>(() => ({

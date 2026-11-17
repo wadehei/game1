@@ -188,7 +188,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useUserStore } from '@/store/user';
 import { soundManager } from '@/utils/sound';
-import { storage } from '@/utils/storage';
+import { getGameMode, setGameMode } from '@/utils/modePreference';
 import { detectWebGL } from '@/composables/use3dGuard';
 import { useBattleHelpers } from '@/composables/useBattleHelpers';
 import BattleResultPanel from './BattleResultPanel.vue';
@@ -217,16 +217,17 @@ const { nameOfUser, nameOfSeat, seatOfUser } = useBattleHelpers({
 });
 
 // ── 3D 牌桌（模式记忆，WebGL 不可用自动保持 2D） ──
-const TABLE_MODE_KEY = 'blackjack_table_mode';
 const webglOk = detectWebGL();
-const tableMode = ref(storage.getItem(TABLE_MODE_KEY) === '3d' && webglOk ? '3d' : '2d');
+const tableMode = ref<'2d' | '3d'>(
+  getGameMode('blackjack', 'blackjack_table_mode') === '3d' && webglOk ? '3d' : '2d'
+);
 const toggleTableMode = (): void => {
   tableMode.value = tableMode.value === '2d' ? '3d' : '2d';
-  storage.setItem(TABLE_MODE_KEY, tableMode.value);
+  setGameMode('blackjack', tableMode.value);
 };
 const onTableFallback = (): void => {
   tableMode.value = '2d';
-  storage.setItem(TABLE_MODE_KEY, '2d');
+  setGameMode('blackjack', '2d');
 };
 
 const tableSnapshot = computed<TableSnapshot>(() => ({

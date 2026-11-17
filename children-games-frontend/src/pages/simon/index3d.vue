@@ -73,6 +73,7 @@ import ResultModal from '@/components/ResultModal.vue';
 import LevelSelectModal from '@/components/LevelSelectModal.vue';
 import PauseMenu from '@/components/PauseMenu.vue';
 import { useSimonGame, PADS } from './useSimonGame';
+import { setGameMode } from '@/utils/modePreference';
 
 const router = useRouter();
 
@@ -105,6 +106,7 @@ const quitGame = () => {
 };
 
 const go2d = () => {
+  setGameMode('simon', '2d');
   router.push('/simon');
 };
 </script>

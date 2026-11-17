@@ -296,8 +296,8 @@ onMounted(async () => {
 });
 
 const goBack = () => {
-  const pos = Number(window.history.state?.position ?? 0);
-  if (pos > 0) router.back();
+  // 同 room.vue leaveToLobby：back 为空说明上一条历史不是本 SPA，回首页而不是弹出站点
+  if (window.history.state?.back) router.back();
   else router.replace('/');
 };
 

@@ -144,7 +144,8 @@ describe('HomePage', () => {
   it('displays game names correctly', () => {
     const wrapper = mount(HomePage);
     const gameNames = wrapper.findAll('.game-name');
-    expect(gameNames[0].text()).toBe('记忆翻牌');
+    // 3D 徽章会拼在名字后（has3d 卡片），断言以名字开头即可
+    expect(gameNames[0].text()).toContain('记忆翻牌');
     expect(gameNames[1].text()).toBe('接水果');
   });
 });

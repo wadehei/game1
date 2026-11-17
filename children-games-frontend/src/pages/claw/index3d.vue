@@ -79,6 +79,7 @@ import PauseMenu from '@/components/PauseMenu.vue';
 import { useClawGame } from './useClawGame';
 import { createClawMachine3D, type ClawMachine3D } from './claw3d';
 import { detectWebGL, startFpsGuard, type FpsGuard } from '@/composables/use3dGuard';
+import { setGameMode } from '@/utils/modePreference';
 
 const router = useRouter();
 
@@ -117,6 +118,7 @@ let machine: ClawMachine3D | null = null;
 let fpsGuard: FpsGuard | null = null;
 
 const go2d = () => {
+  setGameMode('claw', '2d');
   router.push('/claw');
 };
 
@@ -124,6 +126,7 @@ const go2d = () => {
 const fallbackTo2d = (withTip: boolean) => {
   fpsGuard?.stop();
   fpsGuard = null;
+  setGameMode('claw', '2d');
   if (withTip) {
     fallbackTip.value = true;
     setTimeout(() => router.replace('/claw'), 900);

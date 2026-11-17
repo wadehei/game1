@@ -76,6 +76,9 @@ import LevelSelectModal from '@/components/LevelSelectModal.vue';
 import PauseMenu from '@/components/PauseMenu.vue';
 import { useMemoryGame } from './useMemoryGame';
 import { getAnimalImage } from './animalImages';
+import { onMounted } from 'vue';
+import { getGameMode, setGameMode, maybeShow3dHint } from '@/utils/modePreference';
+import { showToast } from '@/utils/toastBus';
 
 const router = useRouter();
 
@@ -112,8 +115,19 @@ const quitGame = () => {
 
 // 游戏内一键切 3D（进度/关卡在同一存档上无缝衔接）
 const go3d = () => {
+  setGameMode('memory', '3d');
   router.push('/memory-3d');
 };
+// 默认模式：家长中心设为 3D 或本游戏上次切到 3D → 直接进 3D 版
+onMounted(() => {
+  if (getGameMode('memory') === '3d') {
+    router.replace('/memory-3d');
+    return;
+  }
+  if (maybeShow3dHint('memory')) {
+    showToast('试试右上角「3D」按钮，切换立体画面～', 'info');
+  }
+});
 </script>
 
 <style scoped>

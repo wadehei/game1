@@ -95,7 +95,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
-import { storage } from '@/utils/storage';
+import { getGameMode, setGameMode } from '@/utils/modePreference';
 import { detectWebGL, startFpsGuard, type FpsGuard } from '@/composables/use3dGuard';
 import { createGomokuBoard3D, type GomokuBoard3D } from './gomoku3d';
 
@@ -121,8 +121,9 @@ const emit = defineEmits<{ (e: 'action', action: Record<string, unknown>): void 
 const svgEl = ref<SVGSVGElement | null>(null);
 
 // ── 2D/3D 模式（默认 2D；记忆家长偏好；WebGL 不可用强制 2D） ──
-const MODE_KEY = 'gomoku_board_mode';
-const mode = ref(storage.getItem(MODE_KEY) === '3d' && detectWebGL() ? '3d' : '2d');
+const mode = ref<'2d' | '3d'>(
+  getGameMode('gomoku', 'gomoku_board_mode') === '3d' && detectWebGL() ? '3d' : '2d'
+);
 const container3d = ref<HTMLElement | null>(null);
 let board3d: GomokuBoard3D | null = null;
 let fpsGuard: FpsGuard | null = null;
@@ -132,14 +133,14 @@ const canPlay = (): boolean =>
 
 const toggleMode = (): void => {
   mode.value = mode.value === '2d' ? '3d' : '2d';
-  storage.setItem(MODE_KEY, mode.value);
+  setGameMode('gomoku', mode.value);
 };
 
 const mount3d = async () => {
   if (mode.value !== '3d' || board3d || !container3d.value) return;
   if (!detectWebGL()) {
     mode.value = '2d';
-    storage.setItem(MODE_KEY, '2d');
+    setGameMode('gomoku', '2d');
     return;
   }
   try {
@@ -158,12 +159,12 @@ const mount3d = async () => {
     fpsGuard = startFpsGuard({
       onFallback: () => {
         mode.value = '2d';
-        storage.setItem(MODE_KEY, '2d');
+        setGameMode('gomoku', '2d');
       },
     });
   } catch {
     mode.value = '2d';
-    storage.setItem(MODE_KEY, '2d');
+    setGameMode('gomoku', '2d');
   }
 };
 

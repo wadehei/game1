@@ -480,8 +480,9 @@ const playVoice = async (v: VoiceItem) => {
 
 // ── 退出/解散 ──
 const leaveToLobby = () => {
-  const pos = Number(window.history.state?.position ?? 0);
-  if (pos > 0) router.go(-1);
+  // history.state.back 是 vue-router 记录的站内上一跳；position>0 但 back 为空说明
+  // 上一条历史不是本 SPA（新标签/自动化环境的 about:blank），go(-1) 会把用户弹出站点
+  if (window.history.state?.back) router.go(-1);
   else router.replace('/battle');
 };
 

@@ -101,6 +101,7 @@ import LevelSelectModal from '@/components/LevelSelectModal.vue';
 import PauseMenu from '@/components/PauseMenu.vue';
 import { createMatch3Board3D, type Match3Board3D } from './match3d';
 import { detectWebGL, startFpsGuard, type FpsGuard } from '@/composables/use3dGuard';
+import { setGameMode } from '@/utils/modePreference';
 
 const router = useRouter();
 const engine = useMatch3Engine();
@@ -113,12 +114,14 @@ let board3d: Match3Board3D | null = null;
 let fpsGuard: FpsGuard | null = null;
 
 const go2d = () => {
+  setGameMode('match3', '2d');
   router.push('/match3');
 };
 
 const fallbackTo2d = (withTip: boolean) => {
   fpsGuard?.stop();
   fpsGuard = null;
+  setGameMode('match3', '2d');
   if (withTip) {
     fallbackTip.value = true;
     setTimeout(() => router.replace('/match3'), 900);

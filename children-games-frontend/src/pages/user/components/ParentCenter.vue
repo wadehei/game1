@@ -42,6 +42,20 @@
           </button>
         </div>
       </div>
+      <div class="panel-col">
+        <span class="panel-label">3D 立体画面默认模式（游戏内手动切换会按游戏单独记住）</span>
+        <div class="interval-chips">
+          <button
+            v-for="opt in mode3dOptions"
+            :key="opt.value"
+            class="chip"
+            :class="{ active: mode3dDefault === opt.value }"
+            @click="saveMode3d(opt.value)"
+          >
+            {{ opt.label }}
+          </button>
+        </div>
+      </div>
       <button class="p-btn-confirm full" @click="showPanel = false">完成</button>
     </div>
   </div>
@@ -54,6 +68,7 @@ import {
   getTodayPlaySeconds,
   resetTodayPlayTime,
 } from '@/composables/usePlayTimeGuard';
+import { get3dDefault, set3dDefault, type Mode3d } from '@/utils/modePreference';
 import { storage } from '@/utils/storage';
 
 const emit = defineEmits<{
@@ -74,6 +89,17 @@ const intervalOptions = [
   { value: 0, label: '关闭' },
 ];
 
+const mode3dDefault = ref(get3dDefault());
+const mode3dOptions = [
+  { value: '2d' as Mode3d, label: '默认 2D（稳妥）' },
+  { value: '3d' as Mode3d, label: '默认 3D（立体）' },
+];
+
+const saveMode3d = (value: Mode3d) => {
+  mode3dDefault.value = value;
+  set3dDefault(value);
+};
+
 const openGate = () => {
   gateQuestion.value = {
     a: 12 + Math.floor(Math.random() * 18),
@@ -93,6 +119,7 @@ const confirmGate = () => {
     showGate.value = false;
     todayMinutes.value = Math.ceil(getTodayPlaySeconds() / 60);
     restInterval.value = getRestIntervalMinutes();
+    mode3dDefault.value = get3dDefault();
     showPanel.value = true;
     emit('verified');
   } else {
