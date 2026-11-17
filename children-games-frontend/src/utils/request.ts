@@ -2,6 +2,7 @@ import axios from 'axios';
 import type { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { API_ORIGIN } from './apiOrigin';
 import { storage } from '@/utils/storage';
+import { showToast } from '@/utils/toastBus';
 
 export { API_ORIGIN };
 
@@ -23,6 +24,7 @@ instance.interceptors.request.use((config) => {
 
 // ─── 401 静默刷新（single-flight：并发 401 共享同一次刷新） ────────────────────
 let refreshing: Promise<string> | null = null;
+let authExpiredHandled = false;
 
 const tryRefresh = async (): Promise<string> => {
   if (!refreshing) {
@@ -46,6 +48,7 @@ const tryRefresh = async (): Promise<string> => {
       const { useUserStore } = await import('@/store/user');
       const userStore = useUserStore();
       userStore.setTokens(newToken, envelope.data?.refreshToken || refreshToken);
+      authExpiredHandled = false;
 
       return newToken;
     })().finally(() => {
@@ -86,6 +89,14 @@ instance.interceptors.response.use(
       const { useUserStore } = await import('@/store/user');
       const userStore = useUserStore();
       userStore.logout();
+      // 登录过期提示 + 跳转角色选择页（防循环 + 防重复触发）
+      if (!authExpiredHandled && location.hash !== '#/profiles') {
+        authExpiredHandled = true;
+        showToast('登录已过期，请重新选择角色', 'error');
+        const currentHash = location.hash.replace(/^#\/?/, '');
+        const redirect = currentHash ? `?redirect=${encodeURIComponent(currentHash)}` : '';
+        location.hash = `#/profiles${redirect}`;
+      }
     }
     throw error;
   }
