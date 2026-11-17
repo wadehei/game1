@@ -27,10 +27,28 @@
         <span>{{ currentColorLabel }}</span>
         <span class="dir">{{ direction === 1 ? '↻ 顺时针' : '↺ 逆时针' }}</span>
         <span class="turn">{{ turnText }}</span>
+        <button
+          v-if="webglOk"
+          class="mode-toggle"
+          :title="tableMode === '2d' ? '切 3D 牌桌' : '切 2D 牌桌'"
+          @click="toggleTableMode"
+        >
+          {{ tableMode === '2d' ? '3D' : '2D' }}
+        </button>
       </div>
 
-      <!-- 牌堆 / 弃牌堆 / 各家牌数 -->
-      <div class="table">
+      <!-- 3D 牌桌（桌面 + 摸牌堆 + 顶牌 + 对手牌背） -->
+      <template v-if="tableMode === '3d'">
+        <TableScene3D :snapshot="tableSnapshot" @fallback="onTableFallback" />
+        <div class="draw-row">
+          <button class="draw-btn" :disabled="!myTurn || drawnThisTurn" @click="doDraw">
+            摸牌
+          </button>
+        </div>
+      </template>
+
+      <!-- 牌堆 / 弃牌堆 / 各家牌数（2D） -->
+      <div v-else class="table">
         <div class="pile draw-pile" @click="doDraw">
           <span class="pile-label">摸牌</span>
         </div>
@@ -101,7 +119,11 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useUserStore } from '@/store/user';
+import { storage } from '@/utils/storage';
+import { detectWebGL } from '@/composables/use3dGuard';
 import type { UnoGameState, GameEvents } from '@/composables/wsTypes';
+import TableScene3D from './TableScene3D.vue';
+import type { TableSnapshot } from './tableScene3d';
 
 const UNO_COLORS = ['red', 'yellow', 'green', 'blue'];
 
@@ -239,6 +261,42 @@ const nameOfBySeat = (seat: number): string => {
   if (!m) return '?';
   return m.userId === myId.value ? '我' : m.nickname;
 };
+
+// ── 3D 牌桌（模式记忆，WebGL 不可用自动保持 2D） ──
+const TABLE_MODE_KEY = 'uno_table_mode';
+const webglOk = detectWebGL();
+const tableMode = ref(storage.getItem(TABLE_MODE_KEY) === '3d' && webglOk ? '3d' : '2d');
+const toggleTableMode = (): void => {
+  tableMode.value = tableMode.value === '2d' ? '3d' : '2d';
+  storage.setItem(TABLE_MODE_KEY, tableMode.value);
+};
+const onTableFallback = (): void => {
+  tableMode.value = '2d';
+  storage.setItem(TABLE_MODE_KEY, '2d');
+};
+
+const tableSnapshot = computed<TableSnapshot>(() => ({
+  seats: counts.value
+    .filter((c) => c.userId !== myId.value)
+    .map((c) => ({
+      seatId: c.userId,
+      name: nameOf(c.userId),
+      cardCount: c.count,
+      isTurn: props.members.find((m) => m.userId === c.userId)?.seat === turnSeat.value,
+    })),
+  centerCards: top.value
+    ? [
+        {
+          id: top.value.id,
+          label: cardLabel(top.value),
+          color: colorCss(top.value.color),
+          textColor: textColor(top.value),
+        },
+      ]
+    : [],
+  deckCount: 32,
+  accentColor: colorCss(currentColor.value),
+}));
 </script>
 
 <style scoped>
@@ -282,6 +340,44 @@ const nameOfBySeat = (seat: number): string => {
 .turn {
   font-weight: bold;
   color: #667eea;
+}
+
+.mode-toggle {
+  margin-left: auto;
+  border: none;
+  border-radius: 12px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: bold;
+  background: rgba(102, 126, 234, 0.14);
+  color: #667eea;
+  cursor: pointer;
+}
+
+.mode-toggle:active {
+  transform: scale(0.94);
+}
+
+.draw-row {
+  display: flex;
+  justify-content: center;
+  margin: 8px 0 0;
+}
+
+.draw-btn {
+  border: 2px dashed #c3c8d0;
+  background: #f0f2f5;
+  color: #666;
+  font-size: 14px;
+  font-weight: bold;
+  padding: 8px 30px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.draw-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 .table {

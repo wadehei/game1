@@ -313,3 +313,47 @@ test.describe('对战系统 - 完整流程（需要两个浏览器上下文）',
     }
   });
 });
+
+test.describe('对战 3D 冒烟（棋盘/牌桌一键切换，默认 2D）', () => {
+  test('gomoku 棋盘切 3D：Three.js canvas 渲染并可切回', async ({ page }) => {
+    await setupAuthAndGoto(page, '/battle');
+    await createRoom(page, 'gomoku');
+    await waitForWsConnection(page);
+
+    // 默认 2D SVG
+    await expect(page.locator('.board-svg')).toBeVisible();
+    // 切 3D
+    await page.locator('.board-frame .mode-toggle').click();
+    await page.waitForTimeout(1200);
+    const canvasInfo = await page.evaluate(() => {
+      const canvas = document.querySelector('.board-3d canvas') as HTMLCanvasElement | null;
+      if (!canvas) return { exists: false };
+      return { exists: true, width: canvas.width, height: canvas.height };
+    });
+    expect(canvasInfo.exists).toBe(true);
+    expect(canvasInfo.width).toBeGreaterThan(100);
+    // 切回 2D
+    await page.locator('.board-frame .mode-toggle').click();
+    await expect(page.locator('.board-svg')).toBeVisible();
+  });
+
+  test('uno 牌桌切 3D：Three.js canvas 渲染并可切回', async ({ page }) => {
+    await setupAuthAndGoto(page, '/battle');
+    await createRoom(page, 'uno');
+    await waitForWsConnection(page);
+
+    // 切 3D（等待阶段即可切换，桌面空快照渲染）
+    await page.locator('.uno-status .mode-toggle').click();
+    await page.waitForTimeout(1500);
+    const canvasInfo = await page.evaluate(() => {
+      const canvas = document.querySelector('.table-scene-3d canvas') as HTMLCanvasElement | null;
+      if (!canvas) return { exists: false };
+      return { exists: true, width: canvas.width, height: canvas.height };
+    });
+    expect(canvasInfo.exists).toBe(true);
+    expect(canvasInfo.width).toBeGreaterThan(100);
+    // 切回 2D
+    await page.locator('.uno-status .mode-toggle').click();
+    await expect(page.locator('.table.draw-pile, .table')).toBeVisible();
+  });
+});

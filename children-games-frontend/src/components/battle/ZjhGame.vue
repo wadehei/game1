@@ -30,6 +30,14 @@
             :class="{ hurry: remainSec <= 5 }"
             >{{ remainSec }}s</span
           >
+          <button
+            v-if="webglOk"
+            class="mode-toggle"
+            :title="tableMode === '2d' ? '切 3D 牌桌' : '切 2D 牌桌'"
+            @click="toggleTableMode"
+          >
+            {{ tableMode === '2d' ? '3D' : '2D' }}
+          </button>
         </div>
 
         <!-- 我的下注流水（整局累计） -->
@@ -58,8 +66,15 @@
           </div>
         </div>
 
-        <!-- 其他玩家 -->
-        <div class="others">
+        <!-- 3D 牌桌（对手围桌 + 牌背 + 回合光环） -->
+        <TableScene3D
+          v-if="tableMode === '3d'"
+          :snapshot="tableSnapshot"
+          @fallback="onTableFallback"
+        />
+
+        <!-- 其他玩家（2D 座位卡） -->
+        <div v-if="tableMode !== '3d'" class="others">
           <div
             v-for="o in othersView"
             :key="o.userId"
@@ -244,8 +259,12 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useUserStore } from '@/store/user';
 import { soundManager } from '@/utils/sound';
+import { storage } from '@/utils/storage';
+import { detectWebGL } from '@/composables/use3dGuard';
 import BattleResultPanel from './BattleResultPanel.vue';
 import BetLedger from './BetLedger.vue';
+import TableScene3D from './TableScene3D.vue';
+import type { TableSnapshot } from './tableScene3d';
 import type { ZjhGameState } from '@/composables/wsTypes';
 
 const props = defineProps<{
@@ -263,6 +282,39 @@ const myId = computed(() => userStore.userInfo?.id || 0);
 
 const final = computed(() => props.events.final);
 const showdown = computed(() => props.events.showdown);
+
+// ── 3D 牌桌（模式记忆，WebGL 不可用自动保持 2D） ──
+const TABLE_MODE_KEY = 'zjh_table_mode';
+const webglOk = detectWebGL();
+const tableMode = ref(storage.getItem(TABLE_MODE_KEY) === '3d' && webglOk ? '3d' : '2d');
+const toggleTableMode = (): void => {
+  tableMode.value = tableMode.value === '2d' ? '3d' : '2d';
+  storage.setItem(TABLE_MODE_KEY, tableMode.value);
+};
+const onTableFallback = (): void => {
+  tableMode.value = '2d';
+  storage.setItem(TABLE_MODE_KEY, '2d');
+};
+
+const tableSnapshot = computed<TableSnapshot>(() => ({
+  seats: othersView.value
+    .filter((o) => o.userId !== myId.value)
+    .map((o) => ({
+      seatId: o.userId,
+      name: o.nickname,
+      cardCount: o.folded ? 0 : 3,
+      isTurn: props.state?.turnSeat === o.seat,
+      subLabel: o.folded
+        ? '🚫 已弃'
+        : o.allIn
+          ? '💰 all-in'
+          : `${o.seen ? '👀 已看' : '🙈 闷'} · 投 ${o.betTotal || 0}`,
+      dim: !!o.folded,
+    })),
+  centerCards: [],
+  deckCount: 16,
+  accentColor: undefined,
+}));
 const settle = computed(() => props.events.settle);
 const compareCards = computed(() => props.events.compareCards);
 
@@ -397,6 +449,22 @@ onUnmounted(() => {
   color: #d9c8ee;
   margin-bottom: 8px;
   flex-wrap: wrap;
+}
+
+.mode-toggle {
+  margin-left: auto;
+  border: none;
+  border-radius: 12px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: bold;
+  background: rgba(255, 255, 255, 0.12);
+  color: #d9c8ee;
+  cursor: pointer;
+}
+
+.mode-toggle:active {
+  transform: scale(0.94);
 }
 
 .pot b {

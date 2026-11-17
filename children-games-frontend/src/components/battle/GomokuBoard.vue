@@ -1,7 +1,11 @@
 <template>
   <div class="board-wrap">
-    <div class="board-frame">
+    <div class="board-frame" :class="{ wide: mode === '3d' }">
+      <!-- 3D 棋盘（Three.js：立体棋子 + 可拖拽旋转视角） -->
+      <div v-show="mode === '3d'" ref="container3d" class="board-3d"></div>
+      <!-- 2D 棋盘（SVG 原版） -->
       <svg
+        v-show="mode === '2d'"
         ref="svgEl"
         class="board-svg"
         :viewBox="`-0.5 -0.5 ${BOARD_SIZE} ${BOARD_SIZE}`"
@@ -77,12 +81,23 @@
           :class="{ light: state.board[state.lastMove.y]?.[state.lastMove.x] === 1 }"
         />
       </svg>
+      <button
+        class="mode-toggle"
+        :title="mode === '2d' ? '切换 3D 棋盘' : '切换 2D 棋盘'"
+        @click="toggleMode"
+      >
+        {{ mode === '2d' ? '3D' : '2D' }}
+      </button>
     </div>
+    <div v-if="mode === '3d'" class="orbit-tip">拖动旋转视角 · 点击交点落子</div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { storage } from '@/utils/storage';
+import { detectWebGL, startFpsGuard, type FpsGuard } from '@/composables/use3dGuard';
+import { createGomokuBoard3D, type GomokuBoard3D } from './gomoku3d';
 
 const BOARD_SIZE = 15;
 const BLACK = 1;
@@ -104,6 +119,75 @@ const props = defineProps<{
 const emit = defineEmits<{ (e: 'action', action: Record<string, unknown>): void }>();
 
 const svgEl = ref<SVGSVGElement | null>(null);
+
+// ── 2D/3D 模式（默认 2D；记忆家长偏好；WebGL 不可用强制 2D） ──
+const MODE_KEY = 'gomoku_board_mode';
+const mode = ref(storage.getItem(MODE_KEY) === '3d' && detectWebGL() ? '3d' : '2d');
+const container3d = ref<HTMLElement | null>(null);
+let board3d: GomokuBoard3D | null = null;
+let fpsGuard: FpsGuard | null = null;
+
+const canPlay = (): boolean =>
+  props.phase === 'playing' && props.mySeat >= 0 && props.state.turn === myColor.value;
+
+const toggleMode = (): void => {
+  mode.value = mode.value === '2d' ? '3d' : '2d';
+  storage.setItem(MODE_KEY, mode.value);
+};
+
+const mount3d = async () => {
+  if (mode.value !== '3d' || board3d || !container3d.value) return;
+  if (!detectWebGL()) {
+    mode.value = '2d';
+    storage.setItem(MODE_KEY, '2d');
+    return;
+  }
+  try {
+    board3d = await createGomokuBoard3D({
+      container: container3d.value,
+      getState: () => ({
+        board: props.state.board,
+        turn: props.state.turn,
+        winLine: props.state.winLine,
+        lastMove: props.state.lastMove,
+      }),
+      canPlay,
+      onTapCell: (x, y) => emit('action', { t: 'move', x, y }),
+    });
+    board3d.startRenderLoop();
+    fpsGuard = startFpsGuard({
+      onFallback: () => {
+        mode.value = '2d';
+        storage.setItem(MODE_KEY, '2d');
+      },
+    });
+  } catch {
+    mode.value = '2d';
+    storage.setItem(MODE_KEY, '2d');
+  }
+};
+
+watch(mode, (m) => {
+  if (m === '2d') {
+    fpsGuard?.stop();
+    fpsGuard = null;
+    board3d?.dispose();
+    board3d = null;
+  } else {
+    mount3d();
+  }
+});
+
+onMounted(() => {
+  if (mode.value === '3d') mount3d();
+});
+
+onUnmounted(() => {
+  fpsGuard?.stop();
+  fpsGuard = null;
+  board3d?.dispose();
+  board3d = null;
+});
 
 // 15 路棋盘星位
 const STAR_POINTS: [number, number][] = [
@@ -142,11 +226,13 @@ const tap = (e: PointerEvent) => {
 <style scoped>
 .board-wrap {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
   margin-bottom: 10px;
 }
 
 .board-frame {
+  position: relative;
   width: 100%;
   max-width: 380px;
   aspect-ratio: 1;
@@ -155,6 +241,48 @@ const tap = (e: PointerEvent) => {
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
   padding: 2px;
   box-sizing: border-box;
+}
+
+.board-frame.wide {
+  background: #f5f7fa;
+}
+
+.board-3d {
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.board-3d :deep(canvas) {
+  display: block;
+}
+
+/* 模式切换小按钮（棋盘右上角） */
+.mode-toggle {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  z-index: 5;
+  border: none;
+  border-radius: 12px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: bold;
+  background: rgba(30, 40, 60, 0.55);
+  color: #fff;
+  cursor: pointer;
+}
+
+.mode-toggle:active {
+  transform: scale(0.94);
+}
+
+.orbit-tip {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #8a93a6;
 }
 
 .board-svg {
