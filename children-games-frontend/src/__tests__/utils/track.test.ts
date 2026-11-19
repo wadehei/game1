@@ -74,6 +74,23 @@ describe('track', () => {
     expect(allSent.some((e) => e.gameId === 'g19')).toBe(true);
   });
 
+  it('401 响应：过期窗口事件直接丢弃不回队', async () => {
+    localStorage.setItem('token', 'tok');
+    fetchMock.mockResolvedValue(new Response('', { status: 401 }));
+    for (let i = 0; i < 10; i += 1) {
+      track({ type: 'game_start', gameId: `g${i}` });
+    } // 队列满自动冲刷 → 401
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    // 再灌满触发第二次冲刷：若 401 事件被错误回队，这里会发出 >10 条
+    fetchMock.mockResolvedValue(new Response('{}', { status: 200 }));
+    for (let i = 10; i < 20; i += 1) {
+      track({ type: 'game_start', gameId: `n${i}` });
+    }
+    const last = JSON.parse(fetchMock.mock.calls.at(-1)![1].body);
+    expect(last.events).toHaveLength(10);
+    expect(last.events.every((e: TrackEvent) => (e.gameId ?? '').startsWith('n'))).toBe(true);
+  });
+
   it('currentMode 按 hash 判定', () => {
     window.location.hash = '#/memory';
     expect(currentMode()).toBe('2d');

@@ -64,11 +64,26 @@ export function flush(): void {
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify({ events }),
     keepalive: true,
-  }).catch(() => {
-    // 失败回队首（截断防无限增长）——丢点可接受，不重试风暴
-    queue.unshift(...events.slice(-QUEUE_CAP));
-    if (queue.length > QUEUE_CAP) queue.length = QUEUE_CAP;
-  });
+  })
+    .then((resp) => {
+      // 401/403：token 过期或无效——过期窗口的事件无补发价值，直接丢弃
+      // （回队会导致 401 期间事件滞留队列反复失败，直到页面关闭全丢）
+      if (resp.status === 401 || resp.status === 403) {
+        return;
+      }
+      if (!resp.ok) {
+        requeue(events);
+      }
+    })
+    .catch(() => {
+      // 网络失败：回队首（截断防无限增长）——丢点可接受，不重试风暴
+      requeue(events);
+    });
+}
+
+function requeue(events: TrackEvent[]): void {
+  queue.unshift(...events.slice(-QUEUE_CAP));
+  if (queue.length > QUEUE_CAP) queue.length = QUEUE_CAP;
 }
 
 function bindPageLifecycle(): void {

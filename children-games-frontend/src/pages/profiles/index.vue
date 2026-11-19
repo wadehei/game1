@@ -3,8 +3,18 @@
     <div class="page-title">🎮 谁来玩？</div>
     <div class="page-subtitle">点头像选角色，比一比谁更厉害！</div>
 
+    <!-- 加载骨架：角色列表请求期间占位（弱网/慢设备等待感明显） -->
+    <div v-if="profilesLoading" class="profile-list" aria-hidden="true">
+      <SkeletonLoading
+        v-for="i in 4"
+        :key="i"
+        variant="card"
+        class="profile-card skeleton-holder"
+      />
+    </div>
+
     <!-- 成员列表：按总星星排序，就是家庭总榜 -->
-    <div class="profile-list">
+    <div v-else class="profile-list">
       <div
         v-for="(p, index) in profiles"
         :key="p.id"
@@ -76,6 +86,7 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
+import SkeletonLoading from '@/components/SkeletonLoading.vue';
 import { useRouter, useRoute } from 'vue-router';
 import { familyLogin, getProfiles, getLastProfileId, type FamilyProfile } from '@/api/user';
 import { useUserStore } from '@/store/user';
@@ -117,11 +128,15 @@ const onPhotoPick = async (event: Event) => {
   }
 };
 
+const profilesLoading = ref(true);
+
 const loadProfiles = async () => {
   try {
     profiles.value = await getProfiles();
   } catch {
     profiles.value = [];
+  } finally {
+    profilesLoading.value = false;
   }
 };
 
@@ -215,6 +230,10 @@ onMounted(loadProfiles);
   gap: 14px;
   max-width: 420px;
   margin: 0 auto;
+}
+
+.skeleton-holder {
+  min-height: 150px;
 }
 
 .profile-card {
