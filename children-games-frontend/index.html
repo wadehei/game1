@@ -54,7 +54,7 @@
     </style>
   </head>
   <body>
-    <div id="splash">
+    <div id="splash" role="status" aria-live="polite" aria-label="应用加载中">
       <div class="icon">🎮</div>
       <div class="title">儿童游戏乐园</div>
       <div class="dots">加载中...</div>
@@ -62,12 +62,22 @@
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
     <script>
-      window.addEventListener('DOMContentLoaded', function() {
-        setTimeout(function() {
-          var splash = document.getElementById('splash');
-          if (splash) { splash.classList.add('hide'); setTimeout(function() { splash.remove(); }, 400); }
-        }, 800);
-      });
+      // 事件驱动移除 Splash：Vue 挂载完成后立即触发，不再固定延时
+      // 兼顾快慢设备，避免闪烁或多余等待
+      (function() {
+        var splash = document.getElementById('splash');
+        var removed = false;
+        function hideSplash() {
+          if (removed || !splash) return;
+          removed = true;
+          splash.classList.add('hide');
+          setTimeout(function() { if (splash && splash.parentNode) splash.parentNode.removeChild(splash); }, 400);
+        }
+        // 监听 Vue 挂载完成事件
+        document.addEventListener('app-ready', hideSplash);
+        // 兜底：5 秒后强制移除（防止事件未触发导致永久白屏）
+        setTimeout(hideSplash, 5000);
+      })();
     </script>
   </body>
 </html>

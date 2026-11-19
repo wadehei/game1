@@ -1,4 +1,0 @@
-allowBuilds:
-  esbuild: false
-  puppeteer: false
-  vue-demi: false

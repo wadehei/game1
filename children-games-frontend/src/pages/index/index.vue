@@ -173,6 +173,7 @@ const goBattle = () => {
 onMounted(async () => {
   soundManager.init();
   volume.value = soundManager.getVolume();
+  // 先验证用户登录状态（401/404 需跳转）
   try {
     await getUserInfo();
   } catch (e: unknown) {
@@ -184,15 +185,16 @@ onMounted(async () => {
       return;
     }
   }
-  try {
-    await getAllProgress();
-  } catch {
+  // 进度和每日任务互不依赖，并行请求减少等待时间
+  const [progressResult, dailyResult] = await Promise.allSettled([
+    getAllProgress(),
+    getDailyTask(),
+  ]);
+  if (progressResult.status === 'rejected') {
     // 获取进度失败，保持默认空状态
   }
-  try {
-    dailyTask.value = await getDailyTask();
-  } catch {
-    // 获取每日任务失败，保持默认
+  if (dailyResult.status === 'fulfilled') {
+    dailyTask.value = dailyResult.value;
   }
 });
 

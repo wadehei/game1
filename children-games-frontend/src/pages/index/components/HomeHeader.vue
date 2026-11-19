@@ -119,7 +119,7 @@ defineEmits<{
 .star-num {
   font-size: 18px;
   font-weight: bold;
-  color: #ffb347;
+  color: #d98200; /* 对比度修复：原 #ffb347 */
 }
 
 .header-right {

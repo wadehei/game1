@@ -22,9 +22,9 @@ services:
       - DB_HOST=mysql
       - DB_PORT=3306
       - DB_USER=root
-      - DB_PASSWORD=${DB_PASSWORD:-children_games_2024}
+      - DB_PASSWORD=${DB_PASSWORD:?DB_PASSWORD is required}
       - DB_NAME=children_games
-      - JWT_SECRET=${JWT_SECRET:-your-jwt-secret-change-in-production}
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
     depends_on:
       mysql:
         condition: service_healthy
@@ -35,7 +35,7 @@ services:
     ports:
       - "3306:3306"
     environment:
-      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD:-children_games_2024}
+      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD:?DB_PASSWORD is required}
       - MYSQL_DATABASE=children_games
     volumes:
       - mysql_data:/var/lib/mysql

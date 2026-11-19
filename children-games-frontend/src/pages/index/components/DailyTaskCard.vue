@@ -113,7 +113,7 @@ defineEmits<{
 }
 
 .reward-num {
-  color: #ffb347;
+  color: #d98200; /* 对比度修复：原 #ffb347 */
   font-weight: bold;
 }
 

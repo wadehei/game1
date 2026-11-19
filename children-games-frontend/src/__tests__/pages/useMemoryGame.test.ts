@@ -132,12 +132,16 @@ describe('useMemoryGame', () => {
     // 若连点被正确拦截，此时最多翻开 2 张 → moves 最多 1；若连点生效则第 3 次点击会被两张上限拦掉，moves 恒为 1
     expect(game.moves.value).toBeLessThanOrEqual(1);
 
-    // 场景二：找两张不同图案的卡翻开（未决窗口），第三张点击必须被拦
-    vi.advanceTimersByTime(900); // 清掉场景一的未决窗口
+    // 场景二：重开一局（随机洗牌下场景一可能配对掉一对，剩余卡造不出
+    // 「不同 emoji 的未决窗口」，restartGame 保证 4 张=两对不同，测试确定性）
+    vi.advanceTimersByTime(900);
+    game.restartGame();
     const emojiOf = (i: number) => game.cards.value[i].emoji;
     const a = 0;
-    const b = game.cards.value.findIndex((c) => c.emoji !== emojiOf(0));
+    const b = game.cards.value.findIndex((c, i) => i !== a && c.emoji !== emojiOf(a));
     const c = game.cards.value.findIndex((_, i) => i !== a && i !== b);
+    expect(b).toBeGreaterThanOrEqual(0);
+    expect(c).toBeGreaterThanOrEqual(0);
     game.flipCard(a);
     game.flipCard(b);
     const movesBefore = game.moves.value;

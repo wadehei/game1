@@ -247,7 +247,7 @@ onMounted(loadProfiles);
   left: 10px;
   font-size: 13px;
   font-weight: bold;
-  color: #ffb347;
+  color: #d98200; /* 对比度修复：原 #ffb347 在白底对比度不足 */
 }
 
 .lock-badge {
@@ -277,7 +277,7 @@ onMounted(loadProfiles);
 
 .profile-stats {
   font-size: 12px;
-  color: #999;
+  color: #666; /* 对比度修复：原 #999 在白底对比度不足 */
   margin-top: 4px;
 }
 
@@ -294,7 +294,7 @@ onMounted(loadProfiles);
   height: 56px;
   border-radius: 50%;
   background: #f0f0f0;
-  color: #999;
+  color: #666; /* 对比度修复：原 #999 */
   font-size: 30px;
   display: flex;
   align-items: center;

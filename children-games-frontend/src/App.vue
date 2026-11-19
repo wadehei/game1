@@ -9,11 +9,13 @@
 </template>
 
 <script setup lang="ts">
+import { defineAsyncComponent } from 'vue';
 import { useRoute } from 'vue-router';
-import RestOverlay from '@/components/RestOverlay.vue';
-import AchievementToast from '@/components/AchievementToast.vue';
-import AppToast from '@/components/AppToast.vue';
-import AppConfirm from '@/components/AppConfirm.vue';
+// 非首屏组件异步加载：减小初始 bundle 体积
+const RestOverlay = defineAsyncComponent(() => import('@/components/RestOverlay.vue'));
+const AchievementToast = defineAsyncComponent(() => import('@/components/AchievementToast.vue'));
+const AppToast = defineAsyncComponent(() => import('@/components/AppToast.vue'));
+const AppConfirm = defineAsyncComponent(() => import('@/components/AppConfirm.vue'));
 import { usePlayTimeGuard } from '@/composables/usePlayTimeGuard';
 import { initVoice } from '@/utils/voice';
 
@@ -101,6 +103,21 @@ body {
   --text-light: #666666;
   --bg-color: #f7f7f7;
   --card-bg: #ffffff;
+  /* iOS 安全区适配（刘海屏/灵动岛） */
+  --sat: env(safe-area-inset-top, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+}
+
+/* 全局安全区变量（兼容旧版 Safari） */
+@supports (padding: max(0px)) {
+  :root {
+    --sat: max(env(safe-area-inset-top, 0px), 0px);
+    --sar: max(env(safe-area-inset-right, 0px), 0px);
+    --sab: max(env(safe-area-inset-bottom, 0px), 0px);
+    --sal: max(env(safe-area-inset-left, 0px), 0px);
+  }
 }
 
 /* 通用样式 */

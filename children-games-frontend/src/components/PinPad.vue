@@ -164,7 +164,7 @@ watch(
   margin-top: 14px;
   border: none;
   background: none;
-  color: #999;
+  color: #666; /* 对比度修复：原 #999 */
   font-size: 13px;
   cursor: pointer;
   padding: 6px;

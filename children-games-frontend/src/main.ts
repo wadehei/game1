@@ -37,4 +37,6 @@ if (typeof document !== 'undefined') {
   initTheme(); // 主题（index.html 已尽早预置 data-theme，这里负责系统切换监听）
   const { app } = createApp();
   app.mount('#app');
+  // Vue 挂载完成后通知 Splash 屏移除（事件驱动，不再固定延时）
+  document.dispatchEvent(new CustomEvent('app-ready'));
 }
